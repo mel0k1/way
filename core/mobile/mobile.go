@@ -4,6 +4,7 @@ import (
         "fmt"
 
         core "github.com/mel0k1/way/core"
+        _ "github.com/sagernet/gomobile/bind"
         "github.com/sagernet/sing-box/experimental/libbox"
 )
 

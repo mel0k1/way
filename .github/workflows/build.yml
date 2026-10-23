@@ -80,10 +80,11 @@ jobs:
           go-version: "1.27"
 
       - name: Build waycore.exe
+        working-directory: core
         shell: pwsh
         run: |
           $env:CGO_ENABLED = "0"
-          go build -trimpath -ldflags "-s -w -buildid= -checklinkname=0 -X github.com/sagernet/sing-box/constant.Version=${{ env.SINGBOX_VERSION }} -X github.com/mel0k1/way/core.xrayVersion=${{ env.XRAY_VERSION }} -X runtime.godebugDefault=multipathtcp=0,tlssha1=1,tlsunsafeekm=1" -tags "with_gvisor,with_quic,with_utls,with_clash_api,with_wireguard,badlinkname,tfogo_checklinkname0" -o waycore.exe ./core/cmd/waycore
+          go build -trimpath -ldflags "-s -w -buildid= -checklinkname=0 -X github.com/sagernet/sing-box/constant.Version=${{ env.SINGBOX_VERSION }} -X github.com/mel0k1/way/core.xrayVersion=${{ env.XRAY_VERSION }} -X runtime.godebugDefault=multipathtcp=0,tlssha1=1,tlsunsafeekm=1" -tags "with_gvisor,with_quic,with_utls,with_clash_api,with_wireguard,badlinkname,tfogo_checklinkname0" -o ../waycore.exe ./cmd/waycore
 
       - uses: subosito/flutter-action@v2
         with:
