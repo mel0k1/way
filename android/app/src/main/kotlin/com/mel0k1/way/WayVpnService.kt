@@ -248,7 +248,7 @@ class WayVpnService : VpnService(), PlatformInterface {
         if (prepare(this) != null) error("missing vpn permission")
         val builder = Builder()
             .setSession("Way")
-            .setMtu(config.mtu)
+            .setMtu(config.getMTU())
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             builder.setMetered(false)
         }
@@ -267,24 +267,24 @@ class WayVpnService : VpnService(), PlatformInterface {
                 }
             }
         }
-        addPrefixes(config.inet4Addresses) { addr, prefix -> builder.addAddress(addr, prefix) }
-        addPrefixes(config.inet6Addresses) { addr, prefix -> builder.addAddress(addr, prefix) }
-        if (config.autoRoute) {
-            val dns = config.dnsServers
+        addPrefixes(config.getInet4Addresses()) { addr, prefix -> builder.addAddress(addr, prefix) }
+        addPrefixes(config.getInet6Addresses()) { addr, prefix -> builder.addAddress(addr, prefix) }
+        if (config.getAutoRoute()) {
+            val dns = config.getDNSServers()
             while (dns.hasNext()) {
                 builder.addDnsServer(dns.next())
             }
         }
-        val routes4 = config.inet4Routes
+        val routes4 = config.getInet4Routes()
         if (routes4.hasNext()) {
             addPrefixes(routes4) { addr, prefix -> builder.addRoute(addr, prefix) }
-        } else if (config.inet4Addresses.hasNext()) {
+        } else if (config.getInet4Addresses().hasNext()) {
             builder.addRoute("0.0.0.0", 0)
         }
-        val routes6 = config.inet6Routes
+        val routes6 = config.getInet6Routes()
         if (routes6.hasNext()) {
             addPrefixes(routes6) { addr, prefix -> builder.addRoute(addr, prefix) }
-        } else if (config.inet6Addresses.hasNext()) {
+        } else if (config.getInet6Addresses().hasNext()) {
             builder.addRoute("::", 0)
         }
         val pfd = builder.establish() ?: error("vpn establish failed")
