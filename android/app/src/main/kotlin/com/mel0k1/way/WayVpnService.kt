@@ -8,30 +8,17 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.VpnService
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.ParcelFileDescriptor
-import io.mel0k1.libbox.BridgeOptions
-import io.mel0k1.libbox.BridgeSession
-import io.mel0k1.libbox.CommandServer
-import io.mel0k1.libbox.CommandServerHandler
-import io.mel0k1.libbox.ConnectionOwner
-import io.mel0k1.libbox.InterfaceUpdateListener
-import io.mel0k1.libbox.LocalDNSTransport
-import io.mel0k1.libbox.NeighborUpdateListener
-import io.mel0k1.libbox.NetworkInterfaceIterator
-import io.mel0k1.libbox.Notification as BoxNotification
-import io.mel0k1.libbox.OverrideOptions
-import io.mel0k1.libbox.PlatformInterface
-import io.mel0k1.libbox.PlatformUser
-import io.mel0k1.libbox.ShellSession
-import io.mel0k1.libbox.StringIterator
-import io.mel0k1.libbox.SystemProxyStatus
-import io.mel0k1.libbox.TunOptions
-import io.mel0k1.libbox.WIFIState
+import io.mel0k1.waycore.CommandServer
+import io.mel0k1.waycore.PlatformInterface
+import io.mel0k1.waycore.StringIterator
+import io.mel0k1.waycore.TunConfig
 import io.mel0k1.waycore.Waycore
-import java.net.NetworkInterface as JavaNetworkInterface
 
-class WayVpnService : VpnService(), PlatformInterface, CommandServerHandler {
+class WayVpnService : VpnService(), PlatformInterface {
     companion object {
         const val STATE_STOPPED = "stopped"
         const val STATE_STARTING = "starting"
@@ -39,6 +26,8 @@ class WayVpnService : VpnService(), PlatformInterface, CommandServerHandler {
         const val STATE_STOPPING = "stopping"
         private const val CHANNEL_ID = "way_vpn"
         private const val NOTIFICATION_ID = 7
+        private const val PREFS = "way_vpn"
+        private const val MAX_RESTARTS = 10
 
         @Volatile
         var state: String = STATE_STOPPED
@@ -55,17 +44,50 @@ class WayVpnService : VpnService(), PlatformInterface, CommandServerHandler {
     }
 
     private var commandServer: CommandServer? = null
-    private var fileDescriptor: ParcelFileDescriptor? = null
+    private var tunFd: ParcelFileDescriptor? = null
+    private var desired = false
+    private var splitMode = "off"
+    private var splitApps = emptyList<String>()
+    private var restartAttempts = 0
+    private val watchdog = Handler(Looper.getMainLooper())
+    private val watchdogTick = object : Runnable {
+        override fun run() {
+            if (desired && commandServer == null) {
+                if (restartAttempts >= MAX_RESTARTS) {
+                    desired = false
+                    setState(STATE_STOPPED, "watchdog gave up")
+                    return
+                }
+                restartAttempts++
+                restoreConfig()
+            }
+            if (desired) {
+                watchdog.postDelayed(this, 5000)
+            }
+        }
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.getBooleanExtra("stop", false) == true) {
+        if (intent == null) {
+            restoreConfig()
+            return START_STICKY
+        }
+        if (intent.getBooleanExtra("stop", false)) {
+            desired = false
+            clearSavedConfig()
             stopCore()
             stopSelf()
             return START_NOT_STICKY
         }
-        val engine = intent?.getStringExtra("engine") ?: return START_NOT_STICKY
+        val engine = intent.getStringExtra("engine") ?: return START_NOT_STICKY
+        splitMode = intent.getStringExtra("split_mode") ?: "off"
+        splitApps = intent.getStringExtra("split_apps")
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            .orEmpty()
         startForegroundCompat()
         startCore(
             engine = engine,
@@ -82,6 +104,8 @@ class WayVpnService : VpnService(), PlatformInterface, CommandServerHandler {
     }
 
     override fun onRevoke() {
+        desired = false
+        clearSavedConfig()
         stopCore()
         stopSelf()
     }
@@ -115,7 +139,7 @@ class WayVpnService : VpnService(), PlatformInterface, CommandServerHandler {
             startForeground(
                 NOTIFICATION_ID,
                 notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+                ServiceInfo.FOREGROUND_SERVICE_SPECIAL_USE,
             )
         } else {
             startForeground(NOTIFICATION_ID, notification)
@@ -136,20 +160,59 @@ class WayVpnService : VpnService(), PlatformInterface, CommandServerHandler {
             if (engine == "xray" && xrayConfig.isNotEmpty()) {
                 Waycore.startXray(xrayConfig)
             }
-            val server = Waycore.newCommandServer(this, this)
+            val server = Waycore.newCommandServer(this)
             server.start()
             val activeConfig = if (engine == "xray") bridgeConfig else singboxConfig
-            server.startOrReloadService(activeConfig, OverrideOptions())
+            server.startOrReloadService(activeConfig)
             commandServer = server
+            desired = true
+            restartAttempts = 0
+            saveConfig(engine, singboxConfig, xrayConfig, bridgeConfig)
             setState(STATE_STARTED)
+            watchdog.removeCallbacks(watchdogTick)
+            watchdog.postDelayed(watchdogTick, 5000)
         } catch (e: Throwable) {
             setState(STATE_STOPPED, e.message ?: e.toString())
             stopCore()
         }
     }
 
+    private fun restoreConfig() {
+        val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val engine = prefs.getString("engine", null) ?: return
+        val singbox = prefs.getString("singbox", null) ?: return
+        splitMode = prefs.getString("split_mode", null) ?: "off"
+        splitApps = prefs.getString("split_apps", null)
+            ?.split(",")
+            ?.filter { it.isNotBlank() }
+            .orEmpty()
+        startForegroundCompat()
+        startCore(
+            engine = engine,
+            singboxConfig = singbox,
+            xrayConfig = prefs.getString("xray", null) ?: "",
+            bridgeConfig = prefs.getString("bridge", null) ?: "",
+        )
+    }
+
+    private fun saveConfig(engine: String, singbox: String, xray: String, bridge: String) {
+        getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString("engine", engine)
+            .putString("singbox", singbox)
+            .putString("xray", xray)
+            .putString("bridge", bridge)
+            .putString("split_mode", splitMode)
+            .putString("split_apps", splitApps.join(","))
+            .apply()
+    }
+
+    private fun clearSavedConfig() {
+        getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+    }
+
     private fun stopCore() {
         setState(STATE_STOPPING)
+        watchdog.removeCallbacks(watchdogTick)
         val server = commandServer
         commandServer = null
         if (server != null) {
@@ -168,8 +231,8 @@ class WayVpnService : VpnService(), PlatformInterface, CommandServerHandler {
             }
         } catch (_: Throwable) {
         }
-        val pfd = fileDescriptor
-        fileDescriptor = null
+        val pfd = tunFd
+        tunFd = null
         try {
             pfd?.close()
         } catch (_: Throwable) {
@@ -181,160 +244,60 @@ class WayVpnService : VpnService(), PlatformInterface, CommandServerHandler {
         protect(fd)
     }
 
-    override fun openTun(options: TunOptions): Int {
+    override fun openTun(config: TunConfig): Int {
         if (prepare(this) != null) error("missing vpn permission")
         val builder = Builder()
             .setSession("Way")
-            .setMtu(options.mtu)
+            .setMtu(config.mtu)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             builder.setMetered(false)
         }
-        val inet4 = options.inet4Address
-        while (inet4.hasNext()) {
-            val addr = inet4.next()
-            builder.addAddress(addr.address(), addr.prefix())
+        if (splitMode == "include" && splitApps.isNotEmpty()) {
+            for (pkg in splitApps) {
+                try {
+                    builder.addAllowedApplication(pkg)
+                } catch (_: Throwable) {
+                }
+            }
+        } else if (splitMode == "exclude" && splitApps.isNotEmpty()) {
+            for (pkg in splitApps) {
+                try {
+                    builder.addDisallowedApplication(pkg)
+                } catch (_: Throwable) {
+                }
+            }
         }
-        val inet6 = options.inet6Address
-        while (inet6.hasNext()) {
-            val addr = inet6.next()
-            builder.addAddress(addr.address(), addr.prefix())
-        }
-        if (options.autoRoute) {
-            val dns = options.dnsServerAddress
+        addPrefixes(config.inet4Addresses) { addr, prefix -> builder.addAddress(addr, prefix) }
+        addPrefixes(config.inet6Addresses) { addr, prefix -> builder.addAddress(addr, prefix) }
+        if (config.autoRoute) {
+            val dns = config.dnsServers
             while (dns.hasNext()) {
                 builder.addDnsServer(dns.next())
             }
-            val v4Routes = options.inet4RouteAddress
-            if (v4Routes.hasNext()) {
-                while (v4Routes.hasNext()) {
-                    val r = v4Routes.next()
-                    builder.addRoute(r.address(), r.prefix())
-                }
-            } else if (options.inet4Address.hasNext()) {
-                builder.addRoute("0.0.0.0", 0)
-            }
-            val v6Routes = options.inet6RouteAddress
-            if (v6Routes.hasNext()) {
-                while (v6Routes.hasNext()) {
-                    val r = v6Routes.next()
-                    builder.addRoute(r.address(), r.prefix())
-                }
-            } else if (options.inet6Address.hasNext()) {
-                builder.addRoute("::", 0)
-            }
+        }
+        val routes4 = config.inet4Routes
+        if (routes4.hasNext()) {
+            addPrefixes(routes4) { addr, prefix -> builder.addRoute(addr, prefix) }
+        } else if (config.inet4Addresses.hasNext()) {
+            builder.addRoute("0.0.0.0", 0)
+        }
+        val routes6 = config.inet6Routes
+        if (routes6.hasNext()) {
+            addPrefixes(routes6) { addr, prefix -> builder.addRoute(addr, prefix) }
+        } else if (config.inet6Addresses.hasNext()) {
+            builder.addRoute("::", 0)
         }
         val pfd = builder.establish() ?: error("vpn establish failed")
-        fileDescriptor = pfd
+        tunFd = pfd
         return pfd.fd
     }
 
-    override fun usePlatformAutoDetectInterfaceControl(): Boolean = true
-
-    override fun useProcFS(): Boolean = true
-
-    override fun localDNSTransport(): LocalDNSTransport? = null
-
-    override fun findConnectionOwner(
-        ipProtocol: Int,
-        sourceAddress: String?,
-        sourcePort: Int,
-        destinationAddress: String?,
-        destinationPort: Int
-    ): ConnectionOwner = error("connection owner lookup is not supported")
-
-    override fun startDefaultInterfaceMonitor(listener: InterfaceUpdateListener?) {}
-
-    override fun closeDefaultInterfaceMonitor(listener: InterfaceUpdateListener?) {}
-
-    override fun getInterfaces(): NetworkInterfaceIterator {
-        val list = mutableListOf<io.mel0k1.libbox.NetworkInterface>()
-        val interfaces = JavaNetworkInterface.getNetworkInterfaces()
-        while (interfaces?.hasMoreElements() == true) {
-            val nif = interfaces.nextElement()
-            val item = io.mel0k1.libbox.NetworkInterface()
-            item.name = nif.name
-            item.index = nif.index
-            item.mtu = try { nif.mtu } catch (_: Exception) { 0 }
-            item.addresses = StringIteratorImpl(
-                nif.interfaceAddresses.mapNotNull { it.address.hostAddress }.iterator()
-            )
-            item.flags = 0
-            list.add(item)
+    private inline fun addPrefixes(iterator: StringIterator, add: (String, Int) -> Unit) {
+        while (iterator.hasNext()) {
+            val prefix = iterator.next().split("/")
+            if (prefix.size == 2) {
+                add(prefix[0], prefix[1].toIntOrNull() ?: 0)
+            }
         }
-        return NetworkInterfaceIteratorImpl(list.iterator())
     }
-
-    override fun underNetworkExtension(): Boolean = false
-
-    override fun includeAllNetworks(): Boolean = false
-
-    override fun readWIFIState(): WIFIState? = null
-
-    override fun clearDNSCache() {}
-
-    override fun sendNotification(notification: BoxNotification?) {}
-
-    override fun cancelNotification(identifier: String?, typeID: Int) {}
-
-    override fun startNeighborMonitor(listener: NeighborUpdateListener?) {}
-
-    override fun closeNeighborMonitor(listener: NeighborUpdateListener?) {}
-
-    override fun registerMyInterface(name: String?) {}
-
-    override fun usePlatformShell(): Boolean = false
-
-    override fun checkPlatformShell() {}
-
-    override fun openShellSession(
-        user: PlatformUser?,
-        command: String?,
-        environ: StringIterator?,
-        term: String?,
-        rows: Int,
-        cols: Int
-    ): ShellSession = error("shell sessions are not supported")
-
-    override fun lookupUser(username: String?): PlatformUser = error("user lookup is not supported")
-
-    override fun lookupSFTPServer(): String = error("sftp is not supported")
-
-    override fun readSystemSSHHostKey(): String = error("ssh host keys are not supported")
-
-    override fun tailscaleHostname(): String = ""
-
-    override fun usePlatformBridge(): Boolean = false
-
-    override fun createBridge(options: BridgeOptions?): BridgeSession = error("bridge is not supported")
-
-    override fun serviceStop() {
-        stopCore()
-    }
-
-    override fun serviceReload() {}
-
-    override fun getSystemProxyStatus(): SystemProxyStatus? = null
-
-    override fun setSystemProxyEnabled(enabled: Boolean) {}
-
-    override fun triggerNativeCrash() {
-        throw IllegalStateException("triggered")
-    }
-
-    override fun writeDebugMessage(message: String?) {}
-
-    override fun connectSSHAgent(): Int = error("ssh agent is not supported")
-}
-
-class StringIteratorImpl(private val iterator: Iterator<String>) : StringIterator {
-    override fun hasNext(): Boolean = iterator.hasNext()
-    override fun next(): String = iterator.next()
-    override fun len(): Int = 0
-}
-
-class NetworkInterfaceIteratorImpl(
-    private val iterator: Iterator<io.mel0k1.libbox.NetworkInterface>
-) : NetworkInterfaceIterator {
-    override fun hasNext(): Boolean = iterator.hasNext()
-    override fun next(): io.mel0k1.libbox.NetworkInterface = iterator.next()
 }

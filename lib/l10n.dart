@@ -59,6 +59,43 @@ class L10n {
   String get langSystem => ru ? 'Системный' : 'System';
   String get updates => ru ? 'Подписки' : 'Subscriptions';
   String get autoUpdate => ru ? 'Автообновление (30 мин)' : 'Auto-update (30 min)';
+
+  String get routing => ru ? 'Маршрутизация' : 'Routing';
+  String get routingHint => ru
+      ? '«Всё через VPN» — весь трафик через туннель. «RU напрямую» — российские сайты и IP идут мимо VPN (нужен sing-box).'
+      : '“All via VPN” sends everything through the tunnel. “RU direct” keeps Russian sites and IPs outside the VPN (sing-box only).';
+  String get routingGlobal => ru ? 'Всё через VPN' : 'All via VPN';
+  String get routingRu => ru ? 'RU напрямую' : 'RU direct';
+  String get blockAds => ru ? 'Блокировать рекламу' : 'Block ads';
+  String get blockAdsHint => ru
+      ? 'Блокирует рекламные домены по списку category-ads-all (sing-box)'
+      : 'Blocks ad domains via the category-ads-all list (sing-box)';
+
+  String get security => ru ? 'Безопасность' : 'Security';
+  String get killSwitch => ru ? 'Kill switch' : 'Kill switch';
+  String get killSwitchHintDesktop => ru
+      ? 'Блокирует весь трафик мимо туннеля (WFP-фильтр). Включает режим TUN и требует права администратора.'
+      : 'Blocks any traffic outside the tunnel (WFP filter). Enables TUN mode and requires administrator rights.';
+  String get killSwitchHintAndroid => ru
+      ? 'Включите в системе: Always-on VPN + «Блокировать соединения без VPN»'
+      : 'Enable in system settings: Always-on VPN + “Block connections without VPN”';
+  String get alwaysOn => ru ? 'Настройки Always-on VPN' : 'Always-on VPN settings';
+  String get splitTunnel => ru ? 'Раздельное туннелирование' : 'Split tunneling';
+  String get splitOff => ru ? 'Выкл' : 'Off';
+  String get splitInclude => ru ? 'Только выбранные' : 'Only selected';
+  String get splitExclude => ru ? 'Кроме выбранных' : 'Exclude selected';
+  String get splitHintWindows => ru
+      ? 'Имена процессов (exe) через запятую: chrome.exe, firefox.exe. Работает в sing-box + TUN.'
+      : 'Comma-separated process (exe) names: chrome.exe, firefox.exe. Works with sing-box + TUN.';
+  String get splitHintAndroid => ru
+      ? 'Выберите приложения. Работает в sing-box.'
+      : 'Pick apps. Works with sing-box.';
+  String get splitPickApps => ru ? 'Выбрать приложения' : 'Choose apps';
+  String get splitSelected => ru ? 'выбрано' : 'selected';
+  String get splitProcesses => ru ? 'Процессы' : 'Processes';
+  String get searchApps => ru ? 'Поиск приложений' : 'Search apps';
+  String get noAppsFound => ru ? 'Ничего не найдено' : 'Nothing found';
+
   String get about => ru ? 'О приложении' : 'About';
   String get version => ru ? 'Версия' : 'Version';
   String get cores => ru ? 'Ядра' : 'Cores';

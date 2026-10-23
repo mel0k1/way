@@ -24,13 +24,30 @@ class ConnectRequest {
   final bool tun;
   final Profile profile;
   final String logPath;
+  final bool killSwitch;
+  final String routingMode;
+  final bool blockAds;
+  final String splitMode;
+  final List<String> splitApps;
 
   const ConnectRequest({
     required this.engine,
     required this.tun,
     required this.profile,
     required this.logPath,
+    this.killSwitch = false,
+    this.routingMode = 'global',
+    this.blockAds = false,
+    this.splitMode = 'off',
+    this.splitApps = const [],
   });
+
+  RoutingSettings get _routing => RoutingSettings(
+        mode: routingMode,
+        blockAds: blockAds,
+        splitMode: splitMode,
+        splitApps: splitApps,
+      );
 }
 
 abstract class VpnBridge {
@@ -54,9 +71,17 @@ class AndroidBridge implements VpnBridge {
         request.profile,
         tun: true,
         logPath: request.logPath,
+        routing: RoutingSettings(
+          mode: request.routingMode,
+          blockAds: request.blockAds,
+        ),
       )),
       'xray': json.encode(ConfigBuilder.xrayConfig(request.profile, logPath: request.logPath)),
       'bridge': json.encode(ConfigBuilder.bridgeConfig(tun: true, logPath: request.logPath)),
+      'routing_mode': request.routingMode,
+      'block_ads': request.blockAds ? '1' : '0',
+      'split_mode': request.splitMode,
+      'split_apps': request.splitApps.join(','),
     };
     try {
       final result = await _channel.invokeMethod('start', body);
@@ -161,12 +186,14 @@ class DesktopBridge implements VpnBridge {
     final payload = <String, dynamic>{
       'engine': request.engine,
       'mode': request.tun ? 'tun' : 'proxy',
+      'kill_switch': request.killSwitch,
     };
     if (request.engine == 'singbox') {
       payload['config'] = ConfigBuilder.singBoxConfig(
         request.profile,
         tun: request.tun,
         logPath: request.logPath,
+        routing: request._routing,
       );
       payload['system_proxy'] = !request.tun;
       payload['system_proxy_port'] = WayPorts.mixed;

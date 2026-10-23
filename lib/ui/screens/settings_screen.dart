@@ -1,9 +1,60 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/config_builder.dart';
 import '../../l10n.dart';
 import '../../state/app_state.dart';
 import 'package:provider/provider.dart';
+import 'split_apps_screen.dart';
+
+class _SplitProcessesField extends StatefulWidget {
+  final AppState state;
+
+  const _SplitProcessesField(this.state);
+
+  @override
+  State<_SplitProcessesField> createState() => _SplitProcessesFieldState();
+}
+
+class _SplitProcessesFieldState extends State<_SplitProcessesField> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.state.splitApps.join(', '));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _commit(String value) {
+    widget.state.setSplitApps(value
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10nScope.of(context);
+    return TextField(
+      maxLines: 3,
+      controller: _controller,
+      decoration: InputDecoration(
+        labelText: l10n.splitProcesses,
+        hintText: 'chrome.exe, firefox.exe',
+        border: const OutlineInputBorder(),
+      ),
+      onSubmitted: _commit,
+      onChanged: _commit,
+    );
+  }
+}
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -48,6 +99,101 @@ class SettingsScreen extends StatelessWidget {
                 ],
                 selected: {state.preferTun},
                 onSelectionChanged: (s) => state.setPreferTun(s.first),
+              ),
+            ),
+          _SectionCard(
+            title: l10n.routing,
+            hint: l10n.routingHint,
+            child: Column(
+              children: [
+                SegmentedButton<String>(
+                  segments: [
+                    ButtonSegment(
+                        value: 'global', label: Text(l10n.routingGlobal)),
+                    ButtonSegment(
+                        value: 'ru', label: Text(l10n.routingRu)),
+                  ],
+                  selected: {state.routingMode},
+                  onSelectionChanged: (s) => state.setRoutingMode(s.first),
+                ),
+                SwitchListTile(
+                  title: Text(l10n.blockAds),
+                  subtitle: Text(l10n.blockAdsHint),
+                  value: state.blockAds,
+                  onChanged: state.setBlockAds,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ],
+            ),
+          ),
+          _SectionCard(
+            title: l10n.security,
+            child: Column(
+              children: [
+                if (!state.isDesktop)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.policy_rounded),
+                    title: Text(l10n.alwaysOn),
+                    trailing: const Icon(Icons.open_in_new_rounded),
+                    onTap: () async {
+                      try {
+                        await const MethodChannel('way/core')
+                            .invokeMethod('vpn_settings');
+                      } on PlatformException {
+                        debugPrint('vpn settings unavailable');
+                      }
+                    },
+                  ),
+                SwitchListTile(
+                  title: Text(l10n.killSwitch),
+                  subtitle: Text(state.isDesktop
+                      ? l10n.killSwitchHintDesktop
+                      : l10n.killSwitchHintAndroid),
+                  value: state.killSwitch,
+                  onChanged: state.isDesktop ? state.setKillSwitch : null,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ],
+            ),
+          ),
+          if (state.engine == 'singbox')
+            _SectionCard(
+              title: l10n.splitTunnel,
+              hint: state.isDesktop ? l10n.splitHintWindows : l10n.splitHintAndroid,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SegmentedButton<String>(
+                    segments: [
+                      ButtonSegment(value: 'off', label: Text(l10n.splitOff)),
+                      ButtonSegment(
+                          value: 'include', label: Text(l10n.splitInclude)),
+                      ButtonSegment(
+                          value: 'exclude', label: Text(l10n.splitExclude)),
+                    ],
+                    selected: {state.splitMode},
+                    onSelectionChanged: (s) => state.setSplitMode(s.first),
+                  ),
+                  if (state.splitMode != 'off') ...[
+                    const SizedBox(height: 12),
+                    if (state.isDesktop)
+                      _SplitProcessesField(state)
+                    else
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.apps_rounded),
+                        title: Text(l10n.splitPickApps),
+                        subtitle: Text(
+                            '${state.splitApps.length} ${l10n.splitSelected}'),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const SplitAppsScreen()),
+                        ),
+                      ),
+                  ],
+                ],
               ),
             ),
           _SectionCard(

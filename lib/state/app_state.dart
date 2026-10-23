@@ -36,6 +36,11 @@ class AppState extends ChangeNotifier {
   String themeMode = 'system';
   String localeCode = '';
   bool autoUpdate = true;
+  String routingMode = 'global';
+  bool blockAds = false;
+  bool killSwitch = false;
+  String splitMode = 'off';
+  List<String> splitApps = [];
 
   VpnStatus vpn = const VpnStatus();
   WayStats stats = WayStats.zero;
@@ -77,6 +82,11 @@ class AppState extends ChangeNotifier {
         localeCode = s['locale'] as String? ?? localeCode;
         autoUpdate = s['autoupdate'] as bool? ?? autoUpdate;
         selectedId = s['selected'] as String?;
+        routingMode = s['routing'] as String? ?? routingMode;
+        blockAds = s['blockads'] as bool? ?? blockAds;
+        killSwitch = s['killswitch'] as bool? ?? killSwitch;
+        splitMode = s['splitmode'] as String? ?? splitMode;
+        splitApps = (s['splitapps'] as List?)?.cast<String>() ?? splitApps;
       } catch (_) {}
     }
     final profilesRaw = prefs.getString('way.profiles');
@@ -118,6 +128,11 @@ class AppState extends ChangeNotifier {
       'locale': localeCode,
       'autoupdate': autoUpdate,
       'selected': selectedId,
+      'routing': routingMode,
+      'blockads': blockAds,
+      'killswitch': killSwitch,
+      'splitmode': splitMode,
+      'splitapps': splitApps,
     }));
     await prefs.setString(
       'way.profiles',
@@ -167,12 +182,17 @@ class AppState extends ChangeNotifier {
     log('connecting via ${profile.name} ($engine)');
     vpn = const VpnStatus(phase: VpnPhase.connecting);
     notifyListeners();
-    final tun = isDesktop ? preferTun : true;
+    final tun = isDesktop ? (preferTun || killSwitch) : true;
     final result = await bridge.connect(ConnectRequest(
       engine: engine,
       tun: tun,
       profile: profile,
       logPath: engine == 'xray' ? (xrayLogPath ?? '/tmp/wayxray.log') : (singBoxLogPath ?? '/tmp/waybox.log'),
+      killSwitch: killSwitch && isDesktop,
+      routingMode: routingMode,
+      blockAds: blockAds,
+      splitMode: splitMode,
+      splitApps: List.unmodifiable(splitApps),
     ));
     if (result.error != null) {
       log('error: ${result.error}');
@@ -289,6 +309,36 @@ class AppState extends ChangeNotifier {
 
   void setAutoUpdate(bool value) {
     autoUpdate = value;
+    _persist();
+    notifyListeners();
+  }
+
+  void setRoutingMode(String value) {
+    routingMode = value;
+    _persist();
+    notifyListeners();
+  }
+
+  void setBlockAds(bool value) {
+    blockAds = value;
+    _persist();
+    notifyListeners();
+  }
+
+  void setKillSwitch(bool value) {
+    killSwitch = value;
+    _persist();
+    notifyListeners();
+  }
+
+  void setSplitMode(String value) {
+    splitMode = value;
+    _persist();
+    notifyListeners();
+  }
+
+  void setSplitApps(List<String> apps) {
+    splitApps = apps;
     _persist();
     notifyListeners();
   }

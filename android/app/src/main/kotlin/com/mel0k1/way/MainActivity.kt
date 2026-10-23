@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.VpnService
 import android.os.Build
+import android.provider.Settings
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -40,9 +41,36 @@ class MainActivity : FlutterActivity() {
                         )
                     )
                 }
+                "vpn_settings" -> {
+                    try {
+                        startActivity(Intent(Settings.ACTION_VPN_SETTINGS))
+                        result.success(null)
+                    } catch (e: Exception) {
+                        result.error("unavailable", e.message, null)
+                    }
+                }
+                "apps" -> {
+                    result.success(installedApps())
+                }
                 else -> result.notImplemented()
             }
         }
+    }
+
+    private fun installedApps(): List<Map<String, String>> {
+        val pm = packageManager
+        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        val activities = pm.queryIntentActivities(intent, 0)
+        val apps = LinkedHashMap<String, Map<String, String>>()
+        for (info in activities) {
+            val pkg = info.activityInfo.packageName ?: continue
+            if (pkg == packageName || apps.containsKey(pkg)) continue
+            apps[pkg] = mapOf(
+                "label" to (info.loadLabel(pm)?.toString() ?: pkg),
+                "package" to pkg,
+            )
+        }
+        return apps.values.toList()
     }
 
     private fun launchVpn() {

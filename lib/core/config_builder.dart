@@ -8,16 +8,34 @@ class WayPorts {
   static const controlApi = 20717;
 }
 
+class RoutingSettings {
+  final String mode;
+  final bool blockAds;
+  final String splitMode;
+  final List<String> splitApps;
+
+  const RoutingSettings({
+    this.mode = 'global',
+    this.blockAds = false,
+    this.splitMode = 'off',
+    this.splitApps = const [],
+  });
+}
+
 class ConfigBuilder {
+  static const tunName = 'way_tun';
+
   static Map<String, dynamic> singBoxConfig(
     Profile p, {
     required bool tun,
     required String logPath,
+    RoutingSettings routing = const RoutingSettings(),
   }) {
     return _singboxShell(
       logPath: logPath,
       tun: tun,
       outbounds: [_singBoxOutbound(p), _directOutbound()],
+      routing: routing,
     );
   }
 
@@ -39,6 +57,35 @@ class ConfigBuilder {
         _directOutbound(),
       ],
     );
+  }
+
+  static List<Map<String, dynamic>> _ruleSets(RoutingSettings r) {
+    final sets = <Map<String, dynamic>>[];
+    Map<String, dynamic> remote(String tag, String url) => {
+      'type': 'remote',
+      'tag': tag,
+      'format': 'binary',
+      'url': url,
+      'download_detour': 'direct',
+      'update_interval': '24h',
+    };
+    if (r.blockAds) {
+      sets.add(remote(
+        'geosite-ads',
+        'https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ads-all.srs',
+      ));
+    }
+    if (r.mode == 'ru') {
+      sets.add(remote(
+        'geosite-ru',
+        'https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ru.srs',
+      ));
+      sets.add(remote(
+        'geoip-ru',
+        'https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-ru.srs',
+      ));
+    }
+    return sets;
   }
 
   static Map<String, dynamic> xrayConfig(Profile p, {required String logPath}) {
@@ -76,12 +123,14 @@ class ConfigBuilder {
     required String logPath,
     required bool tun,
     required List<Map<String, dynamic>> outbounds,
+    RoutingSettings routing = const RoutingSettings(),
   }) {
     final inbounds = <Map<String, dynamic>>[];
     if (tun) {
       inbounds.add({
         'type': 'tun',
         'tag': 'tun-in',
+        'interface_name': tunName,
         'address': ['172.19.0.1/30', 'fdfe:dcba:9876::1/126'],
         'mtu': 9000,
         'auto_route': true,
@@ -96,6 +145,41 @@ class ConfigBuilder {
         'listen_port': WayPorts.mixed,
       });
     }
+    final dnsRules = <Map<String, dynamic>>[];
+    if (routing.mode == 'ru') {
+      dnsRules.add({
+        'rule_set': ['geosite-ru'],
+        'server': 'dns-direct',
+      });
+    }
+    final rules = <Map<String, dynamic>>[
+      {'action': 'sniff'},
+      {'protocol': 'dns', 'action': 'hijack-dns'},
+    ];
+    if (routing.blockAds) {
+      rules.add({
+        'rule_set': ['geosite-ads'],
+        'action': 'reject',
+      });
+    }
+    final splitApps = routing.splitMode == 'off' || routing.splitApps.isEmpty
+        ? const <String>[]
+        : routing.splitApps;
+    if (splitApps.isNotEmpty) {
+      if (routing.splitMode == 'include') {
+        rules.add({'process_name': splitApps, 'outbound': 'proxy'});
+      } else {
+        rules.add({'process_name': splitApps, 'outbound': 'direct'});
+      }
+    }
+    if (routing.mode == 'ru') {
+      rules.add({
+        'rule_set': ['geosite-ru', 'geoip-ru'],
+        'outbound': 'direct',
+      });
+    }
+    final finalOutbound =
+        splitApps.isNotEmpty && routing.splitMode == 'include' ? 'direct' : 'proxy';
     return {
       'log': {'level': 'info', 'timestamp': true, 'output': logPath},
       'dns': {
@@ -103,6 +187,7 @@ class ConfigBuilder {
           {'type': 'udp', 'tag': 'dns-direct', 'server': '8.8.8.8'},
           {'type': 'https', 'tag': 'dns-proxy', 'server': '1.1.1.1', 'detour': 'proxy'},
         ],
+        if (dnsRules.isNotEmpty) 'rules': dnsRules,
         'final': 'dns-proxy',
         'strategy': 'prefer_ipv4',
         'independent_cache': true,
@@ -110,11 +195,9 @@ class ConfigBuilder {
       'inbounds': inbounds,
       'outbounds': outbounds,
       'route': {
-        'rules': [
-          {'action': 'sniff'},
-          {'protocol': 'dns', 'action': 'hijack-dns'},
-        ],
-        'final': 'proxy',
+        'rules': rules,
+        if (_ruleSets(routing).isNotEmpty) 'rule_set': _ruleSets(routing),
+        'final': finalOutbound,
         'auto_detect_interface': true,
         'default_domain_resolver': {'server': 'dns-direct'},
       },
