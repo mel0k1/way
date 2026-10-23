@@ -101,6 +101,13 @@ jobs:
         shell: pwsh
         run: Copy-Item waycore.exe build/windows/x64/runner/Release/ -Force
 
+      - name: Bundle wintun.dll
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://www.wintun.net/builds/wintun-0.14.1.zip" -OutFile wintun.zip
+          Expand-Archive wintun.zip -DestinationPath wintun
+          Copy-Item wintun\wintun\bin\amd64\wintun.dll build\windows\x64\runner\Release\ -Force
+
       - name: Install NSIS
         run: choco install nsis -y --no-progress
 
