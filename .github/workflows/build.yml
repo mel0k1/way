@@ -108,7 +108,9 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
-          makensis "-DXBUILDDIR=$PWD\build\windows\x64\runner\Release" installer\way.nsi
+          $makensis = "C:\Program Files (x86)\NSIS\makensis.exe"
+          if (-not (Test-Path $makensis)) { $makensis = (Get-ChildItem "C:\Program Files*\NSIS\makensis.exe" | Select-Object -First 1).FullName }
+          & $makensis "-DXBUILDDIR=$PWD\build\windows\x64\runner\Release" installer\way.nsi
 
       - uses: actions/upload-artifact@v4
         with:
