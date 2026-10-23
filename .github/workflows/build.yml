@@ -139,8 +139,8 @@ jobs:
       - name: Rename artifacts
         run: |
           mkdir -p dist
-          cp artifacts/way-android/app-release.apk dist/Way-v${{ github.ref_name }}-android.apk
-          cp artifacts/way-windows/WaySetup.exe dist/Way-v${{ github.ref_name }}-setup.exe
+          cp artifacts/way-android/app-release.apk dist/Way-${{ github.ref_name }}-android.apk
+          cp artifacts/way-windows/WaySetup.exe dist/Way-${{ github.ref_name }}-setup.exe
 
       - uses: softprops/action-gh-release@v2
         with:
