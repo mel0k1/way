@@ -123,7 +123,7 @@ class WayVpnService : VpnService(), PlatformInterface {
         val notification: Notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, CHANNEL_ID)
                 .setContentTitle("Way")
-                .setContentText(getString(R.string.app_name))
+                .setContentText("Way VPN")
                 .setSmallIcon(android.R.drawable.stat_notify_sync_noanim)
                 .setOngoing(true)
                 .build()
@@ -139,7 +139,7 @@ class WayVpnService : VpnService(), PlatformInterface {
             startForeground(
                 NOTIFICATION_ID,
                 notification,
-                ServiceInfo.FOREGROUND_SERVICE_SPECIAL_USE,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
             )
         } else {
             startForeground(NOTIFICATION_ID, notification)
@@ -202,7 +202,7 @@ class WayVpnService : VpnService(), PlatformInterface {
             .putString("xray", xray)
             .putString("bridge", bridge)
             .putString("split_mode", splitMode)
-            .putString("split_apps", splitApps.join(","))
+            .putString("split_apps", splitApps.joinToString(","))
             .apply()
     }
 
