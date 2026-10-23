@@ -1,0 +1,138 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  FLUTTER_VERSION: "3.47.8"
+  SINGBOX_VERSION: "1.14.3"
+  XRAY_VERSION: "26.10.21"
+
+jobs:
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: nttld/setup-ndk@v1
+        id: ndk
+        with:
+          ndk-version: r27c
+          add-to-path: false
+
+      - name: Install gomobile
+        run: |
+          go install github.com/sagernet/gomobile/cmd/gomobile@v0.1.13
+          go install github.com/sagernet/gomobile/cmd/gobind@v0.1.13
+
+      - name: Build waycore AAR
+        working-directory: core
+        env:
+          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: |
+          go mod download
+          gomobile init
+          gomobile bind -v -o waycore.aar -target android -androidapi 24 -javapkg=io.mel0k1 -libname=waycore -trimpath -buildvcs=false -ldflags "-X github.com/sagernet/sing-box/constant.Version=${{ env.SINGBOX_VERSION }} -X runtime.godebugDefault=multipathtcp=0,tlssha1=1,tlsunsafeekm=1 -s -w -buildid= -checklinkname=0" -tags "with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api,badlinkname,tfogo_checklinkname0" ./mobile
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.8"
+          channel: stable
+          cache: true
+
+      - name: Bundle waycore AAR
+        run: |
+          mkdir -p android/app/libs
+          cp core/waycore.aar android/app/libs/
+
+      - name: Build APK
+        run: |
+          flutter pub get
+          flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: way-android
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+  windows:
+    name: Windows installer
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+
+      - name: Build waycore.exe
+        shell: pwsh
+        run: |
+          $env:CGO_ENABLED = "0"
+          go build -trimpath -ldflags "-s -w -buildid= -checklinkname=0 -X github.com/sagernet/sing-box/constant.Version=${{ env.SINGBOX_VERSION }} -X github.com/mel0k1/way/core.xrayVersion=${{ env.XRAY_VERSION }} -X runtime.godebugDefault=multipathtcp=0,tlssha1=1,tlsunsafeekm=1" -tags "with_gvisor,with_quic,with_utls,with_clash_api,with_wireguard,badlinkname,tfogo_checklinkname0" -o waycore.exe ./core/cmd/waycore
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.8"
+          channel: stable
+          cache: true
+
+      - name: Build app
+        run: |
+          flutter pub get
+          flutter build windows --release
+
+      - name: Bundle waycore.exe
+        shell: pwsh
+        run: Copy-Item waycore.exe build/windows/x64/runner/Release/ -Force
+
+      - name: Install NSIS
+        run: choco install nsis -y --no-progress
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          makensis "-DXBUILDDIR=$PWD\build\windows\x64\runner\Release" installer\way.nsi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: way-windows
+          path: dist/WaySetup.exe
+
+  release:
+    name: GitHub release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [android, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Rename artifacts
+        run: |
+          mkdir -p dist
+          cp artifacts/way-android/app-release.apk dist/Way-v${{ github.ref_name }}-android.apk
+          cp artifacts/way-windows/WaySetup.exe dist/Way-v${{ github.ref_name }}-setup.exe
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
