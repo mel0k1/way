@@ -9,14 +9,18 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/latency.dart';
+import '../core/backup.dart';
+import '../core/config_builder.dart';
 import '../core/parser.dart';
 import '../core/profile.dart';
 import '../core/stats.dart';
 import '../core/subscriptions.dart';
 import '../core/toast.dart';
+import '../core/tray.dart';
 import '../core/updates.dart';
 import '../core/version.dart';
 import '../core/vpn_bridge.dart';
+import '../l10n.dart';
 
 class SubEntry extends Subscription {
   SubEntry({
@@ -34,6 +38,7 @@ class AppState extends ChangeNotifier {
   final VpnBridge bridge = createBridge();
   final SubscriptionService subsService = SubscriptionService();
   final StatsPoller statsPoller = StatsPoller();
+  final TrayController tray = TrayController();
   final FlutterSecureStorage _secure = const FlutterSecureStorage();
 
   List<Profile> profiles = [];
@@ -56,6 +61,9 @@ class AppState extends ChangeNotifier {
   bool connectOnLaunch = false;
   bool desktopNotify = true;
   bool autoCheckUpdates = true;
+  bool closeToTray = true;
+  bool onboardingDone = true;
+  List<RouteRule> customRules = [];
   String? hwid;
   Map<String, int?> latencies = {};
   bool latencyTesting = false;
@@ -74,6 +82,7 @@ class AppState extends ChangeNotifier {
 
   Timer? _statusTimer;
   Timer? _subsTimer;
+  Timer? _statsTimer;
   SharedPreferences? _prefs;
 
   Profile? get selected {
@@ -126,6 +135,24 @@ class AppState extends ChangeNotifier {
       final pending = await bridge.takePendingLink();
       if (pending != null) handleDeepLink(pending);
     } catch (_) {}
+    if (TrayController.supported) {
+      unawaited(tray.init(
+        onOpen: showWindow,
+        onConnect: connect,
+        onDisconnect: disconnect,
+        onQuit: _quitFromTray,
+      ));
+      unawaited(tray.setCloseToTray(closeToTray));
+    }
+  }
+
+  void showWindow() {
+    unawaited(tray.showWindow());
+  }
+
+  Future<void> _quitFromTray() async {
+    log('quit from tray');
+    await tray.quit();
   }
 
   Future<void> _initInner() async {
@@ -153,8 +180,14 @@ class AppState extends ChangeNotifier {
         connectOnLaunch = s['connectlaunch'] as bool? ?? connectOnLaunch;
         desktopNotify = s['desktopnotify'] as bool? ?? desktopNotify;
         autoCheckUpdates = s['checkupdates'] as bool? ?? autoCheckUpdates;
+        closeToTray = s['closetray'] as bool? ?? closeToTray;
+        customRules = (s['rules'] as List?)
+                ?.map((e) => RouteRule.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            customRules;
       } catch (_) {}
     }
+    onboardingDone = prefs.getBool('way.intro_done') ?? false;
     final docs = await getApplicationSupportDirectory();
     singBoxLogPath = '${docs.path}/waybox.log';
     xrayLogPath = '${docs.path}/wayxray.log';
@@ -271,6 +304,8 @@ class AppState extends ChangeNotifier {
       'connectlaunch': connectOnLaunch,
       'desktopnotify': desktopNotify,
       'checkupdates': autoCheckUpdates,
+      'closetray': closeToTray,
+      'rules': customRules.map((r) => r.toJson()).toList(),
     }));
     try {
       await _secure.write(
@@ -310,14 +345,25 @@ class AppState extends ChangeNotifier {
       if (vpn.phase != VpnPhase.stopped && s.phase == VpnPhase.stopped) {
         log('disconnected');
         stats = WayStats.zero;
+        statsPoller.reset();
       }
       vpn = s;
       notifyListeners();
     }
-    if (vpn.phase == VpnPhase.connected) {
-      stats = await statsPoller.fetch();
-      notifyListeners();
+    final connected = vpn.phase == VpnPhase.connected;
+    if (connected && _statsTimer == null) {
+      _statsTimer = Timer.periodic(const Duration(seconds: 1), (_) => _statsTick());
+    } else if (!connected && _statsTimer != null) {
+      _statsTimer?.cancel();
+      _statsTimer = null;
     }
+    unawaited(tray.update(phase: vpn.phase, l10n: L10n(effectiveLocale)));
+  }
+
+  Future<void> _statsTick() async {
+    if (vpn.phase != VpnPhase.connected) return;
+    stats = await statsPoller.fetch();
+    notifyListeners();
   }
 
   Future<void> connect() async {
@@ -346,6 +392,19 @@ class AppState extends ChangeNotifier {
     final group = autoSelect && engine == 'singbox' && engineProfiles.length > 1
         ? engineProfiles
         : const <Profile>[];
+    Profile? chainProfile;
+    if (group.isEmpty &&
+        engine == 'singbox' &&
+        profile.chainTo?.isNotEmpty == true) {
+      for (final c in profiles) {
+        if (c.id == profile.chainTo &&
+            c.id != profile.id &&
+            c.supportedOn('singbox')) {
+          chainProfile = c;
+          break;
+        }
+      }
+    }
     log('connecting via ${profile.name} ($engine)');
     vpn = const VpnStatus(phase: VpnPhase.connecting);
     notifyListeners();
@@ -361,6 +420,8 @@ class AppState extends ChangeNotifier {
       blockAds: blockAds,
       splitMode: splitMode,
       splitApps: List.unmodifiable(splitApps),
+      customRules: List.unmodifiable(customRules),
+      chain: chainProfile,
     ));
     if (result.error != null) {
       log('error: ${result.error}');
@@ -386,6 +447,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     await bridge.disconnect();
     stats = WayStats.zero;
+    statsPoller.reset();
     vpn = await bridge.status();
     notifyListeners();
     if (desktopNotify) {
@@ -514,7 +576,11 @@ class AppState extends ChangeNotifier {
     if (targets.isEmpty) return;
     latencyTesting = true;
     notifyListeners();
-    final results = await LatencyTester.testAll(targets);
+    final results = await LatencyTester.testAll(
+      targets,
+      bridge,
+      concurrency: isDesktop ? 6 : 3,
+    );
     latencies.addAll(results);
     latencyTesting = false;
     log('latency: ${targets.length} server(s) tested');
@@ -530,6 +596,17 @@ class AppState extends ChangeNotifier {
   void removeProfile(String id) {
     profiles.removeWhere((p) => p.id == id);
     if (selectedId == id) selectedId = profiles.isNotEmpty ? profiles.first.id : null;
+    for (final p in profiles) {
+      if (p.chainTo == id) p.chainTo = null;
+    }
+    _persist();
+    notifyListeners();
+  }
+
+  void setChain(String profileId, String? targetId) {
+    for (final p in profiles) {
+      if (p.id == profileId) p.chainTo = targetId;
+    }
     _persist();
     notifyListeners();
   }
@@ -624,6 +701,115 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setCloseToTray(bool value) {
+    closeToTray = value;
+    _persist();
+    notifyListeners();
+    unawaited(tray.setCloseToTray(value));
+  }
+
+  Future<void> setOnboardingDone() async {
+    onboardingDone = true;
+    try {
+      await _prefs?.setBool('way.intro_done', true);
+    } catch (_) {}
+    notifyListeners();
+  }
+
+  void addRule(RouteRule rule) {
+    customRules = [...customRules, rule];
+    _persist();
+    notifyListeners();
+  }
+
+  void removeRule(String id) {
+    customRules = customRules.where((r) => r.id != id).toList();
+    _persist();
+    notifyListeners();
+  }
+
+  Map<String, dynamic> _backupSettings() => {
+        'engine': engine,
+        'tun': preferTun,
+        'theme': themeMode,
+        'locale': localeCode,
+        'autoupdate': autoUpdate,
+        'selected': selectedId,
+        'routing': routingMode,
+        'blockads': blockAds,
+        'killswitch': killSwitch,
+        'splitmode': splitMode,
+        'splitapps': splitApps,
+        'subua': subUserAgent,
+        'autoselect': autoSelect,
+        'autostart': autoStart,
+        'connectlaunch': connectOnLaunch,
+        'desktopnotify': desktopNotify,
+        'checkupdates': autoCheckUpdates,
+        'closetray': closeToTray,
+        'rules': customRules.map((r) => r.toJson()).toList(),
+      };
+
+  Future<bool> exportBackup() async {
+    final content = BackupService.buildJson(
+      _backupSettings(),
+      profiles.map((p) => p.toJson()).toList(),
+      subs.map((s) => s.toJson()).toList(),
+    );
+    return BackupService.export(content, BackupService.defaultName());
+  }
+
+  Future<bool> importBackup() async {
+    final raw = await BackupService.import();
+    if (raw == null) return false;
+    final data = BackupService.parse(raw);
+    if (data == null) return false;
+    try {
+      final importedProfiles = (data['profiles'] as List)
+          .map((e) => Profile.fromJson(e as Map<String, dynamic>))
+          .where((p) => p.protocol.isNotEmpty && p.server.isNotEmpty)
+          .toList();
+      final importedSubs = ((data['subscriptions'] as List?) ?? const [])
+          .map((e) => Subscription.fromJson(e as Map<String, dynamic>))
+          .toList();
+      final settings = data['settings'] as Map<String, dynamic>;
+      profiles = importedProfiles;
+      subs = importedSubs;
+      selectedId = settings['selected'] as String?;
+      engine = settings['engine'] as String? ?? engine;
+      preferTun = settings['tun'] as bool? ?? preferTun;
+      themeMode = settings['theme'] as String? ?? themeMode;
+      localeCode = settings['locale'] as String? ?? localeCode;
+      autoUpdate = settings['autoupdate'] as bool? ?? autoUpdate;
+      routingMode = settings['routing'] as String? ?? routingMode;
+      blockAds = settings['blockads'] as bool? ?? blockAds;
+      killSwitch = settings['killswitch'] as bool? ?? killSwitch;
+      splitMode = settings['splitmode'] as String? ?? splitMode;
+      splitApps =
+          (settings['splitapps'] as List?)?.cast<String>() ?? splitApps;
+      subUserAgent = settings['subua'] as String? ?? subUserAgent;
+      autoSelect = settings['autoselect'] as bool? ?? autoSelect;
+      autoStart = settings['autostart'] as bool? ?? autoStart;
+      connectOnLaunch = settings['connectlaunch'] as bool? ?? connectOnLaunch;
+      desktopNotify = settings['desktopnotify'] as bool? ?? desktopNotify;
+      autoCheckUpdates = settings['checkupdates'] as bool? ?? autoCheckUpdates;
+      closeToTray = settings['closetray'] as bool? ?? closeToTray;
+      customRules = (settings['rules'] as List?)
+              ?.map((e) => RouteRule.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          customRules;
+      if (!preferTun && !isDesktop) preferTun = true;
+      latencies = {};
+      unawaited(tray.setCloseToTray(closeToTray));
+      await _persist();
+      log('backup restored: ${profiles.length} profile(s)');
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<UpdateInfo?> checkForUpdates() async {
     if (checkingUpdate) return pendingUpdate;
     checkingUpdate = true;
@@ -680,6 +866,7 @@ class AppState extends ChangeNotifier {
   void dispose() {
     _statusTimer?.cancel();
     _subsTimer?.cancel();
+    _statsTimer?.cancel();
     statsPoller.dispose();
     super.dispose();
   }

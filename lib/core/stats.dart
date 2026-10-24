@@ -4,15 +4,15 @@ import 'dart:io';
 import 'config_builder.dart';
 
 class WayStats {
-  final int upBytes;
-  final int downBytes;
+  final int upSpeed;
+  final int downSpeed;
   final int totalUp;
   final int totalDown;
   final int connections;
 
   const WayStats({
-    this.upBytes = 0,
-    this.downBytes = 0,
+    this.upSpeed = 0,
+    this.downSpeed = 0,
     this.totalUp = 0,
     this.totalDown = 0,
     this.connections = 0,
@@ -24,6 +24,15 @@ class WayStats {
 class StatsPoller {
   final HttpClient _client = HttpClient()
     ..connectionTimeout = const Duration(seconds: 2);
+
+  int _prevUp = -1;
+  int _prevDown = -1;
+  DateTime _prevTime = DateTime.now();
+
+  void reset() {
+    _prevUp = -1;
+    _prevDown = -1;
+  }
 
   Future<WayStats> fetch() async {
     try {
@@ -37,23 +46,29 @@ class StatsPoller {
       final text = await res.transform(utf8.decoder).join();
       final data = json.decode(text) as Map<String, dynamic>;
       final conns = data['connections'] as List?;
-      int up = 0;
-      int down = 0;
-      if (conns != null) {
-        for (final c in conns) {
-          if (c is Map<String, dynamic>) {
-            final upload = c['upload'] as num?;
-            final download = c['download'] as num?;
-            up += upload?.toInt() ?? 0;
-            down += download?.toInt() ?? 0;
-          }
+      final totalUp = (data['uploadTotal'] as num?)?.toInt() ?? 0;
+      final totalDown = (data['downloadTotal'] as num?)?.toInt() ?? 0;
+      final now = DateTime.now();
+      var upSpeed = 0;
+      var downSpeed = 0;
+      if (_prevUp >= 0 &&
+          totalUp >= _prevUp &&
+          totalDown >= _prevDown &&
+          _prevUp + _prevDown > 0) {
+        final dt = now.difference(_prevTime).inMilliseconds;
+        if (dt > 200) {
+          upSpeed = ((totalUp - _prevUp) * 1000 / dt).round();
+          downSpeed = ((totalDown - _prevDown) * 1000 / dt).round();
         }
       }
+      _prevUp = totalUp;
+      _prevDown = totalDown;
+      _prevTime = now;
       return WayStats(
-        upBytes: up,
-        downBytes: down,
-        totalUp: (data['uploadTotal'] as num?)?.toInt() ?? 0,
-        totalDown: (data['downloadTotal'] as num?)?.toInt() ?? 0,
+        upSpeed: upSpeed,
+        downSpeed: downSpeed,
+        totalUp: totalUp,
+        totalDown: totalDown,
         connections: conns?.length ?? 0,
       );
     } catch (_) {

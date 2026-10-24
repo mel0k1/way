@@ -30,6 +30,8 @@ class ConnectRequest {
   final bool blockAds;
   final String splitMode;
   final List<String> splitApps;
+  final List<RouteRule> customRules;
+  final Profile? chain;
 
   const ConnectRequest({
     required this.engine,
@@ -42,6 +44,8 @@ class ConnectRequest {
     this.blockAds = false,
     this.splitMode = 'off',
     this.splitApps = const [],
+    this.customRules = const [],
+    this.chain,
   });
 
   RoutingSettings get _routing => RoutingSettings(
@@ -49,6 +53,7 @@ class ConnectRequest {
         blockAds: blockAds,
         splitMode: splitMode,
         splitApps: splitApps,
+        customRules: customRules,
       );
 }
 
@@ -61,6 +66,14 @@ abstract class VpnBridge {
   Future<String?> takePendingLink();
   void setDeepLinkHandler(void Function(String url)? handler);
   bool get tunSupported;
+  Future<int?> urlTest({required Profile profile, required Duration timeout}) async => null;
+}
+
+Future<int> freePort() async {
+  final socket = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+  final port = socket.port;
+  await socket.close();
+  return port;
 }
 
 class AndroidBridge implements VpnBridge {
@@ -101,8 +114,10 @@ class AndroidBridge implements VpnBridge {
         routing: RoutingSettings(
           mode: request.routingMode,
           blockAds: request.blockAds,
+          customRules: request.customRules,
         ),
         group: request.group,
+        chain: request.chain,
       )),
       'xray': json.encode(ConfigBuilder.xrayConfig(request.profile, logPath: request.logPath)),
       'bridge': json.encode(ConfigBuilder.bridgeConfig(tun: true, logPath: request.logPath)),
@@ -178,6 +193,33 @@ class AndroidBridge implements VpnBridge {
       return;
     }
   }
+
+  @override
+  Future<int?> urlTest({required Profile profile, required Duration timeout}) async {
+    final port = await freePort();
+    try {
+      final engine = profile.supportedOn('singbox') ? 'singbox' : 'xray';
+      final body = <String, dynamic>{
+        'port': port,
+        'timeout': timeout.inMilliseconds,
+        if (engine == 'singbox')
+          'singbox': json.encode(ConfigBuilder.probeSingBoxConfig(profile, port))
+        else
+          'xray': json.encode(ConfigBuilder.probeXrayConfig(profile, port)),
+      };
+      final result = await _channel
+          .invokeMethod('url_test', body)
+          .timeout(timeout + const Duration(seconds: 10));
+      if (result is Map) {
+        return (result['ms'] as num?)?.toInt();
+      }
+      return -1;
+    } on PlatformException {
+      return -1;
+    } on TimeoutException {
+      return -1;
+    }
+  }
 }
 
 class DesktopBridge implements VpnBridge {
@@ -246,6 +288,7 @@ class DesktopBridge implements VpnBridge {
         logPath: request.logPath,
         routing: request._routing,
         group: request.group,
+        chain: request.chain,
       );
       payload['system_proxy'] = !request.tun;
       payload['system_proxy_port'] = WayPorts.mixed;
@@ -302,6 +345,37 @@ class DesktopBridge implements VpnBridge {
     if (!await _ensureCore()) return false;
     final data = await _get('/autostart');
     return data?['enabled'] == true;
+  }
+
+  @override
+  Future<int?> urlTest({required Profile profile, required Duration timeout}) async {
+    if (!await _ensureCore()) return null;
+    final port = await freePort();
+    try {
+      final engine = profile.supportedOn('singbox') ? 'singbox' : 'xray';
+      final payload = <String, dynamic>{
+        'port': port,
+        'timeout': timeout.inMilliseconds,
+        if (engine == 'singbox')
+          'singbox': json.encode(ConfigBuilder.probeSingBoxConfig(profile, port))
+        else
+          'xray': json.encode(ConfigBuilder.probeXrayConfig(profile, port)),
+      };
+      final client = HttpClient()..connectionTimeout = timeout;
+      final req = await client
+          .postUrl(Uri.parse('$_base/urltest'))
+          .timeout(timeout + const Duration(seconds: 10));
+      req.headers.set('Content-Type', 'application/json');
+      req.add(utf8.encode(json.encode(payload)));
+      final res = await req.close().timeout(timeout + const Duration(seconds: 10));
+      final text = await res.transform(utf8.decoder).join();
+      client.close();
+      if (res.statusCode != 200) return -1;
+      final data = json.decode(text) as Map<String, dynamic>;
+      return (data['ms'] as num?)?.toInt();
+    } catch (_) {
+      return -1;
+    }
   }
 
   String? _mailboxPath() {

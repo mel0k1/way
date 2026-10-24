@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/stats.dart';
 import '../../core/vpn_bridge.dart';
 import '../../l10n.dart';
 import '../../state/app_state.dart';
@@ -12,6 +13,13 @@ String formatBytes(int bytes) {
     return '${(bytes / 1024 / 1024).toStringAsFixed(1)} MB';
   }
   return '${(bytes / 1024 / 1024 / 1024).toStringAsFixed(2)} GB';
+}
+
+String formatSpeed(int bytes) => '${formatBytes(bytes)}/s';
+
+String _totalsLine(L10n l10n, WayStats stats) {
+  return '${l10n.total}: ↓ ${formatBytes(stats.totalDown)} · ↑ '
+      '${formatBytes(stats.totalUp)} · ${stats.connections} ${l10n.connectionsLabel.toLowerCase()}';
 }
 
 class StatusCard extends StatelessWidget {
@@ -76,22 +84,27 @@ class StatusCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _Stat(
+                _Speed(
                   icon: Icons.south_rounded,
                   label: l10n.downSpeed,
-                  value: connected ? formatBytes(state.stats.downBytes) : '—',
+                  value: connected ? formatSpeed(state.stats.downSpeed) : '—',
+                  highlight: scheme.primary,
                 ),
-                _Stat(
+                _Speed(
                   icon: Icons.north_rounded,
                   label: l10n.upSpeed,
-                  value: connected ? formatBytes(state.stats.upBytes) : '—',
-                ),
-                _Stat(
-                  icon: Icons.link_rounded,
-                  label: l10n.connectionsLabel,
-                  value: connected ? '${state.stats.connections}' : '—',
+                  value: connected ? formatSpeed(state.stats.upSpeed) : '—',
+                  highlight: scheme.tertiary,
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              connected ? _totalsLine(l10n, state.stats) : l10n.totalIdle,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -100,33 +113,38 @@ class StatusCard extends StatelessWidget {
   }
 }
 
-class _Stat extends StatelessWidget {
+class _Speed extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
+  final Color highlight;
 
-  const _Stat({required this.icon, required this.label, required this.value});
+  const _Speed({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.highlight,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Column(
       children: [
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: scheme.onSurfaceVariant),
+            Icon(icon, size: 16, color: highlight),
             const SizedBox(width: 4),
             Text(label, style: Theme.of(context).textTheme.labelSmall),
           ],
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 4),
         Text(
           value,
           style: Theme.of(context)
               .textTheme
-              .titleMedium
-              ?.copyWith(fontFeatures: const []),
+              .headlineSmall
+              ?.copyWith(fontWeight: FontWeight.w600),
         ),
       ],
     );

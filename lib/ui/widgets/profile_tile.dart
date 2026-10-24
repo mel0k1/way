@@ -24,6 +24,79 @@ class ProfileTile extends StatelessWidget {
     return scheme.error;
   }
 
+  void _showChainDialog(BuildContext context, AppState state, String profileId) {
+    final l10n = L10nScope.of(context);
+    final candidates = state.engineProfiles
+        .where((p) => p.id != profileId)
+        .toList();
+    if (candidates.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l10n.chainHint),
+        behavior: SnackBarBehavior.floating,
+        width: 320,
+      ));
+      return;
+    }
+    final current = state.profiles
+        .where((p) => p.id == profileId)
+        .map((p) => p.chainTo)
+        .firstOrNull;
+    String? target = current;
+    showDialog<void>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(l10n.chainThrough),
+          content: SizedBox(
+            width: 320,
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                RadioGroup<String?>(
+                  groupValue: target,
+                  onChanged: (v) => setState(() => target = v),
+                  child: Column(
+                    children: [
+                      RadioListTile<String?>(
+                        value: null,
+                        title: Text(l10n.chainNone),
+                      ),
+                      for (final c in candidates)
+                        RadioListTile<String?>(
+                          value: c.id,
+                          title: Text(
+                            c.name,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            '${c.server}:${c.port}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              onPressed: () {
+                state.setChain(profileId, target);
+                Navigator.pop(context);
+              },
+              child: Text(l10n.save),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = L10nScope.of(context);
@@ -106,9 +179,21 @@ class ProfileTile extends StatelessWidget {
                     ),
                   );
                   if (ok == true) state.removeProfile(profile.id);
+                } else if (value == 'chain') {
+                  _showChainDialog(context, state, profile.id);
                 }
               },
               itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'chain',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.account_tree_rounded),
+                      const SizedBox(width: 12),
+                      Text(l10n.chainThrough),
+                    ],
+                  ),
+                ),
                 PopupMenuItem(
                   value: 'delete',
                   child: Row(

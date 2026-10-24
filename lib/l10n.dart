@@ -170,6 +170,85 @@ class L10n {
   String get errTunAdmin => ru ? 'Для режима TUN запустите приложение от имени администратора' : 'Run the app as administrator for TUN mode';
   String get errParse => ru ? 'Не удалось разобрать ссылку' : 'Failed to parse the link';
 
+  String get total => ru ? 'Всего' : 'Total';
+  String get totalIdle => ru ? 'Нет данных о трафике' : 'No traffic data';
+
+  String get trayOpen => ru ? 'Открыть Way' : 'Open Way';
+  String get trayQuit => ru ? 'Выход' : 'Quit';
+
+  String get closeToTray => ru ? 'Сворачивать в трей' : 'Close to tray';
+  String get closeToTrayHint => ru
+      ? 'Закрытие окна скрывает приложение в системный трей; выход — через меню трея.'
+      : 'Closing the window hides the app to the tray; quit from the tray menu.';
+
+  String get rulesEditor => ru ? 'Правила маршрутизации' : 'Routing rules';
+  String get rulesHint => ru
+      ? 'Свои правила для доменов, IP и портов поверх пресетов (sing-box). Значения через запятую.'
+      : 'Custom domain, IP and port rules on top of presets (sing-box). Comma-separate values.';
+  String get rulesCount => ru ? 'правил' : 'rule(s)';
+  String get ruleAdd => ru ? 'Добавить правило' : 'Add rule';
+  String get ruleType => ru ? 'Тип' : 'Type';
+  String get ruleValue => ru ? 'Значение' : 'Value';
+  String get ruleTypeSuffix => ru ? 'Домен оканчивается на' : 'Domain suffix';
+  String get ruleTypeKeyword => ru ? 'Домен содержит' : 'Domain keyword';
+  String get ruleTypeDomain => ru ? 'Точный домен' : 'Exact domain';
+  String get ruleTypeIp => ru ? 'IP или подсеть' : 'IP or CIDR';
+  String get ruleTypePort => ru ? 'Порт' : 'Port';
+  String get ruleProxy => ru ? 'Через VPN' : 'Via VPN';
+  String get ruleDirect => ru ? 'Напрямую' : 'Direct';
+  String get ruleBlock => ru ? 'Блокировать' : 'Block';
+
+  String get dataSection => ru ? 'Данные' : 'Data';
+  String get backupHint => ru
+      ? 'Профили, подписки и настройки в JSON-файле. Ключи хранятся открыто — не передавайте файл третьим лицам.'
+      : 'Profiles, subscriptions and settings in a JSON file. Keys are stored in plain text — do not share the file.';
+  String get exportBackup => ru ? 'Экспорт резервной копии' : 'Export backup';
+  String get importBackup => ru ? 'Восстановить из копии' : 'Restore from backup';
+  String get backupSaved => ru ? 'Резервная копия сохранена' : 'Backup saved';
+  String get backupFailed => ru ? 'Не удалось сохранить копию' : 'Failed to save backup';
+  String get backupImportConfirm => ru
+      ? 'Заменить текущие профили, подписки и настройки содержимым файла?'
+      : 'Replace current profiles, subscriptions and settings with the file content?';
+  String get backupImported => ru ? 'Резервная копия восстановлена' : 'Backup restored';
+  String get backupInvalid => ru
+      ? 'Некорректный файл резервной копии'
+      : 'Invalid backup file';
+
+  String get introSkip => ru ? 'Пропустить' : 'Skip';
+  String get introNext => ru ? 'Далее' : 'Next';
+  String get introStart => ru ? 'Начать' : 'Get started';
+  String get introWelcomeTitle => ru ? 'Way — ваш маршрут в приватность' : 'Way — your route to privacy';
+  String get introWelcomeText => ru
+      ? 'Два ядра — sing-box и xray — в одном клиенте. VLESS, Reality, VMess, Trojan, Shadowsocks, Hysteria2 и TUIC.'
+      : 'Two cores — sing-box and xray — in one client. VLESS, Reality, VMess, Trojan, Shadowsocks, Hysteria2 and TUIC.';
+  String get introServersTitle => ru ? 'Добавьте сервер' : 'Add a server';
+  String get introServersText => ru
+      ? 'Вставьте ссылку vless://…, отсканируйте QR-код или добавьте подписку — серверы обновляются автоматически.'
+      : 'Paste a vless://… link, scan a QR code or add a subscription — servers update automatically.';
+  String get introDoneTitle => ru ? 'Всё готово' : 'You are set';
+  String get introDoneText => ru
+      ? 'Нажмите большую кнопку, чтобы подключиться. Разрешите уведомления — так VPN покажет свой статус.'
+      : 'Tap the big button to connect. Allow notifications so the VPN can show its status.';
+
+  String get autoPick => ru ? 'Авто-выбор популярных' : 'Auto-pick popular';
+  String autoPickDone(int n) => ru
+      ? 'Выбрано популярных приложений: $n'
+      : 'Popular apps selected: $n';
+  String get appsExport => ru ? 'Экспорт списка' : 'Export list';
+  String get appsImport => ru ? 'Импорт списка' : 'Import list';
+  String get appsImportHint => ru
+      ? 'Пакеты по одному в строке или через запятую'
+      : 'One package per line, or comma-separated';
+  String appsImported(int n) => ru
+      ? 'Добавлено пакетов: $n'
+      : 'Packages added: $n';
+
+  String get chainThrough => ru ? 'Пустить через сервер…' : 'Chain through…';
+  String get chainNone => ru ? 'Без цепочки' : 'No chain';
+  String get chainHint => ru
+      ? 'Цепочка: трафик пойдёт через выбранный сервер поверх текущего (sing-box, недоступно в режиме «Быстрейший»).'
+      : 'Chain: traffic goes through the selected server on top of the current one (sing-box, unavailable in “Fastest” mode).';
+
   String errorText(String? code) {
     switch (code) {
       case 'no_profile':

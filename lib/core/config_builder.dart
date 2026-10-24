@@ -10,17 +10,81 @@ class WayPorts {
   static const controlApi = 20717;
 }
 
+class RouteRule {
+  final String id;
+  final String type;
+  final String value;
+  final String action;
+
+  const RouteRule({
+    required this.id,
+    required this.type,
+    required this.value,
+    required this.action,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'type': type,
+        'value': value,
+        'action': action,
+      };
+
+  factory RouteRule.fromJson(Map<String, dynamic> j) => RouteRule(
+        id: j['id'] as String? ?? '',
+        type: j['type'] as String? ?? 'suffix',
+        value: j['value'] as String? ?? '',
+        action: j['action'] as String? ?? 'proxy',
+      );
+
+  List<Map<String, dynamic>> toSingBox() {
+    final values = value
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    if (values.isEmpty) return const [];
+    final entry = <String, dynamic>{};
+    switch (type) {
+      case 'keyword':
+        entry['domain_keyword'] = values;
+        break;
+      case 'domain':
+        entry['domain'] = values;
+        break;
+      case 'ip':
+        entry['ip_cidr'] = values;
+        break;
+      case 'port':
+        final ports = values.map(int.tryParse).whereType<int>().toList();
+        if (ports.isEmpty) return const [];
+        entry['port'] = ports;
+        break;
+      default:
+        entry['domain_suffix'] = values;
+    }
+    if (action == 'block') {
+      entry['action'] = 'reject';
+    } else {
+      entry['outbound'] = action;
+    }
+    return [entry];
+  }
+}
+
 class RoutingSettings {
   final String mode;
   final bool blockAds;
   final String splitMode;
   final List<String> splitApps;
+  final List<RouteRule> customRules;
 
   const RoutingSettings({
     this.mode = 'global',
     this.blockAds = false,
     this.splitMode = 'off',
     this.splitApps = const [],
+    this.customRules = const [],
   });
 }
 
@@ -33,13 +97,21 @@ class ConfigBuilder {
     required String logPath,
     RoutingSettings routing = const RoutingSettings(),
     List<Profile> group = const [],
+    Profile? chain,
   }) {
     final members = group.isEmpty ? [p] : group;
     final outbounds = <Map<String, dynamic>>[];
     final tags = <String>[];
+    if (chain != null && members.length == 1) {
+      outbounds.add(_singBoxOutbound(chain, tag: 'chain'));
+    }
     for (var i = 0; i < members.length; i++) {
       final tag = members.length == 1 ? 'proxy' : 's$i';
-      outbounds.add(_singBoxOutbound(members[i], tag: tag));
+      final outbound = _singBoxOutbound(members[i], tag: tag);
+      if (i == 0 && members.length == 1 && chain != null) {
+        outbound['dialer_proxy'] = 'chain';
+      }
+      outbounds.add(outbound);
       tags.add(tag);
     }
     if (members.length > 1) {
@@ -108,6 +180,62 @@ class ConfigBuilder {
       ));
     }
     return sets;
+  }
+
+  static Map<String, dynamic> probeSingBoxConfig(Profile p, int port) {
+    return {
+      'log': {'level': 'warn'},
+      'dns': {
+        'servers': [
+          {'type': 'udp', 'tag': 'dns-direct', 'server': '8.8.8.8'},
+          {
+            'type': 'https',
+            'tag': 'dns-proxy',
+            'server': '1.1.1.1',
+            'detour': 'proxy',
+          },
+        ],
+        'final': 'dns-proxy',
+        'strategy': 'prefer_ipv4',
+        'independent_cache': true,
+      },
+      'inbounds': [
+        {
+          'type': 'mixed',
+          'tag': 'mixed-in',
+          'listen': '127.0.0.1',
+          'listen_port': port,
+        },
+      ],
+      'outbounds': [
+        _singBoxOutbound(p, tag: 'proxy'),
+        _directOutbound(),
+      ],
+      'route': {
+        'final': 'proxy',
+        'default_domain_resolver': {'server': 'dns-direct'},
+      },
+    };
+  }
+
+  static Map<String, dynamic> probeXrayConfig(Profile p, int port) {
+    return {
+      'log': {'loglevel': 'warning'},
+      'inbounds': [
+        {
+          'tag': 'socks-in',
+          'listen': '127.0.0.1',
+          'port': port,
+          'protocol': 'socks',
+          'settings': {'auth': 'noauth', 'udp': false},
+        },
+      ],
+      'outbounds': [
+        _xrayOutbound(p),
+        {'protocol': 'freedom', 'tag': 'direct'},
+      ],
+      'routing': {'domainStrategy': 'AsIs', 'rules': []},
+    };
   }
 
   static Map<String, dynamic> xrayConfig(Profile p, {required String logPath}) {
@@ -193,6 +321,9 @@ class ConfigBuilder {
       } else {
         rules.add({'process_name': splitApps, 'outbound': 'direct'});
       }
+    }
+    for (final rule in routing.customRules) {
+      rules.addAll(rule.toSingBox());
     }
     if (routing.mode == 'ru') {
       rules.add({

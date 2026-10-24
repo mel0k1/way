@@ -25,6 +25,7 @@ class Profile {
   String? mode;
   String? extra;
   String subId;
+  String? chainTo;
 
   Profile({
     required this.id,
@@ -53,6 +54,7 @@ class Profile {
     this.mode,
     this.extra,
     this.subId = '',
+    this.chainTo,
   });
 
   String get protocolLabel {
@@ -101,6 +103,7 @@ class Profile {
     'mode': mode,
     'extra': extra,
     'sub_id': subId,
+    if (chainTo != null) 'chain_to': chainTo,
   };
 
   factory Profile.fromJson(Map<String, dynamic> j) => Profile(
@@ -130,6 +133,7 @@ class Profile {
     mode: j['mode'] as String?,
     extra: j['extra'] as String?,
     subId: j['sub_id'] as String? ?? '',
+    chainTo: j['chain_to'] as String?,
   );
 
   bool supportedOn(String engine) {

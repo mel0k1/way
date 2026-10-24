@@ -8,6 +8,7 @@ import '../../l10n.dart';
 import '../../state/app_state.dart';
 import 'package:provider/provider.dart';
 import '../widgets/update_dialog.dart';
+import 'route_rules_screen.dart';
 import 'split_apps_screen.dart';
 
 class _SplitProcessesField extends StatefulWidget {
@@ -94,6 +95,29 @@ class SettingsScreen extends StatelessWidget {
     return '${value.toStringAsFixed(value >= 100 || unit == 0 ? 0 : 1)} ${units[unit]}';
   }
 
+  Future<bool?> _onImportBackup(BuildContext context, AppState state) async {
+    final l10n = L10nScope.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.importBackup),
+        content: Text(l10n.backupImportConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.save),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return null;
+    return state.importBackup();
+  }
+
   Future<void> _onCheckUpdates(BuildContext context, AppState state) async {
     final l10n = L10nScope.of(context);
     final found = await state.checkForUpdates();
@@ -171,6 +195,21 @@ class SettingsScreen extends StatelessWidget {
                   value: state.blockAds,
                   onChanged: state.setBlockAds,
                   contentPadding: EdgeInsets.zero,
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.rule_rounded),
+                  title: Text(l10n.rulesEditor),
+                  subtitle: Text(
+                    state.customRules.isEmpty
+                        ? l10n.rulesHint
+                        : '${state.customRules.length} ${l10n.rulesCount}',
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const RouteRulesScreen()),
+                  ),
                 ),
               ],
             ),
@@ -337,6 +376,14 @@ class SettingsScreen extends StatelessWidget {
                     onChanged: state.setDesktopNotify,
                     contentPadding: EdgeInsets.zero,
                   ),
+                if (state.isDesktop)
+                  SwitchListTile(
+                    title: Text(l10n.closeToTray),
+                    subtitle: Text(l10n.closeToTrayHint),
+                    value: state.closeToTray,
+                    onChanged: state.setCloseToTray,
+                    contentPadding: EdgeInsets.zero,
+                  ),
                 SwitchListTile(
                   title: Text(l10n.autoCheckUpdates),
                   value: state.autoCheckUpdates,
@@ -361,6 +408,43 @@ class SettingsScreen extends StatelessWidget {
                       : Text('${l10n.currentVersion}: $appVersion'),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => _onCheckUpdates(context, state),
+                ),
+              ],
+            ),
+          ),
+          _SectionCard(
+            title: l10n.dataSection,
+            hint: l10n.backupHint,
+            child: Column(
+              children: [
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.ios_share_rounded),
+                  title: Text(l10n.exportBackup),
+                  onTap: () async {
+                    final ok = await state.exportBackup();
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(ok ? l10n.backupSaved : l10n.backupFailed),
+                      behavior: SnackBarBehavior.floating,
+                      width: 320,
+                    ));
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.file_open_rounded),
+                  title: Text(l10n.importBackup),
+                  onTap: () async {
+                    final ok = await _onImportBackup(context, state);
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(
+                          ok == true ? l10n.backupImported : l10n.backupInvalid),
+                      behavior: SnackBarBehavior.floating,
+                      width: 320,
+                    ));
+                  },
                 ),
               ],
             ),

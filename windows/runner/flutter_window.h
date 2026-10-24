@@ -28,6 +28,14 @@ class FlutterWindow : public Win32Window {
 
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
+
+  // Method channel for tray/window control from Dart.
+  std::unique_ptr<
+      flutter::MethodChannel<flutter::EncodableValue>>
+      channel_;
+
+  // When true, closing the window hides it instead of quitting.
+  bool close_to_tray_ = false;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

@@ -32,6 +32,20 @@ func NewHandler(m *Manager) http.Handler {
         mux.HandleFunc("GET /status", func(w http.ResponseWriter, r *http.Request) {
                 writeJSON(w, m.Status())
         })
+        mux.HandleFunc("POST /urltest", func(w http.ResponseWriter, r *http.Request) {
+                var req struct {
+                        Singbox string `json:"singbox"`
+                        Xray    string `json:"xray"`
+                        Port    int    `json:"port"`
+                        Timeout int    `json:"timeout"`
+                }
+                if err := jsonDecode(r, &req); err != nil {
+                        http.Error(w, err.Error(), http.StatusBadRequest)
+                        return
+                }
+                ms := UrlTest(req.Singbox, req.Xray, req.Port, req.Timeout)
+                writeJSON(w, map[string]any{"ms": ms})
+        })
         mux.HandleFunc("GET /autostart", func(w http.ResponseWriter, r *http.Request) {
                 writeJSON(w, map[string]any{"enabled": autostartEnabled()})
         })

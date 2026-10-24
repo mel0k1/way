@@ -29,7 +29,12 @@
 - **Kill switch** — WFP firewall on Windows, Always-on VPN + lockdown on Android
 - **Split tunneling** — per-app (Android) and per-process (Windows) tunneling rules
 - **Routing presets** — “All via VPN”, “RU direct” (geosite/geoip rule-sets) and ad blocking (category-ads-all)
-- **Fastest server** — urltest group in sing-box and TCP latency testing with auto-select
+- **Routing rules editor** — custom domain/IP/port rules with per-rule action (via VPN, direct, block)
+- **Proxy chaining** — route any server through another server (sing-box `dialer_proxy`)
+- **Windows tray** — tray icon with quick connect/disconnect, close-to-tray and state-colored icon
+- **Android quick settings tile** — connect/disconnect from the notification shade, restores the last used server
+- **Backup & restore** — export profiles, subscriptions and settings to a JSON file (SAF on Android, save dialog on Windows)
+- **Fastest server** — urltest group in sing-box and real through-proxy latency testing (a temporary core instance per server, TCP fallback) with auto-select
 - **Subscriptions** — import by URL or QR code, clipboard paste, auto-refresh, panel-compatible User-Agent and quota display
 - **Deep links** — tap a `vless://`/`vmess://`/`trojan://`/`ss://`/`hysteria2://`/`tuic://` link or `way://import/<url>` to import profiles and subscriptions instantly (Android and Windows)
 - **Encrypted storage** — profiles and subscription keys live in flutter_secure_storage (Keystore / DPAPI)
@@ -37,7 +42,7 @@
 - **Custom notifications** — branded Android foreground notification with a disconnect button and session timer, Windows toasts
 - **Update check** — checks GitHub Releases on startup and offers to download the new build
 - **RU + EN interface** — follows the system language, switchable in settings
-- **Realtime stats** — live speed and connection counter via the clash API
+- **Realtime stats** — live up/down speed, session traffic totals and connection counter via the clash API
 - **NSIS installer** — a proper Windows setup with uninstaller, shortcuts and per-user system proxy
 
 ## Supported protocols
@@ -128,7 +133,12 @@ This project is a client shell around open-source cores. It ships no servers, no
 - **Kill switch** — WFP-фаервол на Windows, Always-on VPN + блокировка без VPN на Android
 - **Раздельное туннелирование** — по приложениям (Android) и по процессам (Windows)
 - **Пресеты маршрутизации** — «Всё через VPN», «RU напрямую» (rule-set geosite/geoip) и блокировка рекламы (category-ads-all)
-- **Быстрейший сервер** — urltest-группа в sing-box и TCP-замер задержки с автовыбором
+- **Редактор правил маршрутизации** — свои правила для доменов, IP и портов с действием на каждое (через VPN, напрямую, блокировать)
+- **Цепочки прокси** — маршрут через выбранный сервер поверх текущего (sing-box `dialer_proxy`)
+- **Трей Windows** — иконка в трее с быстрым подключением, скрытием окна в трей и иконкой-статусом
+- **Плитка Android** — подключение/отключение из шторки быстрых настроек, восстановление последнего сервера
+- **Бэкап и восстановление** — экспорт профилей, подписок и настроек в JSON (SAF на Android, диалог сохранения на Windows)
+- **Быстрейший сервер** — urltest-группа в sing-box и реальный замер задержки через прокси (временный инстанс ядра на сервер, TCP-фолбэк) с автовыбором
 - **Подписки** — импорт по ссылке или QR-коду, вставка из буфера, автообновление, совместимый с панелями User-Agent и показ квоты
 - **Диплинки** — клик по ссылке `vless://`/`vmess://`/`trojan://`/`ss://`/`hysteria2://`/`tuic://` или `way://import/<url>` мгновенно импортирует профили и подписки (Android и Windows)
 - **Шифрованное хранилище** — профили и ключи подписок в flutter_secure_storage (Keystore / DPAPI)
@@ -136,7 +146,7 @@ This project is a client shell around open-source cores. It ships no servers, no
 - **Кастомные уведомления** — брендированная нотификация Android с кнопкой отключения и таймером сессии, тосты Windows
 - **Проверка обновлений** — сверка с GitHub Releases при старте и предложение скачать сборку
 - **Интерфейс RU + EN** — следует языку системы, переключается в настройках
-- **Статистика в реальном времени** — скорость и число соединений через clash API
+- **Статистика в реальном времени** — живая скорость приёма/отдачи, итоги трафика сессии и число соединений через clash API
 - **NSIS-установщик** — полноценная установка на Windows с деинсталлятором и ярлыками
 
 ### Поддерживаемые протоколы

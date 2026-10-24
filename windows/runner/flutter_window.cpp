@@ -1,5 +1,8 @@
 #include "flutter_window.h"
 
+#include <flutter/encodable_value.h>
+#include <flutter/method_channel.h>
+#include <flutter/standard_method_codec.h>
 #include <optional>
 
 #include "flutter/generated_plugin_registrant.h"
@@ -7,7 +10,11 @@
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
 
-FlutterWindow::~FlutterWindow() {}
+FlutterWindow::~FlutterWindow() {
+  if (channel_) {
+    channel_->SetMethodCallHandler(nullptr);
+  }
+}
 
 bool FlutterWindow::OnCreate() {
   if (!Win32Window::OnCreate()) {
@@ -20,12 +27,42 @@ bool FlutterWindow::OnCreate() {
   // creation / destruction in the startup path.
   flutter_controller_ = std::make_unique<flutter::FlutterViewController>(
       frame.right - frame.left, frame.bottom - frame.top, project_);
-  // Ensure that basic setup of the controller was successful.
+  // Ensure that basic setup of this controller was successful.
   if (!flutter_controller_->engine() || !flutter_controller_->view()) {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
+
+  channel_ = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+      flutter_controller_->engine()->messenger(), "way/window",
+      &flutter::StandardMethodCodec::GetInstance());
+  channel_->SetMethodCallHandler(
+      [this](const auto& call, auto result) {
+        if (call.method_name() == "hide") {
+          ::ShowWindow(GetHandle(), SW_HIDE);
+          result->Success();
+        } else if (call.method_name() == "show") {
+          ::ShowWindow(GetHandle(), SW_RESTORE);
+          ::SetForegroundWindow(GetHandle());
+          result->Success();
+        } else if (call.method_name() == "set_close_to_tray") {
+          const auto* args =
+              std::get_if<flutter::EncodableMap>(call.arguments());
+          if (args) {
+            auto it = args->find(flutter::EncodableValue("value"));
+            close_to_tray_ = it != args->end() &&
+                             std::get<bool>(it->second);
+          }
+          result->Success();
+        } else if (call.method_name() == "quit") {
+          close_to_tray_ = false;
+          ::DestroyWindow(GetHandle());
+          result->Success();
+        } else {
+          result->NotImplemented();
+        }
+      });
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
@@ -62,6 +99,12 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   }
 
   switch (message) {
+    case WM_CLOSE:
+      if (close_to_tray_) {
+        ::ShowWindow(GetHandle(), SW_HIDE);
+        return 0;
+      }
+      break;
     case WM_FONTCHANGE:
       flutter_controller_->engine()->ReloadSystemFonts();
       break;

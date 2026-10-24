@@ -14,6 +14,22 @@ class SplitAppsScreen extends StatefulWidget {
 
 class _SplitAppsScreenState extends State<SplitAppsScreen> {
   static const _channel = MethodChannel('way/core');
+  static const _popular = [
+    'com.android.chrome',
+    'org.mozilla.firefox',
+    'com.brave.browser',
+    'com.opera.browser',
+    'com.microsoft.emmx',
+    'com.sec.android.app.sbrowser',
+    'org.telegram.messenger',
+    'com.whatsapp',
+    'com.viber.voip',
+    'org.thoughtcrime.securesms',
+    'com.instagram.android',
+    'com.google.android.youtube',
+    'com.discord',
+    'com.twitter.android',
+  ];
   List<Map<String, String>> _apps = [];
   Set<String> _selected = {};
   String _query = '';
@@ -49,6 +65,78 @@ class _SplitAppsScreenState extends State<SplitAppsScreen> {
       _apps = apps;
       _loading = false;
     });
+  }
+
+  void _autoPick() {
+    final installed = _apps.map((a) => a['package']).toSet();
+    final found = _popular.where(installed.contains).toSet();
+    setState(() => _selected.addAll(found));
+    if (!mounted) return;
+    final l10n = L10nScope.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(l10n.autoPickDone(found.length)),
+      behavior: SnackBarBehavior.floating,
+      width: 320,
+    ));
+  }
+
+  void _exportList() {
+    final text = _selected.toList()..sort();
+    Clipboard.setData(ClipboardData(text: text.join('\n')));
+    final l10n = L10nScope.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(l10n.copied),
+      behavior: SnackBarBehavior.floating,
+      width: 320,
+    ));
+  }
+
+  Future<void> _importList() async {
+    final l10n = L10nScope.of(context);
+    final controller = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.appsImport),
+        content: TextField(
+          controller: controller,
+          maxLines: 6,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: l10n.appsImportHint,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.save),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) {
+      controller.dispose();
+      return;
+    }
+    final raw = controller.text;
+    controller.dispose();
+    final packages = raw
+        .split(RegExp(r'[\s,;]+'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toSet();
+    setState(() => _selected.addAll(packages));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(l10n.appsImported(packages.length)),
+      behavior: SnackBarBehavior.floating,
+      width: 320,
+    ));
   }
 
   @override
@@ -96,6 +184,21 @@ class _SplitAppsScreenState extends State<SplitAppsScreen> {
                     children: [
                       Text('${_selected.length} ${l10n.splitSelected}'),
                       const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.auto_awesome_rounded, size: 20),
+                        tooltip: l10n.autoPick,
+                        onPressed: _autoPick,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.ios_share_rounded, size: 20),
+                        tooltip: l10n.appsExport,
+                        onPressed: _exportList,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.paste_rounded, size: 20),
+                        tooltip: l10n.appsImport,
+                        onPressed: _importList,
+                      ),
                       TextButton(
                         onPressed: () => setState(() => _selected.clear()),
                         child: Text(l10n.clear),

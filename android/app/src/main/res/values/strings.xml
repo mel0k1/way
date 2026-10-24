@@ -7,4 +7,5 @@
     <string name="nt_disconnecting">Disconnecting…</string>
     <string name="nt_disconnected">Disconnected</string>
     <string name="nt_action_disconnect">Disconnect</string>
+    <string name="tile_label">Way VPN</string>
 </resources>

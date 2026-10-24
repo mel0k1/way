@@ -4,6 +4,7 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -14,6 +15,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
+import android.service.quicksettings.TileService
 import android.widget.RemoteViews
 import io.mel0k1.waycore.CommandServer
 import io.mel0k1.waycore.PlatformInterface
@@ -163,6 +165,16 @@ class WayVpnService : VpnService(), PlatformInterface {
         stopSelf()
     }
 
+    private fun updateTile() {
+        try {
+            TileService.requestListeningState(
+                applicationContext,
+                ComponentName(this, WayTileService::class.java),
+            )
+        } catch (_: Throwable) {
+        }
+    }
+
     private fun ensureChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -262,6 +274,7 @@ class WayVpnService : VpnService(), PlatformInterface {
             setState(STATE_STARTED)
             connectStartMs = SystemClock.elapsedRealtime()
             showNotification(getString(R.string.nt_connected), true)
+            updateTile()
             watchdog.removeCallbacks(watchdogTick)
             watchdog.postDelayed(watchdogTick, 5000)
         } catch (e: Throwable) {
@@ -347,6 +360,7 @@ class WayVpnService : VpnService(), PlatformInterface {
         }
         foregroundShown = false
         setState(STATE_STOPPED)
+        updateTile()
     }
 
     override fun autoDetectInterfaceControl(fd: Int) {

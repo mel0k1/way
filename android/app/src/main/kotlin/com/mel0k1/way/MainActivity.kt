@@ -19,6 +19,8 @@ class MainActivity : FlutterActivity() {
     private var pendingLink: String? = null
     private var channel: MethodChannel? = null
     private var waitingPermission = false
+    private var backupResult: MethodChannel.Result? = null
+    private var backupContent = ""
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -84,6 +86,51 @@ class MainActivity : FlutterActivity() {
                         val link = pendingLink
                         pendingLink = null
                         result.success(link)
+                    }
+                    "url_test" -> {
+                        val singbox = call.argument<String>("singbox") ?: ""
+                        val xray = call.argument<String>("xray") ?: ""
+                        val port = call.argument<Int>("port") ?: 0
+                        val timeout = call.argument<Int>("timeout") ?: 8000
+                        Thread {
+                            val ms = try {
+                                Waycore.urlTest(singbox, xray, port, timeout)
+                            } catch (_: Throwable) {
+                                -1
+                            }
+                            runOnUiThread { result.success(mapOf("ms" to ms)) }
+                        }.start()
+                    }
+                    "export_backup" -> {
+                        val name = call.argument<String>("name") ?: "way-backup.json"
+                        val content = call.argument<String>("content") ?: ""
+                        backupResult = result
+                        backupContent = content
+                        try {
+                            val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                                addCategory(Intent.CATEGORY_OPENABLE)
+                                type = "application/json"
+                                putExtra(Intent.EXTRA_TITLE, name)
+                            }
+                            startActivityForResult(intent, 103)
+                        } catch (e: Exception) {
+                            backupResult = null
+                            backupContent = ""
+                            result.error("unavailable", e.message, null)
+                        }
+                    }
+                    "import_backup" -> {
+                        backupResult = result
+                        try {
+                            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                                addCategory(Intent.CATEGORY_OPENABLE)
+                                type = "*/*"
+                            }
+                            startActivityForResult(intent, 104)
+                        } catch (e: Exception) {
+                            backupResult = null
+                            result.error("unavailable", e.message, null)
+                        }
                     }
                     else -> result.notImplemented()
                 }
@@ -210,6 +257,49 @@ class MainActivity : FlutterActivity() {
                 startVpnService()
             } else {
                 replyPending(mapOf("started" to false))
+            }
+        }
+        if (requestCode == 103) {
+            val result = backupResult
+            backupResult = null
+            val content = backupContent
+            backupContent = ""
+            if (result == null) return
+            var saved = false
+            if (resultCode == RESULT_OK && data?.data != null && content.isNotEmpty()) {
+                try {
+                    contentResolver.openOutputStream(data.data!!)?.use { stream ->
+                        stream.write(content.toByteArray(Charsets.UTF_8))
+                        stream.flush()
+                    }
+                    saved = true
+                } catch (_: Exception) {
+                    saved = false
+                }
+            }
+            try {
+                result.success(saved)
+            } catch (_: Exception) {
+            }
+        }
+        if (requestCode == 104) {
+            val result = backupResult
+            backupResult = null
+            if (result == null) return
+            val text: String? = if (resultCode == RESULT_OK && data?.data != null) {
+                try {
+                    contentResolver.openInputStream(data.data!!)?.use { stream ->
+                        String(stream.readBytes(), Charsets.UTF_8)
+                    }
+                } catch (_: Exception) {
+                    null
+                }
+            } else {
+                null
+            }
+            try {
+                result.success(text)
+            } catch (_: Exception) {
             }
         }
     }

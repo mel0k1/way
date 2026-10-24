@@ -8,6 +8,7 @@ import 'ui/screens/logs_screen.dart';
 import 'ui/screens/servers_screen.dart';
 import 'ui/screens/settings_screen.dart';
 import 'ui/widgets/app_background.dart';
+import 'ui/widgets/onboarding.dart';
 import 'ui/widgets/update_dialog.dart';
 
 class WayApp extends StatelessWidget {
@@ -35,7 +36,9 @@ class WayApp extends StatelessWidget {
                 child ?? const SizedBox.shrink(),
               ],
             ),
-            home: const WayShell(),
+            home: state.onboardingDone
+                ? const WayShell()
+                : const OnboardingScreen(),
           ),
         );
       },
