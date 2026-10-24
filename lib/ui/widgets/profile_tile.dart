@@ -102,8 +102,15 @@ class ProfileTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = L10nScope.of(context);
     final scheme = Theme.of(context).colorScheme;
-    final state = context.read<AppState>();
+    final state = context.watch<AppState>();
     final color = _latencyColor(scheme);
+
+    Profile? chain;
+    if (profile.chainTo?.isNotEmpty == true) {
+      for (final p in state.profiles) {
+        if (p.id == profile.chainTo) chain = p;
+      }
+    }
 
     return Card.filled(
       margin: const EdgeInsets.symmetric(vertical: 4),
@@ -136,9 +143,35 @@ class ProfileTile extends StatelessWidget {
             fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
           ),
         ),
-        subtitle: Text(
-          '${profile.server}:${profile.port}',
-          overflow: TextOverflow.ellipsis,
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (chain != null)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.account_tree_rounded,
+                      size: 13, color: scheme.primary),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      chain.name,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: scheme.primary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            Text(
+              '${profile.server}:${profile.port}',
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,

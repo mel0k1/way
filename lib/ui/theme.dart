@@ -29,8 +29,12 @@ class WayTheme {
 
     final t = base.textTheme;
     final text = t.copyWith(
-      headlineSmall: t.headlineSmall?.copyWith(fontWeight: FontWeight.w500),
-      titleLarge: t.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+      headlineSmall: t.headlineSmall?.copyWith(
+        fontWeight: FontWeight.w600,
+        letterSpacing: -0.5,
+      ),
+      titleLarge: t.titleLarge
+          ?.copyWith(fontWeight: FontWeight.w600, letterSpacing: -0.3),
       titleMedium: t.titleMedium?.copyWith(fontWeight: FontWeight.w600),
       bodyMedium: t.bodyMedium?.copyWith(height: 1.45),
       bodySmall: t.bodySmall?.copyWith(height: 1.4),
@@ -38,7 +42,7 @@ class WayTheme {
           ?.copyWith(fontWeight: FontWeight.w600, letterSpacing: 0.2),
     );
 
-    const fieldRadius = BorderRadius.all(Radius.circular(14));
+    const fieldRadius = BorderRadius.all(Radius.circular(16));
     final fieldShape = OutlineInputBorder(
       borderRadius: fieldRadius,
       borderSide: BorderSide.none,
@@ -83,7 +87,7 @@ class WayTheme {
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
         color: scheme.surfaceContainerLow,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: scheme.surfaceContainerHigh,
@@ -94,14 +98,14 @@ class WayTheme {
         modalBackgroundColor: scheme.surfaceContainerLow,
         showDragHandle: true,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: scheme.inverseSurface,
         contentTextStyle: t.bodyMedium?.copyWith(color: scheme.onInverseSurface),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       navigationBarTheme: NavigationBarThemeData(
         height: 80,
@@ -117,7 +121,7 @@ class WayTheme {
         ),
       ),
       listTileTheme: ListTileThemeData(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
         iconColor: scheme.onSurfaceVariant,
       ),
       inputDecorationTheme: InputDecorationThemeData(
@@ -176,7 +180,7 @@ class WayTheme {
       ),
       popupMenuTheme: PopupMenuThemeData(
         color: scheme.surfaceContainerHigh,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       ),
       dividerTheme: DividerThemeData(
         color: scheme.outlineVariant,
@@ -195,7 +199,7 @@ class WayTheme {
       tooltipTheme: TooltipThemeData(
         decoration: BoxDecoration(
           color: scheme.inverseSurface,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
         ),
         textStyle: t.bodySmall?.copyWith(color: scheme.onInverseSurface),
       ),

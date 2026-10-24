@@ -10,6 +10,7 @@ import 'ui/screens/servers_screen.dart';
 import 'ui/screens/settings_screen.dart';
 import 'ui/theme.dart';
 import 'ui/widgets/app_background.dart';
+import 'ui/widgets/nav_bar.dart';
 import 'ui/widgets/onboarding.dart';
 import 'ui/widgets/update_dialog.dart';
 
@@ -161,28 +162,28 @@ class _WayShellState extends State<WayShell> {
           child: screens[_index],
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+      bottomNavigationBar: ExpressiveNavBar(
+        currentIndex: _index,
+        onTap: (i) => setState(() => _index = i),
         destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.shield_outlined),
-            selectedIcon: const Icon(Icons.shield_rounded),
+          ExpressiveNavDestination(
+            icon: Icons.shield_outlined,
+            activeIcon: Icons.shield_rounded,
             label: l10n.navHome,
           ),
-          NavigationDestination(
-            icon: const Icon(Icons.dns_outlined),
-            selectedIcon: const Icon(Icons.dns_rounded),
+          ExpressiveNavDestination(
+            icon: Icons.dns_outlined,
+            activeIcon: Icons.dns_rounded,
             label: l10n.navServers,
           ),
-          NavigationDestination(
-            icon: const Icon(Icons.terminal_outlined),
-            selectedIcon: const Icon(Icons.terminal_rounded),
+          ExpressiveNavDestination(
+            icon: Icons.terminal_outlined,
+            activeIcon: Icons.terminal_rounded,
             label: l10n.navLogs,
           ),
-          NavigationDestination(
-            icon: const Icon(Icons.settings_outlined),
-            selectedIcon: const Icon(Icons.settings_rounded),
+          ExpressiveNavDestination(
+            icon: Icons.settings_outlined,
+            activeIcon: Icons.settings_rounded,
             label: l10n.navSettings,
           ),
         ],
