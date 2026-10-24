@@ -144,7 +144,12 @@ class AppState extends ChangeNotifier {
       if (autoUpdate) updateSubscriptions();
     });
     if (autoStart || !isDesktop) {
-      await bridge.setAutostart(autoStart);
+      try {
+        final native = await bridge.autostartEnabled();
+        if (native != autoStart) {
+          await bridge.setAutostart(autoStart);
+        }
+      } catch (_) {}
     }
     Timer(const Duration(seconds: 3), _autoConnectOnLaunch);
     if (autoCheckUpdates) {

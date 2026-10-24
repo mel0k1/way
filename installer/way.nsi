@@ -39,5 +39,6 @@ Section "Uninstall"
   RMDir /r "$INSTDIR"
   RMDir /r "$SMPROGRAMS\Way"
   Delete "$DESKTOP\Way.lnk"
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Way"
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Way"
 SectionEnd
