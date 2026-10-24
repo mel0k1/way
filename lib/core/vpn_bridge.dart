@@ -23,6 +23,7 @@ class ConnectRequest {
   final String engine;
   final bool tun;
   final Profile profile;
+  final List<Profile> group;
   final String logPath;
   final bool killSwitch;
   final String routingMode;
@@ -34,6 +35,7 @@ class ConnectRequest {
     required this.engine,
     required this.tun,
     required this.profile,
+    this.group = const [],
     required this.logPath,
     this.killSwitch = false,
     this.routingMode = 'global',
@@ -75,6 +77,7 @@ class AndroidBridge implements VpnBridge {
           mode: request.routingMode,
           blockAds: request.blockAds,
         ),
+        group: request.group,
       )),
       'xray': json.encode(ConfigBuilder.xrayConfig(request.profile, logPath: request.logPath)),
       'bridge': json.encode(ConfigBuilder.bridgeConfig(tun: true, logPath: request.logPath)),
@@ -194,6 +197,7 @@ class DesktopBridge implements VpnBridge {
         tun: request.tun,
         logPath: request.logPath,
         routing: request._routing,
+        group: request.group,
       );
       payload['system_proxy'] = !request.tun;
       payload['system_proxy_port'] = WayPorts.mixed;

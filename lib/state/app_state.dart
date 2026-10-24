@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/latency.dart';
 import '../core/parser.dart';
 import '../core/profile.dart';
 import '../core/stats.dart';
@@ -23,9 +26,12 @@ class SubEntry extends Subscription {
 }
 
 class AppState extends ChangeNotifier {
+  static const autoId = '__auto__';
+
   final VpnBridge bridge = createBridge();
   final SubscriptionService subsService = SubscriptionService();
   final StatsPoller statsPoller = StatsPoller();
+  final FlutterSecureStorage _secure = const FlutterSecureStorage();
 
   List<Profile> profiles = [];
   List<Subscription> subs = [];
@@ -41,6 +47,11 @@ class AppState extends ChangeNotifier {
   bool killSwitch = false;
   String splitMode = 'off';
   List<String> splitApps = [];
+  String subUserAgent = 'v2rayTun/1.7.6';
+  bool autoSelect = false;
+  String? hwid;
+  Map<String, int?> latencies = {};
+  bool latencyTesting = false;
 
   VpnStatus vpn = const VpnStatus();
   WayStats stats = WayStats.zero;
@@ -59,6 +70,25 @@ class AppState extends ChangeNotifier {
     return profiles.first;
   }
 
+  List<Profile> get engineProfiles =>
+      profiles.where((p) => p.supportedOn(engine)).toList();
+
+  Profile? get bestProfile {
+    final rated = engineProfiles
+        .where((p) => latencies[p.id] != null)
+        .toList()
+      ..sort((a, b) => latencies[a.id]!.compareTo(latencies[b.id]!));
+    return rated.isEmpty ? null : rated.first;
+  }
+
+  Profile? get effectiveProfile {
+    if (autoSelect) {
+      final best = bestProfile;
+      if (best != null) return best;
+    }
+    return selected;
+  }
+
   bool get isDesktop =>
       !kIsWeb &&
       (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
@@ -70,8 +100,9 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> init() async {
-    _prefs = await SharedPreferences.getInstance();
-    final prefs = _prefs!;
+    final prefs = await SharedPreferences.getInstance();
+    _prefs = prefs;
+    await _loadSecure(prefs);
     final settingsRaw = prefs.getString('way.settings');
     if (settingsRaw != null) {
       try {
@@ -87,24 +118,8 @@ class AppState extends ChangeNotifier {
         killSwitch = s['killswitch'] as bool? ?? killSwitch;
         splitMode = s['splitmode'] as String? ?? splitMode;
         splitApps = (s['splitapps'] as List?)?.cast<String>() ?? splitApps;
-      } catch (_) {}
-    }
-    final profilesRaw = prefs.getString('way.profiles');
-    if (profilesRaw != null) {
-      try {
-        final list = json.decode(profilesRaw) as List;
-        profiles = list
-            .map((e) => Profile.fromJson(e as Map<String, dynamic>))
-            .toList();
-      } catch (_) {}
-    }
-    final subsRaw = prefs.getString('way.subs');
-    if (subsRaw != null) {
-      try {
-        final list = json.decode(subsRaw) as List;
-        subs = list
-            .map((e) => Subscription.fromJson(e as Map<String, dynamic>))
-            .toList();
+        subUserAgent = s['subua'] as String? ?? subUserAgent;
+        autoSelect = s['autoselect'] as bool? ?? autoSelect;
       } catch (_) {}
     }
     final docs = await getApplicationSupportDirectory();
@@ -116,6 +131,64 @@ class AppState extends ChangeNotifier {
       if (autoUpdate) updateSubscriptions();
     });
     notifyListeners();
+  }
+
+  Future<void> _loadSecure(SharedPreferences prefs) async {
+    try {
+      final migratedProfiles = prefs.getString('way.profiles');
+      final migratedSubs = prefs.getString('way.subs');
+      if (migratedProfiles != null) {
+        if (await _secure.containsKey(key: 'way.profiles') != true) {
+          await _secure.write(key: 'way.profiles', value: migratedProfiles);
+        }
+        await prefs.remove('way.profiles');
+      }
+      if (migratedSubs != null) {
+        if (await _secure.containsKey(key: 'way.subs') != true) {
+          await _secure.write(key: 'way.subs', value: migratedSubs);
+        }
+        await prefs.remove('way.subs');
+      }
+      final profilesRaw = await _secure.read(key: 'way.profiles');
+      if (profilesRaw != null && profilesRaw.isNotEmpty) {
+        try {
+          final list = json.decode(profilesRaw) as List;
+          profiles = list
+              .map((e) => Profile.fromJson(e as Map<String, dynamic>))
+              .toList();
+        } catch (_) {}
+      }
+      final subsRaw = await _secure.read(key: 'way.subs');
+      if (subsRaw != null && subsRaw.isNotEmpty) {
+        try {
+          final list = json.decode(subsRaw) as List;
+          subs = list
+              .map((e) => Subscription.fromJson(e as Map<String, dynamic>))
+              .toList();
+        } catch (_) {}
+      }
+      hwid = await _secure.read(key: 'way.hwid');
+      if (hwid == null || hwid!.isEmpty) {
+        hwid = _genUuidV4();
+        await _secure.write(key: 'way.hwid', value: hwid!);
+      }
+    } catch (e) {
+      debugPrint('secure storage load failed: $e');
+      if (hwid == null || hwid!.isEmpty) hwid = _genUuidV4();
+    }
+  }
+
+  String _genUuidV4() {
+    final rand = Random.secure();
+    final bytes = List<int>.generate(16, (_) => rand.nextInt(256));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    final hex = bytes
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join();
+    return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
+        '${hex.substring(12, 16)}-${hex.substring(16, 20)}-'
+        '${hex.substring(20)}';
   }
 
   Future<void> _persist() async {
@@ -133,15 +206,21 @@ class AppState extends ChangeNotifier {
       'killswitch': killSwitch,
       'splitmode': splitMode,
       'splitapps': splitApps,
+      'subua': subUserAgent,
+      'autoselect': autoSelect,
     }));
-    await prefs.setString(
-      'way.profiles',
-      json.encode(profiles.map((p) => p.toJson()).toList()),
-    );
-    await prefs.setString(
-      'way.subs',
-      json.encode(subs.map((s) => s.toJson()).toList()),
-    );
+    try {
+      await _secure.write(
+        key: 'way.profiles',
+        value: json.encode(profiles.map((p) => p.toJson()).toList()),
+      );
+      await _secure.write(
+        key: 'way.subs',
+        value: json.encode(subs.map((s) => s.toJson()).toList()),
+      );
+    } catch (e) {
+      debugPrint('secure storage persist failed: $e');
+    }
   }
 
   void log(String line) {
@@ -173,12 +252,31 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> connect() async {
-    final profile = selected;
+    var profile = selected;
+    if (autoSelect) {
+      final best = bestProfile;
+      if (best != null) profile = best;
+    }
     if (profile == null) {
       vpn = const VpnStatus(error: 'no_profile');
       notifyListeners();
       return;
     }
+    if (!profile.supportedOn(engine)) {
+      final alt = engine == 'singbox' ? 'xray' : 'singbox';
+      if (profile.supportedOn(alt)) {
+        log('profile "${profile.name}" needs $alt, switching engine');
+        engine = alt;
+      } else {
+        log('profile "${profile.name}" is not supported by any engine');
+        vpn = VpnStatus(error: 'unsupported_profile');
+        notifyListeners();
+        return;
+      }
+    }
+    final group = autoSelect && engine == 'singbox' && engineProfiles.length > 1
+        ? engineProfiles
+        : const <Profile>[];
     log('connecting via ${profile.name} ($engine)');
     vpn = const VpnStatus(phase: VpnPhase.connecting);
     notifyListeners();
@@ -187,6 +285,7 @@ class AppState extends ChangeNotifier {
       engine: engine,
       tun: tun,
       profile: profile,
+      group: group,
       logPath: engine == 'xray' ? (xrayLogPath ?? '/tmp/wayxray.log') : (singBoxLogPath ?? '/tmp/waybox.log'),
       killSwitch: killSwitch && isDesktop,
       routingMode: routingMode,
@@ -238,7 +337,11 @@ class AppState extends ChangeNotifier {
 
   Future<void> updateSubscription(Subscription sub) async {
     try {
-      final fetched = await subsService.fetch(sub);
+      final fetched = await subsService.fetch(
+        sub,
+        userAgent: subUserAgent,
+        hwid: hwid,
+      );
       profiles.removeWhere((p) => p.subId == sub.id);
       profiles.addAll(fetched);
       sub.lastUpdate = DateTime.now();
@@ -272,6 +375,33 @@ class AppState extends ChangeNotifier {
 
   void select(String id) {
     selectedId = id;
+    autoSelect = false;
+    _persist();
+    notifyListeners();
+  }
+
+  void setAutoSelect(bool value) {
+    autoSelect = value;
+    _persist();
+    notifyListeners();
+    if (value) testLatencies();
+  }
+
+  Future<void> testLatencies() async {
+    if (latencyTesting) return;
+    final targets = engineProfiles;
+    if (targets.isEmpty) return;
+    latencyTesting = true;
+    notifyListeners();
+    final results = await LatencyTester.testAll(targets);
+    latencies.addAll(results);
+    latencyTesting = false;
+    log('latency: ${targets.length} server(s) tested');
+    notifyListeners();
+  }
+
+  void setSubUserAgent(String value) {
+    subUserAgent = value.trim().isEmpty ? 'v2rayTun/1.7.6' : value.trim();
     _persist();
     notifyListeners();
   }

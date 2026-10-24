@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/config_builder.dart';
+import '../../core/subscriptions.dart';
 import '../../l10n.dart';
 import '../../state/app_state.dart';
 import 'package:provider/provider.dart';
@@ -58,6 +59,38 @@ class _SplitProcessesFieldState extends State<_SplitProcessesField> {
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
+
+  String _subLine(Subscription s, L10n l10n) {
+    final base = '${s.count} ${l10n.entries}';
+    final hasQuota = s.usedBytes > 0 || s.totalBytes > 0;
+    final hasExpire = s.expiresAt != null;
+    if (!hasQuota && !hasExpire) return base;
+    final parts = <String>[base];
+    if (hasQuota) {
+      final used = _fmtBytes(s.usedBytes);
+      final total = s.totalBytes > 0 ? _fmtBytes(s.totalBytes) : l10n.unlimited;
+      parts.add('$used / $total');
+    }
+    if (hasExpire) {
+      final d = s.expiresAt!.toLocal();
+      parts.add('${l10n.expiresLabel} '
+          '${d.year.toString().padLeft(4, '0')}-'
+          '${d.month.toString().padLeft(2, '0')}-'
+          '${d.day.toString().padLeft(2, '0')}');
+    }
+    return parts.join(' · ');
+  }
+
+  String _fmtBytes(int bytes) {
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var value = bytes.toDouble();
+    var unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+      value /= 1024;
+      unit++;
+    }
+    return '${value.toStringAsFixed(value >= 100 || unit == 0 ? 0 : 1)} ${units[unit]}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -198,6 +231,7 @@ class SettingsScreen extends StatelessWidget {
             ),
           _SectionCard(
             title: l10n.updates,
+            hint: l10n.subUaHint,
             child: Column(
               children: [
                 SwitchListTile(
@@ -212,13 +246,23 @@ class SettingsScreen extends StatelessWidget {
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(Icons.rss_feed_rounded),
                       title: Text(s.name, overflow: TextOverflow.ellipsis),
-                      subtitle: Text('${s.count} ${l10n.entries}'),
+                      subtitle: Text(_subLine(s, l10n)),
                       trailing: IconButton(
                         icon: const Icon(Icons.refresh_rounded),
                         onPressed: () => state.updateSubscription(s),
                       ),
                     ),
                   ),
+                const SizedBox(height: 4),
+                TextFormField(
+                  initialValue: state.subUserAgent,
+                  onFieldSubmitted: state.setSubUserAgent,
+                  decoration: InputDecoration(
+                    labelText: l10n.subUserAgent,
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
               ],
             ),
           ),

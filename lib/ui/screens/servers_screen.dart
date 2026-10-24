@@ -32,6 +32,22 @@ class ServersScreen extends StatelessWidget {
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
               ),
+              if (state.latencyTesting)
+                const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2.5),
+                  ),
+                )
+              else
+                IconButton(
+                  icon: const Icon(Icons.speed_rounded),
+                  tooltip: l10n.testLatency,
+                  onPressed:
+                      state.profiles.isEmpty ? null : state.testLatencies,
+                ),
               PopupMenuButton<String>(
                 icon: const Icon(Icons.add_rounded),
                 tooltip: l10n.addServer,
@@ -67,11 +83,21 @@ class ServersScreen extends StatelessWidget {
               ? Center(child: Text(l10n.noServers))
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                  itemCount: state.profiles.length,
-                  itemBuilder: (context, i) => ProfileTile(
-                    profile: state.profiles[i],
-                    selected: state.profiles[i].id == state.selectedId,
-                  ),
+                  itemCount: state.profiles.length + 1,
+                  itemBuilder: (context, i) {
+                    if (i == 0) {
+                      return _AutoTile(
+                        enabled: state.engineProfiles.length > 1,
+                      );
+                    }
+                    final profile = state.profiles[i - 1];
+                    return ProfileTile(
+                      profile: profile,
+                      selected:
+                          profile.id == state.selectedId && !state.autoSelect,
+                      latency: state.latencies[profile.id],
+                    );
+                  },
                 ),
         ),
       ],
@@ -79,5 +105,52 @@ class ServersScreen extends StatelessWidget {
 
     if (fullPage) return Scaffold(body: SafeArea(child: body));
     return SafeArea(child: body);
+  }
+}
+
+class _AutoTile extends StatelessWidget {
+  final bool enabled;
+
+  const _AutoTile({required this.enabled});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10nScope.of(context);
+    final state = context.watch<AppState>();
+    final scheme = Theme.of(context).colorScheme;
+    final best = state.bestProfile;
+    final subtitle = best != null
+        ? '${l10n.fastest}: ${best.name} · ${state.latencies[best.id]} ${l10n.ms}'
+        : l10n.autoFastestHint;
+    return Opacity(
+      opacity: enabled ? 1.0 : 0.5,
+      child: Card.filled(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        color: state.autoSelect ? scheme.primaryContainer : null,
+        child: ListTile(
+          onTap: enabled ? () => state.setAutoSelect(true) : null,
+          leading: CircleAvatar(
+            backgroundColor: state.autoSelect
+                ? scheme.primary
+                : scheme.surfaceContainerHighest,
+            foregroundColor: state.autoSelect
+                ? scheme.onPrimary
+                : scheme.onSurfaceVariant,
+            child: const Icon(Icons.bolt_rounded, size: 20),
+          ),
+          title: Text(
+            l10n.autoFastest,
+            style: TextStyle(
+              fontWeight:
+                  state.autoSelect ? FontWeight.w600 : FontWeight.w500,
+            ),
+          ),
+          subtitle: Text(subtitle, overflow: TextOverflow.ellipsis),
+          trailing: state.autoSelect
+              ? Icon(Icons.check_circle_rounded, color: scheme.primary)
+              : null,
+        ),
+      ),
+    );
   }
 }

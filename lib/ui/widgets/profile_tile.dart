@@ -8,14 +8,28 @@ import 'package:provider/provider.dart';
 class ProfileTile extends StatelessWidget {
   final Profile profile;
   final bool selected;
+  final int? latency;
 
-  const ProfileTile({super.key, required this.profile, required this.selected});
+  const ProfileTile({
+    super.key,
+    required this.profile,
+    required this.selected,
+    this.latency,
+  });
+
+  Color _latencyColor(ColorScheme scheme) {
+    if (latency == null) return scheme.onSurfaceVariant;
+    if (latency! < 200) return scheme.primary;
+    if (latency! < 700) return scheme.tertiary;
+    return scheme.error;
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = L10nScope.of(context);
     final scheme = Theme.of(context).colorScheme;
     final state = context.read<AppState>();
+    final color = _latencyColor(scheme);
 
     return Card.filled(
       margin: const EdgeInsets.symmetric(vertical: 4),
@@ -43,39 +57,69 @@ class ProfileTile extends StatelessWidget {
           '${profile.server}:${profile.port}',
           overflow: TextOverflow.ellipsis,
         ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) async {
-            if (value == 'delete') {
-              final ok = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: Text(l10n.delete),
-                  content: Text(l10n.deleteConfirm),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: Text(l10n.cancel),
-                    ),
-                    FilledButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: Text(l10n.delete),
-                    ),
-                  ],
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (latency != null)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3,
                 ),
-              );
-              if (ok == true) state.removeProfile(profile.id);
-            }
-          },
-          itemBuilder: (context) => [
-            PopupMenuItem(
-              value: 'delete',
-              child: Row(
-                children: [
-                  const Icon(Icons.delete_outline_rounded),
-                  const SizedBox(width: 12),
-                  Text(l10n.delete),
-                ],
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  color: color.withValues(alpha: 0.14),
+                ),
+                child: Text(
+                  '$latency ${l10n.ms}',
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              )
+            else if (state.latencyTesting)
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
               ),
+            PopupMenuButton<String>(
+              onSelected: (value) async {
+                if (value == 'delete') {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: Text(l10n.delete),
+                      content: Text(l10n.deleteConfirm),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: Text(l10n.cancel),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: Text(l10n.delete),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (ok == true) state.removeProfile(profile.id);
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.delete_outline_rounded),
+                      const SizedBox(width: 12),
+                      Text(l10n.delete),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),

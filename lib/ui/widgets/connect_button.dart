@@ -26,39 +26,33 @@ class ConnectButton extends StatelessWidget {
         }
       },
       child: SizedBox(
-        width: 200,
-        height: 200,
+        width: 208,
+        height: 208,
         child: Stack(
           alignment: Alignment.center,
           children: [
-            if (busy)
-              SizedBox(
-                width: 196,
-                height: 196,
-                child: CircularProgressIndicator(
-                  strokeWidth: 5,
-                  color: scheme.primary,
-                ),
-              )
-            else
-              Container(
-                width: 196,
-                height: 196,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: connected ? scheme.primary : scheme.outlineVariant,
-                    width: 5,
-                  ),
-                ),
-              ),
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeOutCubic,
-              width: connected ? 150 : 140,
-              height: connected ? 150 : 140,
+              width: 204,
+              height: 204,
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
+                borderRadius: BorderRadius.circular(64),
+                border: Border.all(
+                  color: connected
+                      ? scheme.primary.withValues(alpha: 0.45)
+                      : scheme.outlineVariant.withValues(alpha: 0.55),
+                  width: 2,
+                ),
+              ),
+            ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              width: connected ? 168 : 156,
+              height: connected ? 168 : 156,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(52),
                 color: connected
                     ? scheme.primary
                     : scheme.surfaceContainerHighest,
@@ -67,16 +61,29 @@ class ConnectButton extends StatelessWidget {
                     color: connected
                         ? scheme.primary.withValues(alpha: 0.35)
                         : scheme.shadow.withValues(alpha: 0.08),
-                    blurRadius: connected ? 40 : 16,
+                    blurRadius: connected ? 42 : 16,
                     spreadRadius: connected ? 6 : 2,
                   ),
                 ],
               ),
-              child: Icon(
-                Icons.power_settings_new_rounded,
-                size: 56,
-                color: connected ? scheme.onPrimary : scheme.onSurfaceVariant,
-              ),
+              child: busy
+                  ? Padding(
+                      padding: const EdgeInsets.all(44),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 5,
+                        strokeCap: StrokeCap.round,
+                        color: connected
+                            ? scheme.onPrimary
+                            : scheme.primary,
+                      ),
+                    )
+                  : Icon(
+                      Icons.power_settings_new_rounded,
+                      size: 64,
+                      color: connected
+                          ? scheme.onPrimary
+                          : scheme.onSurfaceVariant,
+                    ),
             ),
           ],
         ),

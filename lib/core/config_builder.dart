@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'profile.dart';
 
 class WayPorts {
@@ -30,11 +32,31 @@ class ConfigBuilder {
     required bool tun,
     required String logPath,
     RoutingSettings routing = const RoutingSettings(),
+    List<Profile> group = const [],
   }) {
+    final members = group.isEmpty ? [p] : group;
+    final outbounds = <Map<String, dynamic>>[];
+    final tags = <String>[];
+    for (var i = 0; i < members.length; i++) {
+      final tag = members.length == 1 ? 'proxy' : 's$i';
+      outbounds.add(_singBoxOutbound(members[i], tag: tag));
+      tags.add(tag);
+    }
+    if (members.length > 1) {
+      outbounds.add({
+        'type': 'urltest',
+        'tag': 'proxy',
+        'outbounds': tags,
+        'url': 'https://www.gstatic.com/generate_204',
+        'interval': '3m0s',
+        'tolerance': 50,
+      });
+    }
+    outbounds.add(_directOutbound());
     return _singboxShell(
       logPath: logPath,
       tun: tun,
-      outbounds: [_singBoxOutbound(p), _directOutbound()],
+      outbounds: outbounds,
       routing: routing,
     );
   }
@@ -210,10 +232,11 @@ class ConfigBuilder {
   static Map<String, dynamic> _directOutbound() =>
       {'type': 'direct', 'tag': 'direct'};
 
-  static Map<String, dynamic> _singBoxOutbound(Profile p) {
+  static Map<String, dynamic> _singBoxOutbound(Profile p,
+      {String tag = 'proxy'}) {
     final out = <String, dynamic>{
       'type': p.protocol,
-      'tag': 'proxy',
+      'tag': tag,
       'server': p.server,
       'server_port': p.port,
     };
@@ -402,6 +425,8 @@ class ConfigBuilder {
         return 'grpc';
       case 'http':
         return 'http';
+      case 'xhttp':
+        return 'xhttp';
       default:
         return 'tcp';
     }
@@ -455,6 +480,22 @@ class ConfigBuilder {
           'host': [if (p.host?.isNotEmpty == true) p.host!],
         };
         break;
+      case 'xhttp':
+        stream['xhttpSettings'] = {
+          'path': p.path?.isNotEmpty == true ? p.path : '/',
+          if (p.host?.isNotEmpty == true) 'host': p.host,
+          if (p.mode?.isNotEmpty == true) 'mode': p.mode,
+          if (p.extra?.isNotEmpty == true) 'extra': _decodeJson(p.extra!),
+        };
+        break;
     }
+  }
+
+  static Map<String, dynamic>? _decodeJson(String raw) {
+    try {
+      final value = json.decode(raw);
+      if (value is Map<String, dynamic>) return value;
+    } catch (_) {}
+    return null;
   }
 }

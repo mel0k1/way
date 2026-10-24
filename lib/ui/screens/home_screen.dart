@@ -36,9 +36,15 @@ class HomeScreen extends StatelessWidget {
                       builder: (_) => const ServersScreen(fullPage: true),
                     ),
                   ),
-                  icon: const Icon(Icons.dns_rounded),
+                  icon: Icon(
+                    state.autoSelect
+                        ? Icons.bolt_rounded
+                        : Icons.dns_rounded,
+                  ),
                   label: Text(
-                    state.selected?.name ?? l10n.navServers,
+                    state.autoSelect
+                        ? '${l10n.autoFastest} · ${state.effectiveProfile?.name ?? l10n.navServers}'
+                        : state.effectiveProfile?.name ?? l10n.navServers,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),

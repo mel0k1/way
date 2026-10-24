@@ -83,6 +83,8 @@ class LinkParser {
       shortId: _q(uri, 'sid'),
       insecure: _q(uri, 'allowInsecure') == '1' || _q(uri, 'insecure') == '1',
       alpn: _q(uri, 'alpn'),
+      mode: _q(uri, 'mode'),
+      extra: _q(uri, 'extra'),
     );
   }
 

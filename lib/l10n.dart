@@ -96,6 +96,27 @@ class L10n {
   String get searchApps => ru ? 'Поиск приложений' : 'Search apps';
   String get noAppsFound => ru ? 'Ничего не найдено' : 'Nothing found';
 
+  String get autoFastest => ru ? 'Быстрейший' : 'Fastest';
+  String get autoFastestHint =>
+      ru ? 'Автовыбор сервера с наименьшей задержкой' : 'Auto-pick the lowest-latency server';
+  String get fastest => ru ? 'Быстрейший' : 'Fastest';
+  String get testLatency => ru ? 'Проверить задержку' : 'Test latency';
+  String get testing => ru ? 'Проверка…' : 'Testing…';
+  String get ms => ru ? 'мс' : 'ms';
+  String get timeout => ru ? 'таймаут' : 'timeout';
+  String get scanQr => ru ? 'Сканировать QR-код' : 'Scan QR code';
+  String get cameraError => ru
+      ? 'Нет доступа к камере. Разрешите камеру в настройках системы.'
+      : 'No camera access. Grant camera permission in system settings.';
+  String get paste => ru ? 'Вставить из буфера' : 'Paste from clipboard';
+  String get subUserAgent => ru ? 'User-Agent подписки' : 'Subscription User-Agent';
+  String get subUaHint => ru
+      ? 'Некоторые панели отдают реальные серверы только известным клиентам. Way отправляет совместимый UA и идентификатор устройства (хранится в зашифрованном виде).'
+      : 'Some panels serve real nodes only to known clients. Way sends a compatible UA and a device id (stored encrypted).';
+  String get trafficLabel => ru ? 'Трафик' : 'Traffic';
+  String get unlimited => ru ? 'без лимита' : 'unlimited';
+  String get expiresLabel => ru ? 'до' : 'until';
+
   String get about => ru ? 'О приложении' : 'About';
   String get version => ru ? 'Версия' : 'Version';
   String get cores => ru ? 'Ядра' : 'Cores';
@@ -121,6 +142,10 @@ class L10n {
         return errPermission;
       case 'waycore_not_found':
         return errWaycore;
+      case 'unsupported_profile':
+        return ru
+            ? 'Профиль не поддерживается доступными ядрами'
+            : 'Profile is not supported by the available engines';
       default:
         return code ?? (ru ? 'Неизвестная ошибка' : 'Unknown error');
     }

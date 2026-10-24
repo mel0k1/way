@@ -22,6 +22,8 @@ class Profile {
   String? congestion;
   int? upMbps;
   int? downMbps;
+  String? mode;
+  String? extra;
   String subId;
 
   Profile({
@@ -48,6 +50,8 @@ class Profile {
     this.congestion,
     this.upMbps,
     this.downMbps,
+    this.mode,
+    this.extra,
     this.subId = '',
   });
 
@@ -94,6 +98,8 @@ class Profile {
     'congestion': congestion,
     'up_mbps': upMbps,
     'down_mbps': downMbps,
+    'mode': mode,
+    'extra': extra,
     'sub_id': subId,
   };
 
@@ -121,8 +127,16 @@ class Profile {
     congestion: j['congestion'] as String?,
     upMbps: (j['up_mbps'] as num?)?.toInt(),
     downMbps: (j['down_mbps'] as num?)?.toInt(),
+    mode: j['mode'] as String?,
+    extra: j['extra'] as String?,
     subId: j['sub_id'] as String? ?? '',
   );
+
+  bool supportedOn(String engine) {
+    if (protocol == 'hysteria2' || protocol == 'tuic') return engine == 'singbox';
+    if (network == 'xhttp') return engine == 'xray';
+    return true;
+  }
 
   bool get needsTls =>
       protocol == 'trojan' ||

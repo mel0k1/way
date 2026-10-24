@@ -7,6 +7,7 @@ import 'ui/screens/home_screen.dart';
 import 'ui/screens/logs_screen.dart';
 import 'ui/screens/servers_screen.dart';
 import 'ui/screens/settings_screen.dart';
+import 'ui/widgets/app_background.dart';
 
 class WayApp extends StatelessWidget {
   const WayApp({super.key});
@@ -27,6 +28,12 @@ class WayApp extends StatelessWidget {
               seedColor: const Color(0xFF9BDDB4),
               brightness: Brightness.dark,
             )),
+            builder: (context, child) => Stack(
+              children: [
+                const Positioned.fill(child: AppBackground()),
+                child ?? const SizedBox.shrink(),
+              ],
+            ),
             home: const WayShell(),
           ),
         );
@@ -49,7 +56,7 @@ class WayApp extends StatelessWidget {
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      scaffoldBackgroundColor: scheme.surface,
+      scaffoldBackgroundColor: Colors.transparent,
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: scheme.surfaceContainer,
         indicatorColor: scheme.primaryContainer,

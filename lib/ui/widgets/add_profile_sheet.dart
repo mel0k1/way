@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/subscriptions.dart';
 import '../../l10n.dart';
 import '../../state/app_state.dart';
+import '../screens/qr_scan_screen.dart';
 import 'package:provider/provider.dart';
 
 void showAddSheet(BuildContext context, String kind) {
@@ -34,6 +36,23 @@ class _AddSheetState extends State<_AddSheet> {
     nameController.dispose();
     urlController.dispose();
     super.dispose();
+  }
+
+  Future<void> _paste(TextEditingController controller) async {
+    final data = await Clipboard.getData('text/plain');
+    final text = data?.text?.trim();
+    if (text != null && text.isNotEmpty && mounted) {
+      controller.text = text;
+    }
+  }
+
+  Future<void> _scanQr() async {
+    final code = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const QrScanScreen()),
+    );
+    if (code == null || code.trim().isEmpty || !mounted) return;
+    context.read<AppState>().addFromLink(code.trim());
+    if (mounted) Navigator.pop(context);
   }
 
   @override
@@ -69,6 +88,11 @@ class _AddSheetState extends State<_AddSheet> {
               decoration: InputDecoration(
                 labelText: l10n.urlLabel,
                 border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.content_paste_rounded),
+                  tooltip: l10n.paste,
+                  onPressed: () => _paste(urlController),
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -90,6 +114,22 @@ class _AddSheetState extends State<_AddSheet> {
               decoration: InputDecoration(
                 labelText: l10n.linkHint,
                 border: const OutlineInputBorder(),
+                suffixIcon: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.content_paste_rounded),
+                      tooltip: l10n.paste,
+                      onPressed: () => _paste(linkController),
+                    ),
+                    if (!state.isDesktop)
+                      IconButton(
+                        icon: const Icon(Icons.qr_code_scanner_rounded),
+                        tooltip: l10n.scanQr,
+                        onPressed: _scanQr,
+                      ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 16),
