@@ -31,6 +31,7 @@
 - **Routing presets** — “All via VPN”, “RU direct” (geosite/geoip rule-sets) and ad blocking (category-ads-all)
 - **Fastest server** — urltest group in sing-box and TCP latency testing with auto-select
 - **Subscriptions** — import by URL or QR code, clipboard paste, auto-refresh, panel-compatible User-Agent and quota display
+- **Deep links** — tap a `vless://`/`vmess://`/`trojan://`/`ss://`/`hysteria2://`/`tuic://` link or `way://import/<url>` to import profiles and subscriptions instantly (Android and Windows)
 - **Encrypted storage** — profiles and subscription keys live in flutter_secure_storage (Keystore / DPAPI)
 - **Autostart** — launch on boot (Android) or user sign-in (Windows Run key), optional auto-connect on launch
 - **Custom notifications** — branded Android foreground notification with a disconnect button and session timer, Windows toasts
@@ -129,6 +130,7 @@ This project is a client shell around open-source cores. It ships no servers, no
 - **Пресеты маршрутизации** — «Всё через VPN», «RU напрямую» (rule-set geosite/geoip) и блокировка рекламы (category-ads-all)
 - **Быстрейший сервер** — urltest-группа в sing-box и TCP-замер задержки с автовыбором
 - **Подписки** — импорт по ссылке или QR-коду, вставка из буфера, автообновление, совместимый с панелями User-Agent и показ квоты
+- **Диплинки** — клик по ссылке `vless://`/`vmess://`/`trojan://`/`ss://`/`hysteria2://`/`tuic://` или `way://import/<url>` мгновенно импортирует профили и подписки (Android и Windows)
 - **Шифрованное хранилище** — профили и ключи подписок в flutter_secure_storage (Keystore / DPAPI)
 - **Автозапуск** — старт после загрузки (Android) или входа в систему (ключ Run Windows), опциональное авто-подключение при запуске
 - **Кастомные уведомления** — брендированная нотификация Android с кнопкой отключения и таймером сессии, тосты Windows

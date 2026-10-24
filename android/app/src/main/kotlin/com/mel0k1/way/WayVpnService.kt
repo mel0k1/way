@@ -54,6 +54,7 @@ class WayVpnService : VpnService(), PlatformInterface {
     private var splitApps = emptyList<String>()
     private var restartAttempts = 0
     private var connectStartMs = 0L
+    private var foregroundShown = false
     private val watchdog = Handler(Looper.getMainLooper())
     private val watchdogTick = object : Runnable {
         override fun run() {
@@ -75,37 +76,79 @@ class WayVpnService : VpnService(), PlatformInterface {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent == null) {
-            restoreConfig()
-            return START_STICKY
-        }
-        if (intent.getBooleanExtra("restore", false)) {
+        try {
+            if (intent == null) {
+                handleNullIntent()
+                return START_STICKY
+            }
+            if (intent.getBooleanExtra("restore", false)) {
+                startForegroundCompat(getString(R.string.nt_connecting))
+                restoreConfig()
+                return START_STICKY
+            }
+            if (intent.getBooleanExtra("stop", false)) {
+                ensureForeground()
+                desired = false
+                clearSavedConfig()
+                stopCore()
+                stopSelf()
+                return START_NOT_STICKY
+            }
+            val engine = intent.getStringExtra("engine") ?: run {
+                stopSelf()
+                return START_NOT_STICKY
+            }
+            splitMode = intent.getStringExtra("split_mode") ?: "off"
+            splitApps = intent.getStringExtra("split_apps")
+                ?.split(",")
+                ?.map { it.trim() }
+                ?.filter { it.isNotEmpty() }
+                .orEmpty()
             startForegroundCompat(getString(R.string.nt_connecting))
-            restoreConfig()
+            startCore(
+                engine = engine,
+                singboxConfig = intent.getStringExtra("singbox") ?: "",
+                xrayConfig = intent.getStringExtra("xray") ?: "",
+                bridgeConfig = intent.getStringExtra("bridge") ?: "",
+            )
             return START_STICKY
-        }
-        if (intent.getBooleanExtra("stop", false)) {
-            desired = false
-            clearSavedConfig()
-            stopCore()
-            stopSelf()
+        } catch (e: Throwable) {
+            setState(STATE_STOPPED, e.message ?: e.toString())
+            try {
+                stopCore()
+            } catch (_: Throwable) {
+            }
+            try {
+                stopSelf()
+            } catch (_: Throwable) {
+            }
             return START_NOT_STICKY
         }
-        val engine = intent.getStringExtra("engine") ?: return START_NOT_STICKY
-        splitMode = intent.getStringExtra("split_mode") ?: "off"
-        splitApps = intent.getStringExtra("split_apps")
-            ?.split(",")
-            ?.map { it.trim() }
-            ?.filter { it.isNotEmpty() }
-            .orEmpty()
-        startForegroundCompat(getString(R.string.nt_connecting))
-        startCore(
-            engine = engine,
-            singboxConfig = intent.getStringExtra("singbox") ?: "",
-            xrayConfig = intent.getStringExtra("xray") ?: "",
-            bridgeConfig = intent.getStringExtra("bridge") ?: "",
-        )
-        return START_STICKY
+    }
+
+    private fun handleNullIntent() {
+        try {
+            val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            if (prefs.getString("engine", null) == null) {
+                stopSelf()
+                return
+            }
+            restoreConfig()
+        } catch (e: Throwable) {
+            setState(STATE_STOPPED, e.message ?: e.toString())
+            try {
+                stopSelf()
+            } catch (_: Throwable) {
+            }
+        }
+    }
+
+    private fun ensureForeground() {
+        if (foregroundShown) return
+        try {
+            startForegroundCompat(getString(R.string.nt_disconnecting))
+        } catch (_: Throwable) {
+        }
     }
 
     override fun onDestroy() {
@@ -172,8 +215,11 @@ class WayVpnService : VpnService(), PlatformInterface {
     }
 
     private fun showNotification(statusText: String, showTimer: Boolean) {
-        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(NOTIFICATION_ID, buildNotification(statusText, showTimer))
+        try {
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.notify(NOTIFICATION_ID, buildNotification(statusText, showTimer))
+        } catch (_: Throwable) {
+        }
     }
 
     private fun startForegroundCompat(statusText: String) {
@@ -188,6 +234,7 @@ class WayVpnService : VpnService(), PlatformInterface {
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }
+        foregroundShown = true
     }
 
     private fun startCore(
@@ -230,21 +277,29 @@ class WayVpnService : VpnService(), PlatformInterface {
     }
 
     private fun restoreConfig() {
-        val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val engine = prefs.getString("engine", null) ?: return
-        val singbox = prefs.getString("singbox", null) ?: return
-        splitMode = prefs.getString("split_mode", null) ?: "off"
-        splitApps = prefs.getString("split_apps", null)
-            ?.split(",")
-            ?.filter { it.isNotBlank() }
-            .orEmpty()
-        startForegroundCompat(getString(R.string.nt_connecting))
-        startCore(
-            engine = engine,
-            singboxConfig = singbox,
-            xrayConfig = prefs.getString("xray", null) ?: "",
-            bridgeConfig = prefs.getString("bridge", null) ?: "",
-        )
+        try {
+            val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val engine = prefs.getString("engine", null) ?: return
+            val singbox = prefs.getString("singbox", null) ?: return
+            splitMode = prefs.getString("split_mode", null) ?: "off"
+            splitApps = prefs.getString("split_apps", null)
+                ?.split(",")
+                ?.filter { it.isNotBlank() }
+                .orEmpty()
+            startForegroundCompat(getString(R.string.nt_connecting))
+            startCore(
+                engine = engine,
+                singboxConfig = singbox,
+                xrayConfig = prefs.getString("xray", null) ?: "",
+                bridgeConfig = prefs.getString("bridge", null) ?: "",
+            )
+        } catch (e: Throwable) {
+            setState(STATE_STOPPED, e.message ?: e.toString())
+            try {
+                stopSelf()
+            } catch (_: Throwable) {
+            }
+        }
     }
 
     private fun saveConfig(engine: String, singbox: String, xray: String, bridge: String) {
@@ -290,6 +345,7 @@ class WayVpnService : VpnService(), PlatformInterface {
             pfd?.close()
         } catch (_: Throwable) {
         }
+        foregroundShown = false
         setState(STATE_STOPPED)
     }
 

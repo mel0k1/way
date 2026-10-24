@@ -58,6 +58,8 @@ abstract class VpnBridge {
   Future<VpnStatus> status();
   Future<bool> autostartEnabled();
   Future<void> setAutostart(bool value);
+  Future<String?> takePendingLink();
+  void setDeepLinkHandler(void Function(String url)? handler);
   bool get tunSupported;
 }
 
@@ -66,6 +68,27 @@ class AndroidBridge implements VpnBridge {
 
   @override
   bool get tunSupported => true;
+
+  @override
+  void setDeepLinkHandler(void Function(String url)? handler) {
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'on_link' && call.arguments is String) {
+        handler?.call(call.arguments as String);
+      }
+      return null;
+    });
+  }
+
+  @override
+  Future<String?> takePendingLink() async {
+    try {
+      final link = await _channel.invokeMethod('take_link');
+      if (link is String && link.contains('://')) return link;
+      return null;
+    } on PlatformException {
+      return null;
+    }
+  }
 
   @override
   Future<VpnStatus> connect(ConnectRequest request) async {
@@ -89,7 +112,9 @@ class AndroidBridge implements VpnBridge {
       'split_apps': request.splitApps.join(','),
     };
     try {
-      final result = await _channel.invokeMethod('start', body);
+      final result = await _channel
+          .invokeMethod('start', body)
+          .timeout(const Duration(seconds: 45));
       final granted = result is Map && result['started'] == true;
       if (!granted) {
         return const VpnStatus(error: 'vpn_permission_denied');
@@ -97,6 +122,8 @@ class AndroidBridge implements VpnBridge {
       return const VpnStatus(phase: VpnPhase.connecting);
     } on PlatformException catch (e) {
       return VpnStatus(error: e.message ?? e.code);
+    } on TimeoutException {
+      return const VpnStatus(error: 'start_timeout');
     }
   }
 
@@ -275,6 +302,44 @@ class DesktopBridge implements VpnBridge {
     if (!await _ensureCore()) return false;
     final data = await _get('/autostart');
     return data?['enabled'] == true;
+  }
+
+  String? _mailboxPath() {
+    final appdata = Platform.environment['LOCALAPPDATA'];
+    if (appdata == null || appdata.isEmpty) return null;
+    return '$appdata\\way\\import.url';
+  }
+
+  @override
+  Future<String?> takePendingLink() async {
+    final path = _mailboxPath();
+    if (path == null) return null;
+    try {
+      final f = File(path);
+      if (!f.existsSync()) return null;
+      final content = f.readAsStringSync().trim();
+      try {
+        f.deleteSync();
+      } catch (_) {}
+      if (content.contains('://')) return content;
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  void setDeepLinkHandler(void Function(String url)? handler) {
+    _deepLinkHandler = handler;
+  }
+
+  void Function(String)? _deepLinkHandler;
+
+  Future<void> pollDeepLink() async {
+    final link = await takePendingLink();
+    if (link != null) {
+      _deepLinkHandler?.call(link);
+    }
   }
 
   @override

@@ -61,6 +61,10 @@ class AppState extends ChangeNotifier {
   bool latencyTesting = false;
   UpdateInfo? pendingUpdate;
   bool checkingUpdate = false;
+  int pendingTab = -1;
+  int lastImportCount = 0;
+  bool lastImportWasSub = false;
+  static String? launchLink;
 
   VpnStatus vpn = const VpnStatus();
   WayStats stats = WayStats.zero;
@@ -109,6 +113,22 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> init() async {
+    try {
+      await _initInner();
+    } catch (_) {}
+    if (launchLink != null) {
+      final link = launchLink;
+      launchLink = null;
+      if (link != null) handleDeepLink(link);
+    }
+    bridge.setDeepLinkHandler(handleDeepLink);
+    try {
+      final pending = await bridge.takePendingLink();
+      if (pending != null) handleDeepLink(pending);
+    } catch (_) {}
+  }
+
+  Future<void> _initInner() async {
     final prefs = await SharedPreferences.getInstance();
     _prefs = prefs;
     await _loadSecure(prefs);
@@ -276,6 +296,12 @@ class AppState extends ChangeNotifier {
   }
 
   void _tick() async {
+    if (isDesktop) {
+      try {
+        final b = bridge;
+        if (b is DesktopBridge) await b.pollDeepLink();
+      } catch (_) {}
+    }
     final s = await bridge.status();
     if (s.phase != vpn.phase || (s.error != null && s.error != vpn.error)) {
       if (vpn.phase == VpnPhase.connecting && s.phase == VpnPhase.connected) {
@@ -365,6 +391,47 @@ class AppState extends ChangeNotifier {
     if (desktopNotify) {
       showDesktopToast('Way', _ru ? 'Отключено' : 'Disconnected');
     }
+  }
+
+  void handleDeepLink(String raw) {
+    var url = raw.trim().replaceAll('\n', '').replaceAll('\r', '');
+    if (url.isEmpty) return;
+    if (url.toLowerCase().startsWith('way://')) {
+      var rest = url.substring(6);
+      if (rest.toLowerCase().startsWith('import/')) rest = rest.substring(7);
+      try {
+        rest = Uri.decodeFull(rest);
+      } catch (_) {}
+      url = rest.trim();
+    }
+    if (url.isEmpty || !url.contains('://')) {
+      log('deep link ignored: unsupported format');
+      return;
+    }
+    final scheme = url.split('://').first.toLowerCase();
+    lastImportWasSub = scheme == 'http' || scheme == 'https';
+    if (lastImportWasSub) {
+      var host = '';
+      try {
+        host = Uri.parse(url).host;
+      } catch (_) {}
+      addSubscription(url, host.isEmpty ? 'Subscription' : host);
+      lastImportCount = 0;
+      log('deep link: subscription from ${host.isEmpty ? 'url' : host}');
+    } else {
+      final before = profiles.length;
+      addFromLink(url);
+      lastImportCount = profiles.length - before;
+      log('deep link: $lastImportCount profile(s)');
+    }
+    pendingTab = 1;
+    notifyListeners();
+  }
+
+  void consumeDeepLinkTab() {
+    if (pendingTab < 0) return;
+    pendingTab = -1;
+    notifyListeners();
   }
 
   void addFromLink(String link, {String subId = ''}) {

@@ -124,6 +124,13 @@ class L10n {
 
   String get appSection => ru ? 'Приложение' : 'Application';
   String get autostart => ru ? 'Автозапуск' : 'Autostart';
+  String deepLinkProfiles(int n) => ru
+      ? 'Импортировано профилей: $n'
+      : 'Imported profiles: $n';
+  String get deepLinkSub => ru ? 'Подписка добавляется' : 'Adding subscription';
+  String get deepLinkInvalid => ru
+      ? 'Ссылка не распознана'
+      : 'Link not recognized';
   String get autostartHintDesktop => ru
       ? 'Запускать Way при входе в Windows (ключ Run в реестре).'
       : 'Start Way when you sign in to Windows (Run registry key).';

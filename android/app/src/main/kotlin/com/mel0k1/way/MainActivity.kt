@@ -14,83 +14,123 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
-    private var pendingResult: MethodChannel.Result? = null
+    private val pendingResults = mutableListOf<MethodChannel.Result>()
     private var pendingConfig: Map<String, String> = emptyMap()
+    private var pendingLink: String? = null
+    private var channel: MethodChannel? = null
+    private var waitingPermission = false
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(
+        channel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "way/core",
-        ).setMethodCallHandler { call, result ->
-            when (call.method) {
-                "start" -> {
-                    pendingConfig = call.arguments<Map<String, String>>() ?: emptyMap()
-                    pendingResult = result
-                    launchVpn()
-                }
-                "stop" -> {
-                    val intent = Intent(this, WayVpnService::class.java)
-                    intent.putExtra("stop", true)
-                    startService(intent)
-                    result.success(null)
-                }
-                "status" -> {
-                    result.success(
-                        mapOf(
-                            "state" to WayVpnService.state,
-                            "error" to WayVpnService.lastError,
+        ).also { ch ->
+            ch.setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "start" -> {
+                        pendingConfig = call.arguments<Map<String, String>>() ?: emptyMap()
+                        pendingResults.add(result)
+                        launchVpn()
+                    }
+                    "stop" -> {
+                        val intent = Intent(this, WayVpnService::class.java)
+                        intent.putExtra("stop", true)
+                        startService(intent)
+                        result.success(null)
+                    }
+                    "status" -> {
+                        result.success(
+                            mapOf(
+                                "state" to WayVpnService.state,
+                                "error" to WayVpnService.lastError,
+                            )
                         )
-                    )
-                }
-                "vpn_settings" -> {
-                    try {
-                        startActivity(Intent(Settings.ACTION_VPN_SETTINGS))
-                        result.success(null)
-                    } catch (e: Exception) {
-                        result.error("unavailable", e.message, null)
                     }
-                }
-                "apps" -> {
-                    result.success(installedApps())
-                }
-                "autostart" -> {
-                    val prefs = getSharedPreferences("way_boot", Context.MODE_PRIVATE)
-                    result.success(mapOf("enabled" to prefs.getBoolean("autostart", false)))
-                }
-                "set_autostart" -> {
-                    val enabled = call.argument<Boolean>("enabled") ?: false
-                    getSharedPreferences("way_boot", Context.MODE_PRIVATE)
-                        .edit()
-                        .putBoolean("autostart", enabled)
-                        .apply()
-                    result.success(null)
-                }
-                "open_url" -> {
-                    try {
-                        val url = call.argument<String>("url")
-                        if (url.isNullOrBlank()) throw IllegalArgumentException("url required")
-                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                        result.success(null)
-                    } catch (e: Exception) {
-                        result.error("unavailable", e.message, null)
+                    "vpn_settings" -> {
+                        try {
+                            startActivity(Intent(Settings.ACTION_VPN_SETTINGS))
+                            result.success(null)
+                        } catch (e: Exception) {
+                            result.error("unavailable", e.message, null)
+                        }
                     }
+                    "apps" -> {
+                        result.success(installedApps())
+                    }
+                    "autostart" -> {
+                        val prefs = getSharedPreferences("way_boot", Context.MODE_PRIVATE)
+                        result.success(mapOf("enabled" to prefs.getBoolean("autostart", false)))
+                    }
+                    "set_autostart" -> {
+                        val enabled = call.argument<Boolean>("enabled") ?: false
+                        getSharedPreferences("way_boot", Context.MODE_PRIVATE)
+                            .edit()
+                            .putBoolean("autostart", enabled)
+                            .apply()
+                        result.success(null)
+                    }
+                    "open_url" -> {
+                        try {
+                            val url = call.argument<String>("url")
+                            if (url.isNullOrBlank()) throw IllegalArgumentException("url required")
+                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                            result.success(null)
+                        } catch (e: Exception) {
+                            result.error("unavailable", e.message, null)
+                        }
+                    }
+                    "take_link" -> {
+                        val link = pendingLink
+                        pendingLink = null
+                        result.success(link)
+                    }
+                    else -> result.notImplemented()
                 }
-                else -> result.notImplemented()
             }
+        }
+        takeDeepLink(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        takeDeepLink(intent)
+    }
+
+    private fun takeDeepLink(intent: Intent?) {
+        val data = intent?.data?.toString() ?: return
+        if (!data.contains("://")) return
+        val handler = channel
+        if (handler != null) {
+            try {
+                handler.invokeMethod("on_link", data)
+            } catch (_: Exception) {
+                pendingLink = data
+            }
+        } else {
+            pendingLink = data
         }
     }
 
     private fun installedApps(): List<Map<String, String>> {
         val pm = packageManager
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        val activities = pm.queryIntentActivities(intent, 0)
+        val activities = try {
+            pm.queryIntentActivities(intent, 0)
+        } catch (_: Exception) {
+            emptyList()
+        }
         val apps = LinkedHashMap<String, Map<String, String>>()
         for (info in activities) {
-            val pkg = info.activityInfo.packageName ?: continue
+            val pkg = info.activityInfo?.packageName ?: continue
             if (pkg == packageName || apps.containsKey(pkg)) continue
+            val label = try {
+                info.loadLabel(pm)?.toString() ?: pkg
+            } catch (_: Exception) {
+                pkg
+            }
             apps[pkg] = mapOf(
-                "label" to (info.loadLabel(pm)?.toString() ?: pkg),
+                "label" to label,
                 "package" to pkg,
             )
         }
@@ -98,21 +138,42 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun launchVpn() {
-        val intent = VpnService.prepare(this)
-        if (intent != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                val granted = ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.POST_NOTIFICATIONS,
-                ) == PackageManager.PERMISSION_GRANTED
-                if (!granted) {
-                    requestPermissions(
-                        arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                        101,
-                    )
-                }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            if (waitingPermission) return
+            waitingPermission = true
+            try {
+                requestPermissions(
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    101,
+                )
+            } catch (_: Exception) {
+                waitingPermission = false
+                prepareAndStart()
             }
-            startActivityForResult(intent, 100)
+            return
+        }
+        prepareAndStart()
+    }
+
+    private fun prepareAndStart() {
+        if (pendingResults.isEmpty()) return
+        val intent = try {
+            VpnService.prepare(this)
+        } catch (_: Exception) {
+            replyPending(mapOf("started" to false))
+            return
+        }
+        if (intent != null) {
+            try {
+                startActivityForResult(intent, 100)
+            } catch (_: Exception) {
+                replyPending(mapOf("started" to false))
+            }
         } else {
             startVpnService()
         }
@@ -123,9 +184,23 @@ class MainActivity : FlutterActivity() {
         for ((key, value) in pendingConfig) {
             intent.putExtra(key, value)
         }
-        ContextCompat.startForegroundService(this, intent)
-        pendingResult?.success(mapOf("started" to true))
-        pendingResult = null
+        try {
+            ContextCompat.startForegroundService(this, intent)
+            replyPending(mapOf("started" to true))
+        } catch (e: Exception) {
+            replyPending(mapOf("started" to false))
+        }
+    }
+
+    private fun replyPending(value: Map<String, Any>) {
+        val results = pendingResults.toList()
+        pendingResults.clear()
+        for (result in results) {
+            try {
+                result.success(value)
+            } catch (_: Exception) {
+            }
+        }
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -134,9 +209,20 @@ class MainActivity : FlutterActivity() {
             if (resultCode == RESULT_OK) {
                 startVpnService()
             } else {
-                pendingResult?.success(mapOf("started" to false))
-                pendingResult = null
+                replyPending(mapOf("started" to false))
             }
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 101) {
+            waitingPermission = false
+            prepareAndStart()
         }
     }
 }

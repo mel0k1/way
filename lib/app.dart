@@ -90,6 +90,22 @@ class _WayShellState extends State<WayShell> {
         if (mounted) context.read<AppState>().clearPendingUpdate();
       });
     }
+    if (state.pendingTab >= 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() => _index = state.pendingTab);
+        state.consumeDeepLinkTab();
+        final l10n = L10nScope.of(context);
+        final message = state.lastImportWasSub
+            ? l10n.deepLinkSub
+            : state.lastImportCount > 0
+                ? l10n.deepLinkProfiles(state.lastImportCount)
+                : l10n.deepLinkInvalid;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), width: 320, behavior: SnackBarBehavior.floating),
+        );
+      });
+    }
   }
 
   @override
