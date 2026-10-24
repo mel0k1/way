@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 
 /// One destination for [ExpressiveNavBar].
 class ExpressiveNavDestination {
@@ -41,11 +42,11 @@ class _ExpressiveNavBarState extends State<ExpressiveNavBar>
   late final AnimationController _mover =
       AnimationController.unbounded(vsync: this);
 
-  /// Expressive spatial spring: dampingRatio ≈ 0.68 → a lively overshoot.
-  static final SpringDescription _spring = SpringDescription.withDampingAndStiffness(
+  /// Expressive spatial spring: dampingRatio 0.68 → a lively overshoot.
+  static final SpringDescription _spring = SpringDescription.withDampingRatio(
     mass: 1,
     stiffness: 420,
-    damping: 27,
+    ratio: 0.68,
   );
 
   double _lastWidth = 0;
