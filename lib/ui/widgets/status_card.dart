@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../core/stats.dart';
@@ -175,11 +177,89 @@ class StatusCard extends StatelessWidget {
                   ),
               textAlign: TextAlign.center,
             ),
+            if (connected) ...[
+              const SizedBox(height: 12),
+              const _WaveLine(),
+            ],
           ],
         ),
       ),
     );
   }
+}
+
+/// Slow, calm wave underline — a quiet "alive" signal while connected.
+class _WaveLine extends StatefulWidget {
+  const _WaveLine();
+
+  @override
+  State<_WaveLine> createState() => _WaveLineState();
+}
+
+class _WaveLineState extends State<_WaveLine>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 3200),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _c.repeat();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, _) => CustomPaint(
+        size: const Size.fromHeight(8),
+        painter: _WaveLinePainter(phase: _c.value, color: scheme.primary),
+      ),
+    );
+  }
+}
+
+class _WaveLinePainter extends CustomPainter {
+  final double phase;
+  final Color color;
+
+  _WaveLinePainter({required this.phase, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final midY = size.height / 2;
+    const amplitude = 2.2;
+    const waves = 5.0;
+    final path = Path()..moveTo(0, midY);
+    for (var x = 0.0; x <= w; x += 4) {
+      final t = x / w;
+      final y = midY +
+          amplitude * math.sin(2 * math.pi * (waves * t + phase));
+      path.lineTo(x, y);
+    }
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..strokeCap = StrokeCap.round
+        ..color = color.withValues(alpha: 0.55),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_WaveLinePainter oldDelegate) =>
+      oldDelegate.phase != phase || oldDelegate.color != color;
 }
 
 class _SpeedTile extends StatelessWidget {

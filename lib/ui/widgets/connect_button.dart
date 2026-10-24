@@ -24,12 +24,17 @@ class _ConnectButtonState extends State<ConnectButton>
     vsync: this,
     duration: const Duration(milliseconds: 1300),
   );
+  late final AnimationController _spin = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1600),
+  );
   bool _pressed = false;
 
   @override
   void dispose() {
     _pulse.dispose();
     _wave.dispose();
+    _spin.dispose();
     super.dispose();
   }
 
@@ -59,6 +64,11 @@ class _ConnectButtonState extends State<ConnectButton>
       _wave.repeat();
     } else if (!busy && _wave.isAnimating) {
       _wave.stop();
+    }
+    if (busy && !_spin.isAnimating) {
+      _spin.repeat();
+    } else if (!busy && _spin.isAnimating) {
+      _spin.stop();
     }
 
     return GestureDetector(
@@ -96,6 +106,18 @@ class _ConnectButtonState extends State<ConnectButton>
                   ),
                 ),
               ),
+              // Expressive loading halo: a rotating gradient arc while busy.
+              if (busy)
+                AnimatedBuilder(
+                  animation: _spin,
+                  builder: (context, _) => CustomPaint(
+                    size: const Size(204, 204),
+                    painter: _SpinHaloPainter(
+                      rotation: _spin.value,
+                      color: scheme.primary,
+                    ),
+                  ),
+                ),
               // Springy bounce whenever the connection state flips.
               TweenAnimationBuilder<double>(
                 key: ValueKey(connected),
@@ -201,6 +223,45 @@ class _WavyRingPainter extends CustomPainter {
   @override
   bool shouldRepaint(_WavyRingPainter oldDelegate) =>
       oldDelegate.phase != phase || oldDelegate.color != color;
+}
+
+/// Rotating gradient halo around the outer ring while connecting — the
+/// classic expressive "working" indicator.
+class _SpinHaloPainter extends CustomPainter {
+  final double rotation;
+  final Color color;
+
+  _SpinHaloPainter({required this.rotation, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.shortestSide / 2 - 1;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    canvas.drawArc(
+      rect,
+      -math.pi / 2 + rotation * 2 * math.pi,
+      math.pi * 0.85,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round
+        ..shader = SweepGradient(
+          startAngle: 0,
+          endAngle: math.pi * 0.85,
+          colors: [
+            color.withValues(alpha: 0.0),
+            color.withValues(alpha: 0.85),
+          ],
+          transform: GradientRotation(-math.pi / 2),
+        ).createShader(rect),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_SpinHaloPainter oldDelegate) =>
+      oldDelegate.rotation != rotation || oldDelegate.color != color;
 }
 
 class _PulseRing extends StatelessWidget {

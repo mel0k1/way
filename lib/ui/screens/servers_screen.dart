@@ -117,16 +117,22 @@ class ServersScreen extends StatelessWidget {
                   itemCount: state.profiles.length + 1,
                   itemBuilder: (context, i) {
                     if (i == 0) {
-                      return _AutoTile(
-                        enabled: state.engineProfiles.length > 1,
+                      return _Entrance(
+                        index: 0,
+                        child: _AutoTile(
+                          enabled: state.engineProfiles.length > 1,
+                        ),
                       );
                     }
                     final profile = state.profiles[i - 1];
-                    return ProfileTile(
-                      profile: profile,
-                      selected:
-                          profile.id == state.selectedId && !state.autoSelect,
-                      latency: state.latencies[profile.id],
+                    return _Entrance(
+                      index: i,
+                      child: ProfileTile(
+                        profile: profile,
+                        selected:
+                            profile.id == state.selectedId && !state.autoSelect,
+                        latency: state.latencies[profile.id],
+                      ),
                     );
                   },
                 ),
@@ -136,6 +142,36 @@ class ServersScreen extends StatelessWidget {
 
     if (fullPage) return Scaffold(body: SafeArea(child: body));
     return SafeArea(child: body);
+  }
+}
+
+class _Entrance extends StatelessWidget {
+  final int index;
+  final Widget child;
+
+  const _Entrance({required this.index, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    // Staggered expressive entrance: slide + fade with a slight spring
+    // overshoot, capped so long lists don't wait forever.
+    final delay = (index.clamp(0, 10) * 45) / 600.0;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: (420 + delay * 600).round()),
+      curve: Interval(delay, 1, curve: Curves.easeOutBack),
+      builder: (context, t, child) {
+        final clamped = t.clamp(0.0, 1.0);
+        return Opacity(
+          opacity: clamped,
+          child: Transform.translate(
+            offset: Offset(0, 26 * (1 - t)),
+            child: child,
+          ),
+        );
+      },
+      child: child,
+    );
   }
 }
 
