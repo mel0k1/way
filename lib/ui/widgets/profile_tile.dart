@@ -4,6 +4,7 @@ import '../../core/profile.dart';
 import '../../l10n.dart';
 import '../../state/app_state.dart';
 import 'package:provider/provider.dart';
+import 'qr_export_dialog.dart';
 
 class ProfileTile extends StatelessWidget {
   final Profile profile;
@@ -181,9 +182,21 @@ class ProfileTile extends StatelessWidget {
                   if (ok == true) state.removeProfile(profile.id);
                 } else if (value == 'chain') {
                   _showChainDialog(context, state, profile.id);
+                } else if (value == 'qr') {
+                  showQrExport(context, profile);
                 }
               },
               itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'qr',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.qr_code_rounded),
+                      const SizedBox(width: 12),
+                      Text(l10n.showQr),
+                    ],
+                  ),
+                ),
                 PopupMenuItem(
                   value: 'chain',
                   child: Row(

@@ -35,7 +35,15 @@
 - **Android quick settings tile** — connect/disconnect from the notification shade, restores the last used server
 - **Backup & restore** — export profiles, subscriptions and settings to a JSON file (SAF on Android, save dialog on Windows)
 - **Fastest server** — urltest group in sing-box and real through-proxy latency testing (a temporary core instance per server, TCP fallback) with auto-select
-- **Subscriptions** — import by URL or QR code, clipboard paste, auto-refresh, panel-compatible User-Agent and quota display
+- **Subscriptions** — import by URL or QR code, clipboard paste, auto-refresh on a configurable interval (honoring `profile-update-interval`), panel-compatible User-Agent and quota display
+- **Subscription formats** — v2ray link lists (plain/base64), sing-box JSON, Clash / Clash Meta YAML, plus wrapper links from other clients (`clash://install-config?url=…`, `sing-box://import-remote-profile?url=…`, `v2rayng://install-sub?url=…`, `sn://`, `hiddify://`)
+- **Cloudflare WARP** — one-tap free WireGuard tunnel, registered right in the app (sing-box)
+- **DNS settings** — custom remote DoH server and address strategy (prefer IPv4/IPv6, IPv4-only, IPv6-only)
+- **TLS fragmentation & mux** — ClientHello fragmentation to bypass DPI filtering and h2mux/smux/yamux multiplexing (sing-box)
+- **Manual & JSON import** — build a profile from plain fields or paste a raw sing-box outbound JSON; export any profile back as a QR code or shareable link
+- **Proxy mode on Android** — run a local socks/http proxy on 127.0.0.1:2080 without the VPN permission
+- **Connection info** — external IP and country (with flag) of the active server, fetched through the tunnel
+- **Battery optimization** — one-tap exemption on Android so the background VPN is not killed
 - **Deep links** — tap a `vless://`/`vmess://`/`trojan://`/`ss://`/`hysteria2://`/`tuic://` link or `way://import/<url>` to import profiles and subscriptions instantly (Android and Windows)
 - **Encrypted storage** — profiles and subscription keys live in flutter_secure_storage (Keystore / DPAPI)
 - **Autostart** — launch on boot (Android) or user sign-in (Windows Run key), optional auto-connect on launch
@@ -57,7 +65,7 @@
 | TUIC | ✔ | — |
 | WS / gRPC / HTTP transports | ✔ | ✔ |
 
-Links `vless://`, `vmess://`, `trojan://`, `ss://`, `hysteria2://`, `tuic://` are parsed automatically, both one by one and as a whole base64 subscription.
+Links `vless://`, `vmess://`, `trojan://`, `ss://`, `hysteria2://`, `tuic://` are parsed automatically, both one by one and as a whole base64 subscription. Sing-box JSON and Clash YAML subscription bodies work the same way.
 
 ## Architecture
 
@@ -139,7 +147,15 @@ This project is a client shell around open-source cores. It ships no servers, no
 - **Плитка Android** — подключение/отключение из шторки быстрых настроек, восстановление последнего сервера
 - **Бэкап и восстановление** — экспорт профилей, подписок и настроек в JSON (SAF на Android, диалог сохранения на Windows)
 - **Быстрейший сервер** — urltest-группа в sing-box и реальный замер задержки через прокси (временный инстанс ядра на сервер, TCP-фолбэк) с автовыбором
-- **Подписки** — импорт по ссылке или QR-коду, вставка из буфера, автообновление, совместимый с панелями User-Agent и показ квоты
+- **Подписки** — импорт по ссылке или QR-коду, вставка из буфера, автообновление с настраиваемым интервалом (с учётом `profile-update-interval`), совместимый с панелями User-Agent и показ квоты
+- **Форматы подписок** — списки v2ray-ссылок (plain/base64), sing-box JSON, Clash / Clash Meta YAML, а также обёртки других клиентов (`clash://install-config?url=…`, `sing-box://import-remote-profile?url=…`, `v2rayng://install-sub?url=…`, `sn://`, `hiddify://`)
+- **Cloudflare WARP** — бесплатный WireGuard-туннель в один тап, регистрируется прямо в приложении (sing-box)
+- **Настройки DNS** — свой удалённый DoH-сервер и стратегия адресов (приоритет IPv4/IPv6, только IPv4, только IPv6)
+- **TLS-фрагментация и mux** — нарезка ClientHello для обхода DPI и мультиплексирование h2mux/smux/yamux (sing-box)
+- **Ручной ввод и JSON** — профиль из простых полей или вставка сырого sing-box outbound JSON; экспорт любого профиля обратно в QR-код или ссылку
+- **Прокси-режим на Android** — локальный socks/http на 127.0.0.1:2080 без разрешения VPN
+- **Информация о соединении** — внешний IP и страна (с флагом) активного сервера, проверяются через туннель
+- **Оптимизация батареи** — исключение Way из оптимизации в один тап, чтобы Android не убивал фоновый VPN
 - **Диплинки** — клик по ссылке `vless://`/`vmess://`/`trojan://`/`ss://`/`hysteria2://`/`tuic://` или `way://import/<url>` мгновенно импортирует профили и подписки (Android и Windows)
 - **Шифрованное хранилище** — профили и ключи подписок в flutter_secure_storage (Keystore / DPAPI)
 - **Автозапуск** — старт после загрузки (Android) или входа в систему (ключ Run Windows), опциональное авто-подключение при запуске

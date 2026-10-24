@@ -17,6 +17,13 @@ String formatBytes(int bytes) {
 
 String formatSpeed(int bytes) => '${formatBytes(bytes)}/s';
 
+String? _flag(String? code) {
+  if (code == null || code.length != 2) return null;
+  final base = 0x1F1E6;
+  return String.fromCharCodes(
+      code.toUpperCase().runes.map((c) => base + c - 65));
+}
+
 String _totalsLine(L10n l10n, WayStats stats) {
   return '${l10n.total}: ↓ ${formatBytes(stats.totalDown)} · ↑ '
       '${formatBytes(stats.totalUp)} · ${stats.connections} ${l10n.connectionsLabel.toLowerCase()}';
@@ -78,6 +85,29 @@ class StatusCard extends StatelessWidget {
               Text(
                 '${profile.server}:${profile.port}',
                 style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+            if (connected &&
+                (state.connCountry?.isNotEmpty == true ||
+                    state.connIp?.isNotEmpty == true)) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(Icons.public_rounded, size: 14, color: scheme.primary),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      [_flag(state.connCountry) ?? state.connCountry, state.connIp]
+                          .where((e) => e?.isNotEmpty == true)
+                          .join(' · '),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
             ],
             const SizedBox(height: 16),

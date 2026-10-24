@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.net.VpnService
 import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.content.ContextCompat
 import io.mel0k1.waycore.Waycore
@@ -101,6 +102,35 @@ class MainActivity : FlutterActivity() {
                             }
                             runOnUiThread { result.success(mapOf("ms" to ms)) }
                         }.start()
+                    }
+                    "ip_info" -> {
+                        val singbox = call.argument<String>("singbox") ?: ""
+                        val port = call.argument<Int>("port") ?: 0
+                        val timeout = call.argument<Int>("timeout") ?: 8000
+                        Thread {
+                            val json = try {
+                                Waycore.ipInfo(singbox, port, timeout)
+                            } catch (_: Throwable) {
+                                "{}"
+                            }
+                            runOnUiThread { result.success(json) }
+                        }.start()
+                    }
+                    "battery" -> {
+                        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+                        result.success(mapOf("ignored" to pm.isIgnoringBatteryOptimizations(packageName)))
+                    }
+                    "battery_request" -> {
+                        try {
+                            val intent = Intent(
+                                Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                                Uri.parse("package:$packageName"),
+                            )
+                            startActivity(intent)
+                            result.success(null)
+                        } catch (e: Exception) {
+                            result.error("unavailable", e.message, null)
+                        }
                     }
                     "export_backup" -> {
                         val name = call.argument<String>("name") ?: "way-backup.json"
@@ -210,6 +240,10 @@ class MainActivity : FlutterActivity() {
 
     private fun prepareAndStart() {
         if (pendingResults.isEmpty()) return
+        if (pendingConfig["mode"] == "proxy") {
+            startVpnService()
+            return
+        }
         val intent = try {
             VpnService.prepare(this)
         } catch (_: Exception) {

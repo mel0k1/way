@@ -51,6 +51,9 @@ class L10n {
   String get modeTun => 'TUN';
   String get modeProxy => ru ? 'Прокси' : 'Proxy';
   String get tunHint => ru ? 'TUN перехватывает весь трафик (нужны права администратора на Windows). Прокси работает через системный прокси.' : 'TUN captures all traffic (requires admin on Windows). Proxy mode uses the system proxy.';
+  String get tunHintAndroid => ru
+      ? 'TUN — полноценный VPN. Прокси — локальный socks/http 127.0.0.1:2080 без VPN-разрешения, настраивается в приложениях вручную.'
+      : 'TUN is a full VPN. Proxy exposes local socks/http on 127.0.0.1:2080 without VPN permission — configure apps manually.';
   String get appearance => ru ? 'Внешний вид' : 'Appearance';
   String get themeSystem => ru ? 'Системная' : 'System';
   String get themeLight => ru ? 'Светлая' : 'Light';
@@ -58,7 +61,15 @@ class L10n {
   String get language => ru ? 'Язык' : 'Language';
   String get langSystem => ru ? 'Системный' : 'System';
   String get updates => ru ? 'Подписки' : 'Subscriptions';
-  String get autoUpdate => ru ? 'Автообновление (30 мин)' : 'Auto-update (30 min)';
+  String get autoUpdate => ru ? 'Автообновление' : 'Auto-update';
+  String get updateInterval => ru ? 'Интервал обновления' : 'Update interval';
+  String _intervalLabel(int m) {
+    if (m >= 1440) return ru ? 'каждые ${m ~/ 1440} сут' : 'every ${m ~/ 1440} d';
+    if (m >= 60) return ru ? 'каждые ${m ~/ 60} ч' : 'every ${m ~/ 60} h';
+    return ru ? 'каждые $m мин' : 'every $m min';
+  }
+  String intervalValue(int m) =>
+      m <= 0 ? (ru ? 'Выкл' : 'Off') : _intervalLabel(m);
 
   String get routing => ru ? 'Маршрутизация' : 'Routing';
   String get routingHint => ru
@@ -248,6 +259,70 @@ class L10n {
   String get chainHint => ru
       ? 'Цепочка: трафик пойдёт через выбранный сервер поверх текущего (sing-box, недоступно в режиме «Быстрейший»).'
       : 'Chain: traffic goes through the selected server on top of the current one (sing-box, unavailable in “Fastest” mode).';
+
+  String get dnsSection => ru ? 'DNS' : 'DNS';
+  String get dnsServer => ru ? 'DNS-сервер (DoH)' : 'DNS server (DoH)';
+  String get dnsServerHint => ru
+      ? 'Удалённый DNS через шифрованный канал: 1.1.1.1, 8.8.8.8, dns.google…'
+      : 'Remote DNS over encrypted channel: 1.1.1.1, 8.8.8.8, dns.google…';
+  String get dnsStrategy => ru ? 'Стратегия адресов' : 'Address strategy';
+  String get dnsAuto => ru ? 'Авто' : 'Auto';
+  String get dnsPreferV4 => ru ? 'IPv4 приоритет' : 'Prefer IPv4';
+  String get dnsPreferV6 => ru ? 'IPv6 приоритет' : 'Prefer IPv6';
+  String get dnsOnlyV4 => 'IPv4 only';
+  String get dnsOnlyV6 => 'IPv6 only';
+
+  String get advanced => ru ? 'Продвинутые' : 'Advanced';
+  String get tlsFragment => ru ? 'TLS-фрагментация' : 'TLS fragmentation';
+  String get tlsFragmentHint => ru
+      ? 'Нарезает ClientHello на части для обхода DPI-блокировок (sing-box, TCP-TLS).'
+      : 'Splits the TLS ClientHello to bypass DPI filtering (sing-box, TCP-TLS).';
+  String get mux => ru ? 'Мультиплексирование' : 'Multiplexing';
+  String get muxHint => ru
+      ? 'Mux-протокол для нескольких потоков в одном соединении (sing-box).'
+      : 'Mux protocol to carry multiple streams in one connection (sing-box).';
+  String get muxOff => ru ? 'Выкл' : 'Off';
+
+  String get addModeLink => ru ? 'Ссылка' : 'Link';
+  String get addModeManual => ru ? 'Вручную' : 'Manual';
+  String get addModeJson => 'JSON';
+  String get jsonHint => ru
+      ? 'Вставьте JSON: sing-box outbound, {"outbounds":[…]} или массив'
+      : 'Paste JSON: a sing-box outbound, {"outbounds":[…]} or an array';
+  String get manualType => ru ? 'Протокол' : 'Protocol';
+  String get manualServer => ru ? 'Сервер' : 'Server';
+  String get manualPort => ru ? 'Порт' : 'Port';
+  String get manualSecret => ru ? 'UUID или пароль' : 'UUID or password';
+  String get manualSni => ru ? 'SNI (необязательно)' : 'SNI (optional)';
+  String get invalidInput => ru ? 'Некорректные данные' : 'Invalid input';
+
+  String get showQr => ru ? 'Показать QR' : 'Show QR';
+  String get qrUnsupported => ru
+      ? 'QR для этого протокола недоступен'
+      : 'QR is not available for this protocol';
+
+  String get warp => 'Cloudflare WARP';
+  String get warpHint => ru
+      ? 'Бесплатный туннель WireGuard от Cloudflare — без подписки (sing-box).'
+      : 'Free Cloudflare WireGuard tunnel — no subscription needed (sing-box).';
+  String get warpAdding => ru ? 'Регистрация…' : 'Registering…';
+  String get warpAdded => ru ? 'WARP добавлен' : 'WARP added';
+  String get warpFailed => ru
+      ? 'Не удалось зарегистрировать WARP — проверьте сеть'
+      : 'WARP registration failed — check your network';
+
+  String get batteryTitle => ru ? 'Оптимизация батареи' : 'Battery optimization';
+  String get batteryAllowed => ru
+      ? 'Way исключён — фоновый VPN работает стабильно'
+      : 'Way is excluded — background VPN runs reliably';
+  String get batteryHint => ru
+      ? 'Отключите оптимизацию, чтобы Android не разрывал VPN в фоне'
+      : 'Exempt Way so Android does not kill the VPN in background';
+  String get batteryDialogTitle => ru ? 'Оптимизация батареи' : 'Battery optimization';
+  String get batteryDialogText => ru
+      ? 'Разрешить Way игнорировать оптимизацию батареи? Иначе Android может обрывать VPN в фоне.'
+      : 'Let Way ignore battery optimization? Otherwise Android may interrupt the VPN in the background.';
+  String get batteryAsk => ru ? 'Настроить' : 'Configure';
 
   String errorText(String? code) {
     switch (code) {

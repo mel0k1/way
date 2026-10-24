@@ -98,21 +98,34 @@ class ConfigBuilder {
     RoutingSettings routing = const RoutingSettings(),
     List<Profile> group = const [],
     Profile? chain,
+    String dnsHost = '1.1.1.1',
+    String dnsStrategy = 'prefer_ipv4',
+    bool tlsFragment = false,
+    String muxProtocol = '',
   }) {
     final members = group.isEmpty ? [p] : group;
     final outbounds = <Map<String, dynamic>>[];
+    final endpoints = <Map<String, dynamic>>[];
     final tags = <String>[];
     if (chain != null && members.length == 1) {
-      outbounds.add(_singBoxOutbound(chain, tag: 'chain'));
+      outbounds.add(_singBoxOutbound(chain,
+          tag: 'chain', tlsFragment: tlsFragment, mux: muxProtocol));
     }
-    for (var i = 0; i < members.length; i++) {
-      final tag = members.length == 1 ? 'proxy' : 's$i';
-      final outbound = _singBoxOutbound(members[i], tag: tag);
-      if (i == 0 && members.length == 1 && chain != null) {
-        outbound['dialer_proxy'] = 'chain';
+    if (p.protocol == 'wireguard' && members.length == 1) {
+      final endpoint = _wireguardEndpoint(p, 'proxy');
+      if (chain != null) endpoint['dialer_proxy'] = 'chain';
+      endpoints.add(endpoint);
+    } else {
+      for (var i = 0; i < members.length; i++) {
+        final tag = members.length == 1 ? 'proxy' : 's$i';
+        final outbound = _singBoxOutbound(members[i],
+            tag: tag, tlsFragment: tlsFragment, mux: muxProtocol);
+        if (i == 0 && members.length == 1 && chain != null) {
+          outbound['dialer_proxy'] = 'chain';
+        }
+        outbounds.add(outbound);
+        tags.add(tag);
       }
-      outbounds.add(outbound);
-      tags.add(tag);
     }
     if (members.length > 1) {
       outbounds.add({
@@ -130,6 +143,9 @@ class ConfigBuilder {
       tun: tun,
       outbounds: outbounds,
       routing: routing,
+      endpoints: endpoints,
+      dnsHost: dnsHost,
+      dnsStrategy: dnsStrategy,
     );
   }
 
@@ -183,6 +199,17 @@ class ConfigBuilder {
   }
 
   static Map<String, dynamic> probeSingBoxConfig(Profile p, int port) {
+    final endpoints = <Map<String, dynamic>>[];
+    final List<Map<String, dynamic>> outbounds;
+    if (p.protocol == 'wireguard') {
+      endpoints.add(_wireguardEndpoint(p, 'proxy'));
+      outbounds = [_directOutbound()];
+    } else {
+      outbounds = [
+        _singBoxOutbound(p, tag: 'proxy'),
+        _directOutbound(),
+      ];
+    }
     return {
       'log': {'level': 'warn'},
       'dns': {
@@ -207,10 +234,8 @@ class ConfigBuilder {
           'listen_port': port,
         },
       ],
-      'outbounds': [
-        _singBoxOutbound(p, tag: 'proxy'),
-        _directOutbound(),
-      ],
+      if (endpoints.isNotEmpty) 'endpoints': endpoints,
+      'outbounds': outbounds,
       'route': {
         'final': 'proxy',
         'default_domain_resolver': {'server': 'dns-direct'},
@@ -274,6 +299,9 @@ class ConfigBuilder {
     required bool tun,
     required List<Map<String, dynamic>> outbounds,
     RoutingSettings routing = const RoutingSettings(),
+    List<Map<String, dynamic>> endpoints = const [],
+    String dnsHost = '1.1.1.1',
+    String dnsStrategy = 'prefer_ipv4',
   }) {
     final inbounds = <Map<String, dynamic>>[];
     if (tun) {
@@ -338,14 +366,21 @@ class ConfigBuilder {
       'dns': {
         'servers': [
           {'type': 'udp', 'tag': 'dns-direct', 'server': '8.8.8.8'},
-          {'type': 'https', 'tag': 'dns-proxy', 'server': '1.1.1.1', 'detour': 'proxy'},
+          {
+            'type': 'https',
+            'tag': 'dns-proxy',
+            'server': dnsHost.isEmpty ? '1.1.1.1' : dnsHost,
+            'detour': 'proxy',
+          },
         ],
         if (dnsRules.isNotEmpty) 'rules': dnsRules,
         'final': 'dns-proxy',
-        'strategy': 'prefer_ipv4',
+        'strategy':
+            dnsStrategy.isEmpty ? 'prefer_ipv4' : dnsStrategy,
         'independent_cache': true,
       },
       'inbounds': inbounds,
+      if (endpoints.isNotEmpty) 'endpoints': endpoints,
       'outbounds': outbounds,
       'route': {
         'rules': rules,
@@ -363,8 +398,44 @@ class ConfigBuilder {
   static Map<String, dynamic> _directOutbound() =>
       {'type': 'direct', 'tag': 'direct'};
 
+  static Map<String, dynamic> _wireguardEndpoint(Profile p, String tag) {
+    var extra = const <String, dynamic>{};
+    if (p.extra?.isNotEmpty == true) {
+      try {
+        final decoded = json.decode(p.extra!);
+        if (decoded is Map<String, dynamic>) extra = decoded;
+      } catch (_) {}
+    }
+    final reserved = (extra['reserved'] as List?)
+            ?.map((e) => (e is num) ? e.toInt() : int.tryParse('$e') ?? 0)
+            .toList() ??
+        const [0, 0, 0];
+    final v4 = extra['address_v4'] as String? ?? '';
+    final v6 = extra['address_v6'] as String? ?? '';
+    final address = [
+      if (v4.isNotEmpty) v4,
+      if (v6.isNotEmpty) v6,
+    ];
+    return {
+      'type': 'wireguard',
+      'tag': tag,
+      if (address.isNotEmpty) 'address': address,
+      'private_key': p.password ?? '',
+      'mtu': 1280,
+      'peers': [
+        {
+          'address': p.server,
+          'port': p.port,
+          'public_key': p.publicKey ?? '',
+          'allowed_ips': ['0.0.0.0/0', '::/0'],
+          'reserved': reserved,
+        }
+      ],
+    };
+  }
+
   static Map<String, dynamic> _singBoxOutbound(Profile p,
-      {String tag = 'proxy'}) {
+      {String tag = 'proxy', bool tlsFragment = false, String mux = ''}) {
     final out = <String, dynamic>{
       'type': p.protocol,
       'tag': tag,
@@ -375,7 +446,7 @@ class ConfigBuilder {
       case 'vless':
         out['uuid'] = p.uuid ?? '';
         if (p.flow?.isNotEmpty == true) out['flow'] = p.flow;
-        final tls = _singBoxTls(p, allowUtls: true);
+        final tls = _singBoxTls(p, allowUtls: true, fragment: tlsFragment);
         if (tls != null) out['tls'] = tls;
         final transport = _singBoxTransport(p);
         if (transport != null) out['transport'] = transport;
@@ -384,14 +455,14 @@ class ConfigBuilder {
         out['uuid'] = p.uuid ?? '';
         out['security'] = p.security ?? 'auto';
         out['alter_id'] = p.alterId;
-        final tls = _singBoxTls(p, allowUtls: true);
+        final tls = _singBoxTls(p, allowUtls: true, fragment: tlsFragment);
         if (tls != null) out['tls'] = tls;
         final transport = _singBoxTransport(p);
         if (transport != null) out['transport'] = transport;
         break;
       case 'trojan':
         out['password'] = p.password ?? '';
-        final tls = _singBoxTls(p, allowUtls: true);
+        final tls = _singBoxTls(p, allowUtls: true, fragment: tlsFragment);
         if (tls != null) out['tls'] = tls;
         final transport = _singBoxTransport(p);
         if (transport != null) out['transport'] = transport;
@@ -422,10 +493,21 @@ class ConfigBuilder {
         };
         break;
     }
+    if (mux.isNotEmpty &&
+        const {'vless', 'vmess', 'trojan', 'shadowsocks'}.contains(p.protocol)) {
+      out['multiplex'] = {
+        'enabled': true,
+        'protocol': mux,
+        'max_connections': 4,
+        'min_streams': 4,
+        'padding': true,
+      };
+    }
     return out;
   }
 
-  static Map<String, dynamic>? _singBoxTls(Profile p, {required bool allowUtls}) {
+  static Map<String, dynamic>? _singBoxTls(Profile p,
+      {required bool allowUtls, bool fragment = false}) {
     final needTls = p.protocol == 'trojan' ||
         p.protocol == 'hysteria2' ||
         p.protocol == 'tuic' ||
@@ -449,6 +531,12 @@ class ConfigBuilder {
         'public_key': p.publicKey,
         'short_id': p.shortId ?? '',
       };
+    }
+    if (fragment && p.protocol != 'hysteria2' && p.protocol != 'tuic') {
+      tls['fragment'] = true;
+      if (tls['utls'] is! Map) {
+        tls['utls'] = {'enabled': true, 'fingerprint': 'chrome'};
+      }
     }
     return tls;
   }

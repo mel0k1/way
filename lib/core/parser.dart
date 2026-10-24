@@ -64,10 +64,14 @@ class LinkParser {
     return uri.queryParameters[key] ?? fallback;
   }
 
+  static String genId() =>
+      DateTime.now().microsecondsSinceEpoch.toRadixString(36) +
+      (1000 + (DateTime.now().microsecond % 9000)).toRadixString(36);
+
   static Profile _parseVless(Uri uri) {
     final type = _q(uri, 'type', 'tcp');
     return Profile(
-      id: _genId(),
+      id: genId(),
       name: Uri.decodeComponent(uri.fragment.isNotEmpty ? uri.fragment : 'VLESS'),
       protocol: 'vless',
       server: uri.host,
@@ -219,7 +223,5 @@ class LinkParser {
     );
   }
 
-  static String _genId() =>
-      DateTime.now().microsecondsSinceEpoch.toRadixString(36) +
-      (1000 + (DateTime.now().microsecond % 9000)).toRadixString(36);
+  static String _genId() => genId();
 }

@@ -32,6 +32,10 @@ class ConnectRequest {
   final List<String> splitApps;
   final List<RouteRule> customRules;
   final Profile? chain;
+  final String dnsHost;
+  final String dnsStrategy;
+  final bool tlsFragment;
+  final String muxProtocol;
 
   const ConnectRequest({
     required this.engine,
@@ -46,6 +50,10 @@ class ConnectRequest {
     this.splitApps = const [],
     this.customRules = const [],
     this.chain,
+    this.dnsHost = '1.1.1.1',
+    this.dnsStrategy = 'prefer_ipv4',
+    this.tlsFragment = false,
+    this.muxProtocol = '',
   });
 
   RoutingSettings get _routing => RoutingSettings(
@@ -67,6 +75,9 @@ abstract class VpnBridge {
   void setDeepLinkHandler(void Function(String url)? handler);
   bool get tunSupported;
   Future<int?> urlTest({required Profile profile, required Duration timeout}) async => null;
+  Future<Map<String, String>?> ipInfo({required Profile profile, required Duration timeout}) async => null;
+  Future<bool?> batteryIgnored() async => null;
+  Future<void> requestBatteryIgnore() async {}
 }
 
 Future<int> freePort() async {
@@ -107,9 +118,10 @@ class AndroidBridge implements VpnBridge {
   Future<VpnStatus> connect(ConnectRequest request) async {
     final body = <String, String>{
       'engine': request.engine,
+      'mode': request.tun ? 'vpn' : 'proxy',
       'singbox': json.encode(ConfigBuilder.singBoxConfig(
         request.profile,
-        tun: true,
+        tun: request.tun,
         logPath: request.logPath,
         routing: RoutingSettings(
           mode: request.routingMode,
@@ -118,9 +130,14 @@ class AndroidBridge implements VpnBridge {
         ),
         group: request.group,
         chain: request.chain,
+        dnsHost: request.dnsHost,
+        dnsStrategy: request.dnsStrategy,
+        tlsFragment: request.tlsFragment,
+        muxProtocol: request.muxProtocol,
       )),
       'xray': json.encode(ConfigBuilder.xrayConfig(request.profile, logPath: request.logPath)),
-      'bridge': json.encode(ConfigBuilder.bridgeConfig(tun: true, logPath: request.logPath)),
+      if (request.tun)
+        'bridge': json.encode(ConfigBuilder.bridgeConfig(tun: true, logPath: request.logPath)),
       'routing_mode': request.routingMode,
       'block_ads': request.blockAds ? '1' : '0',
       'split_mode': request.splitMode,
@@ -220,6 +237,51 @@ class AndroidBridge implements VpnBridge {
       return -1;
     }
   }
+
+  @override
+  Future<Map<String, String>?> ipInfo({required Profile profile, required Duration timeout}) async {
+    final port = await freePort();
+    try {
+      final body = <String, dynamic>{
+        'port': port,
+        'timeout': timeout.inMilliseconds,
+        'singbox': json.encode(ConfigBuilder.probeSingBoxConfig(profile, port)),
+      };
+      final result = await _channel
+          .invokeMethod('ip_info', body)
+          .timeout(timeout + const Duration(seconds: 10));
+      if (result is String && result.isNotEmpty) {
+        final data = json.decode(result) as Map<String, dynamic>;
+        return {
+          'ip': data['ip'] as String? ?? '',
+          'country': data['country'] as String? ?? '',
+        };
+      }
+      return null;
+    } on Exception {
+      return null;
+    }
+  }
+
+  @override
+  Future<bool?> batteryIgnored() async {
+    try {
+      final result = await _channel.invokeMethod('battery');
+      if (result is Map) return result['ignored'] == true;
+      return null;
+    } on PlatformException {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> requestBatteryIgnore() async {
+    try {
+      await _channel.invokeMethod('battery_request');
+    } on PlatformException {
+      return;
+    }
+  }
 }
 
 class DesktopBridge implements VpnBridge {
@@ -289,6 +351,10 @@ class DesktopBridge implements VpnBridge {
         routing: request._routing,
         group: request.group,
         chain: request.chain,
+        dnsHost: request.dnsHost,
+        dnsStrategy: request.dnsStrategy,
+        tlsFragment: request.tlsFragment,
+        muxProtocol: request.muxProtocol,
       );
       payload['system_proxy'] = !request.tun;
       payload['system_proxy_port'] = WayPorts.mixed;
@@ -378,6 +444,36 @@ class DesktopBridge implements VpnBridge {
     }
   }
 
+  @override
+  Future<Map<String, String>?> ipInfo({required Profile profile, required Duration timeout}) async {
+    if (!await _ensureCore()) return null;
+    final port = await freePort();
+    try {
+      final payload = <String, dynamic>{
+        'port': port,
+        'timeout': timeout.inMilliseconds,
+        'singbox': json.encode(ConfigBuilder.probeSingBoxConfig(profile, port)),
+      };
+      final client = HttpClient()..connectionTimeout = timeout;
+      final req = await client
+          .postUrl(Uri.parse('$_base/ipinfo'))
+          .timeout(timeout + const Duration(seconds: 10));
+      req.headers.set('Content-Type', 'application/json');
+      req.add(utf8.encode(json.encode(payload)));
+      final res = await req.close().timeout(timeout + const Duration(seconds: 10));
+      final text = await res.transform(utf8.decoder).join();
+      client.close();
+      if (res.statusCode != 200) return null;
+      final data = json.decode(text) as Map<String, dynamic>;
+      return {
+        'ip': data['ip'] as String? ?? '',
+        'country': data['country'] as String? ?? '',
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+
   String? _mailboxPath() {
     final appdata = Platform.environment['LOCALAPPDATA'];
     if (appdata == null || appdata.isEmpty) return null;
@@ -430,6 +526,12 @@ class DesktopBridge implements VpnBridge {
       return;
     }
   }
+
+  @override
+  Future<bool?> batteryIgnored() async => null;
+
+  @override
+  Future<void> requestBatteryIgnore() async {}
 }
 
 VpnBridge createBridge() {

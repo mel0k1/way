@@ -2,10 +2,12 @@ package waycore
 
 import (
         "context"
+        "encoding/json"
         "fmt"
         "io"
         "net/http"
         "net/url"
+        "strings"
         "time"
 
         box "github.com/sagernet/sing-box"
@@ -18,6 +20,7 @@ import (
 )
 
 const urlTestTarget = "http://www.gstatic.com/generate_204"
+const ipInfoTarget = "https://1.1.1.1/cdn-cgi/trace"
 
 func UrlTest(singboxConfig string, xrayConfig string, port int, timeoutMs int) int {
         if timeoutMs <= 0 || timeoutMs > 20000 {
@@ -88,11 +91,28 @@ func probeHttp(port int, timeout time.Duration) int {
         if timeout <= 0 {
                 return -1
         }
+        client := socksClient(port, timeout)
+        start := time.Now()
+        req, err := http.NewRequest(http.MethodGet, urlTestTarget, nil)
+        if err != nil {
+                return -1
+        }
+        req.Header.Set("User-Agent", "Way/1.4")
+        resp, err := client.Do(req)
+        if err != nil {
+                return -1
+        }
+        defer resp.Body.Close()
+        _, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+        return int(time.Since(start).Milliseconds())
+}
+
+func socksClient(port int, timeout time.Duration) *http.Client {
         proxyURL := &url.URL{
                 Scheme: "socks5",
                 Host:   fmt.Sprintf("127.0.0.1:%d", port),
         }
-        client := &http.Client{
+        return &http.Client{
                 Transport: &http.Transport{
                         Proxy:                 http.ProxyURL(proxyURL),
                         DisableKeepAlives:     true,
@@ -101,17 +121,56 @@ func probeHttp(port int, timeout time.Duration) int {
                 },
                 Timeout: timeout,
         }
-        start := time.Now()
-        req, err := http.NewRequest(http.MethodGet, urlTestTarget, nil)
-        if err != nil {
-                return -1
+}
+
+func IpInfo(singboxConfig string, port int, timeoutMs int) string {
+        if timeoutMs <= 0 || timeoutMs > 20000 {
+                timeoutMs = 8000
         }
-        req.Header.Set("User-Agent", "Way/1.3")
+        if port <= 0 || singboxConfig == "" {
+                return "{}"
+        }
+        deadline := time.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
+        stop, err := startProbeBox(singboxConfig, deadline)
+        if err != nil {
+                return "{}"
+        }
+        defer stop()
+        client := socksClient(port, time.Until(deadline))
+        req, err := http.NewRequest(http.MethodGet, ipInfoTarget, nil)
+        if err != nil {
+                return "{}"
+        }
+        req.Header.Set("User-Agent", "Way/1.4")
         resp, err := client.Do(req)
         if err != nil {
-                return -1
+                return "{}"
         }
         defer resp.Body.Close()
-        _, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
-        return int(time.Since(start).Milliseconds())
+        body, err := io.ReadAll(io.LimitReader(resp.Body, 8192))
+        if err != nil {
+                return "{}"
+        }
+        ip, loc := "", ""
+        for _, line := range strings.Split(string(body), "\n") {
+                line = strings.TrimSpace(line)
+                kv := strings.SplitN(line, "=", 2)
+                if len(kv) != 2 {
+                        continue
+                }
+                switch kv[0] {
+                case "ip":
+                        ip = kv[1]
+                case "loc":
+                        loc = kv[1]
+                }
+        }
+        if ip == "" && loc == "" {
+                return "{}"
+        }
+        out, err := json.Marshal(map[string]string{"ip": ip, "country": loc})
+        if err != nil {
+                return "{}"
+        }
+        return string(out)
 }

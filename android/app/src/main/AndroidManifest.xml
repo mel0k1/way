@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:label="Way"
@@ -39,6 +40,13 @@
                 <data android:scheme="hy2" />
                 <data android:scheme="tuic" />
                 <data android:scheme="way" />
+                <data android:scheme="clash" />
+                <data android:scheme="clashmeta" />
+                <data android:scheme="sing-box" />
+                <data android:scheme="v2rayng" />
+                <data android:scheme="v2rayn" />
+                <data android:scheme="sn" />
+                <data android:scheme="hiddify" />
             </intent-filter>
         </activity>
         <meta-data

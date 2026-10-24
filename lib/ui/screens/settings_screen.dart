@@ -132,6 +132,58 @@ class SettingsScreen extends StatelessWidget {
     if (context.mounted) state.clearPendingUpdate();
   }
 
+  Future<void> _onBattery(BuildContext context, AppState state) async {
+    final l10n = L10nScope.of(context);
+    if (state.batteryIgnored == true) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.batteryDialogTitle),
+        content: Text(l10n.batteryDialogText),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.batteryAsk),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await state.requestBatteryIgnore();
+  }
+
+  Future<void> _pickUpdateInterval(BuildContext context, AppState state) async {
+    final options = [15, 30, 60, 120, 360, 1440];
+    final l10n = L10nScope.of(context);
+    final picked = await showDialog<int>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text(l10n.updateInterval),
+        children: [
+          for (final m in options)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, m),
+              child: Text(
+                l10n.intervalValue(m),
+                style: TextStyle(
+                  color: m == state.autoUpdateMin
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+                  fontWeight: m == state.autoUpdateMin
+                      ? FontWeight.w600
+                      : null,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+    if (picked != null) state.setUpdateInterval(picked);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = L10nScope.of(context);
@@ -161,19 +213,18 @@ class SettingsScreen extends StatelessWidget {
               onSelectionChanged: (s) => state.setEngine(s.first),
             ),
           ),
-          if (state.isDesktop)
-            _SectionCard(
-              title: l10n.mode,
-              hint: l10n.tunHint,
-              child: SegmentedButton<bool>(
-                segments: [
-                  ButtonSegment(value: true, label: Text(l10n.modeTun)),
-                  ButtonSegment(value: false, label: Text(l10n.modeProxy)),
-                ],
-                selected: {state.preferTun},
-                onSelectionChanged: (s) => state.setPreferTun(s.first),
-              ),
+          _SectionCard(
+            title: l10n.mode,
+            hint: state.isDesktop ? l10n.tunHint : l10n.tunHintAndroid,
+            child: SegmentedButton<bool>(
+              segments: [
+                ButtonSegment(value: true, label: Text(l10n.modeTun)),
+                ButtonSegment(value: false, label: Text(l10n.modeProxy)),
+              ],
+              selected: {state.preferTun},
+              onSelectionChanged: (s) => state.setPreferTun(s.first),
             ),
+          ),
           _SectionCard(
             title: l10n.routing,
             hint: l10n.routingHint,
@@ -242,6 +293,89 @@ class SettingsScreen extends StatelessWidget {
                   onChanged: state.isDesktop ? state.setKillSwitch : null,
                   contentPadding: EdgeInsets.zero,
                 ),
+                if (!state.isDesktop)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      state.batteryIgnored == true
+                          ? Icons.battery_saver_rounded
+                          : Icons.battery_alert_rounded,
+                      color: state.batteryIgnored == true ? scheme.primary : scheme.error,
+                    ),
+                    title: Text(l10n.batteryTitle),
+                    subtitle: Text(state.batteryIgnored == true
+                        ? l10n.batteryAllowed
+                        : l10n.batteryHint),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => _onBattery(context, state),
+                  ),
+              ],
+            ),
+          ),
+          _SectionCard(
+            title: l10n.dnsSection,
+            hint: l10n.dnsServerHint,
+            child: Column(
+              children: [
+                TextFormField(
+                  initialValue: state.dnsHost,
+                  onFieldSubmitted: state.setDnsHost,
+                  decoration: InputDecoration(
+                    labelText: l10n.dnsServer,
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: state.dnsStrategy,
+                  decoration: InputDecoration(
+                    labelText: l10n.dnsStrategy,
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  items: [
+                    DropdownMenuItem(value: 'prefer_ipv4', child: Text(l10n.dnsPreferV4)),
+                    DropdownMenuItem(value: 'prefer_ipv6', child: Text(l10n.dnsPreferV6)),
+                    DropdownMenuItem(value: 'ipv4_only', child: Text(l10n.dnsOnlyV4)),
+                    DropdownMenuItem(value: 'ipv6_only', child: Text(l10n.dnsOnlyV6)),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) state.setDnsStrategy(v);
+                  },
+                ),
+              ],
+            ),
+          ),
+          _SectionCard(
+            title: l10n.advanced,
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: Text(l10n.tlsFragment),
+                  subtitle: Text(l10n.tlsFragmentHint),
+                  value: state.tlsFragment,
+                  onChanged: state.setTlsFragment,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                DropdownButtonFormField<String>(
+                  initialValue: state.muxProtocol,
+                  decoration: InputDecoration(
+                    labelText: l10n.mux,
+                    helperText: l10n.muxHint,
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  items: [
+                    DropdownMenuItem(value: '', child: Text(l10n.muxOff)),
+                    const DropdownMenuItem(value: 'h2mux', child: Text('h2mux')),
+                    const DropdownMenuItem(value: 'smux', child: Text('smux')),
+                    const DropdownMenuItem(value: 'yamux', child: Text('yamux')),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) state.setMux(v);
+                  },
+                ),
               ],
             ),
           ),
@@ -295,6 +429,17 @@ class SettingsScreen extends StatelessWidget {
                   onChanged: state.setAutoUpdate,
                   contentPadding: EdgeInsets.zero,
                 ),
+                if (state.autoUpdate)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.update_rounded),
+                    title: Text(l10n.updateInterval),
+                    trailing: Text(
+                      l10n.intervalValue(state.autoUpdateMin),
+                      style: TextStyle(color: scheme.primary),
+                    ),
+                    onTap: () => _pickUpdateInterval(context, state),
+                  ),
                 if (state.subs.isNotEmpty)
                   ...state.subs.map(
                     (s) => ListTile(

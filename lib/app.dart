@@ -79,6 +79,7 @@ class WayShell extends StatefulWidget {
 class _WayShellState extends State<WayShell> {
   int _index = 0;
   bool _updateShown = false;
+  bool _batteryShown = false;
 
   @override
   void didChangeDependencies() {
@@ -91,6 +92,34 @@ class _WayShellState extends State<WayShell> {
         if (!mounted) return;
         await showUpdateDialog(context, update);
         if (mounted) context.read<AppState>().clearPendingUpdate();
+      });
+    }
+    if (state.pendingBatteryAsk && !_batteryShown) {
+      _batteryShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        final l10n = L10nScope.of(context);
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(l10n.batteryDialogTitle),
+            content: Text(l10n.batteryDialogText),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(l10n.later),
+              ),
+              FilledButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  context.read<AppState>().requestBatteryIgnore();
+                },
+                child: Text(l10n.batteryAsk),
+              ),
+            ],
+          ),
+        );
+        if (mounted) context.read<AppState>().consumeBatteryAsk();
       });
     }
     if (state.pendingTab >= 0) {

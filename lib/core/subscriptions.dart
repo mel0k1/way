@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'formats.dart';
 import 'parser.dart';
 import 'profile.dart';
 
@@ -14,6 +15,7 @@ class Subscription {
   int usedBytes;
   int totalBytes;
   DateTime? expiresAt;
+  int updateIntervalMin;
 
   Subscription({
     required this.id,
@@ -24,6 +26,7 @@ class Subscription {
     this.usedBytes = 0,
     this.totalBytes = 0,
     this.expiresAt,
+    this.updateIntervalMin = 0,
   });
 
   Map<String, dynamic> toJson() => {
@@ -35,6 +38,7 @@ class Subscription {
     'used_bytes': usedBytes,
     'total_bytes': totalBytes,
     'expires_at': expiresAt?.toIso8601String(),
+    'update_interval': updateIntervalMin,
   };
 
   factory Subscription.fromJson(Map<String, dynamic> j) => Subscription(
@@ -50,6 +54,7 @@ class Subscription {
     expiresAt: j['expires_at'] != null
         ? DateTime.tryParse(j['expires_at'] as String)
         : null,
+    updateIntervalMin: (j['update_interval'] as num?)?.toInt() ?? 0,
   );
 }
 
@@ -76,7 +81,11 @@ class SubscriptionService {
     await for (final chunk in res.stream) {
       bytes.addAll(chunk);
     }
-    final profiles = LinkParser.parseMany(utf8.decode(bytes));
+    final text = utf8.decode(bytes);
+    var profiles = LinkParser.parseMany(text);
+    if (profiles.isEmpty) {
+      profiles = SubFormats.parseAny(text);
+    }
     _applyHeaders(sub, headers);
     for (final p in profiles) {
       p.subId = subId.isEmpty ? sub.id : subId;
@@ -120,6 +129,13 @@ class SubscriptionService {
         }
       }
       sub.usedBytes = used;
+    }
+    final intervalHeader = _header(headers, 'profile-update-interval');
+    if (intervalHeader != null) {
+      final hours = int.tryParse(intervalHeader.trim());
+      if (hours != null && hours > 0) {
+        sub.updateIntervalMin = hours * 60;
+      }
     }
     final title = _header(headers, 'profile-title');
     if (title != null &&

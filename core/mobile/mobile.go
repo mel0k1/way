@@ -49,6 +49,10 @@ func UrlTest(singboxConfig string, xrayConfig string, port int32, timeoutMs int3
         return int32(core.UrlTest(singboxConfig, xrayConfig, int(port), int(timeoutMs)))
 }
 
+func IpInfo(singboxConfig string, port int32, timeoutMs int32) string {
+        return core.IpInfo(singboxConfig, int(port), int(timeoutMs))
+}
+
 type StringIterator interface {
         Next() string
         HasNext() bool

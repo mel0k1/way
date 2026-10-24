@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/latency.dart';
 import '../core/backup.dart';
 import '../core/config_builder.dart';
+import '../core/formats.dart';
 import '../core/parser.dart';
 import '../core/profile.dart';
 import '../core/stats.dart';
@@ -20,6 +21,7 @@ import '../core/tray.dart';
 import '../core/updates.dart';
 import '../core/version.dart';
 import '../core/vpn_bridge.dart';
+import '../core/warp.dart';
 import '../l10n.dart';
 
 class SubEntry extends Subscription {
@@ -50,6 +52,11 @@ class AppState extends ChangeNotifier {
   String themeMode = 'system';
   String localeCode = '';
   bool autoUpdate = true;
+  int autoUpdateMin = 60;
+  String dnsHost = '1.1.1.1';
+  String dnsStrategy = 'prefer_ipv4';
+  bool tlsFragment = false;
+  String muxProtocol = '';
   String routingMode = 'global';
   bool blockAds = false;
   bool killSwitch = false;
@@ -72,6 +79,10 @@ class AppState extends ChangeNotifier {
   int pendingTab = -1;
   int lastImportCount = 0;
   bool lastImportWasSub = false;
+  bool? batteryIgnored;
+  bool pendingBatteryAsk = false;
+  String? connIp;
+  String? connCountry;
   static String? launchLink;
 
   VpnStatus vpn = const VpnStatus();
@@ -83,7 +94,13 @@ class AppState extends ChangeNotifier {
   Timer? _statusTimer;
   Timer? _subsTimer;
   Timer? _statsTimer;
+  bool _ipFetching = false;
   SharedPreferences? _prefs;
+
+  static const _wrapperSchemes = {
+    'clash', 'clashmeta', 'sing-box', 'singbox', 'v2rayng', 'v2rayn',
+    'sn', 'hiddify',
+  };
 
   Profile? get selected {
     if (profiles.isEmpty) return null;
@@ -168,6 +185,11 @@ class AppState extends ChangeNotifier {
         themeMode = s['theme'] as String? ?? themeMode;
         localeCode = s['locale'] as String? ?? localeCode;
         autoUpdate = s['autoupdate'] as bool? ?? autoUpdate;
+        autoUpdateMin = (s['updatemin'] as num?)?.toInt() ?? autoUpdateMin;
+        dnsHost = s['dnshost'] as String? ?? dnsHost;
+        dnsStrategy = s['dnsstrategy'] as String? ?? dnsStrategy;
+        tlsFragment = s['tlsfragment'] as bool? ?? tlsFragment;
+        muxProtocol = s['mux'] as String? ?? muxProtocol;
         selectedId = s['selected'] as String?;
         routingMode = s['routing'] as String? ?? routingMode;
         blockAds = s['blockads'] as bool? ?? blockAds;
@@ -191,11 +213,8 @@ class AppState extends ChangeNotifier {
     final docs = await getApplicationSupportDirectory();
     singBoxLogPath = '${docs.path}/waybox.log';
     xrayLogPath = '${docs.path}/wayxray.log';
-    if (!preferTun && !isDesktop) preferTun = true;
     _statusTimer = Timer.periodic(const Duration(seconds: 2), (_) => _tick());
-    _subsTimer = Timer.periodic(const Duration(minutes: 30), (_) {
-      if (autoUpdate) updateSubscriptions();
-    });
+    _subsTimer = Timer.periodic(const Duration(minutes: 5), (_) => _checkSubUpdates());
     if (autoStart || !isDesktop) {
       try {
         final native = await bridge.autostartEnabled();
@@ -204,6 +223,8 @@ class AppState extends ChangeNotifier {
         }
       } catch (_) {}
     }
+    unawaited(refreshBattery());
+    Timer(const Duration(seconds: 5), _checkSubUpdates);
     Timer(const Duration(seconds: 3), _autoConnectOnLaunch);
     if (autoCheckUpdates) {
       Timer(const Duration(seconds: 4), () => checkForUpdates());
@@ -292,6 +313,11 @@ class AppState extends ChangeNotifier {
       'theme': themeMode,
       'locale': localeCode,
       'autoupdate': autoUpdate,
+      'updatemin': autoUpdateMin,
+      'dnshost': dnsHost,
+      'dnsstrategy': dnsStrategy,
+      'tlsfragment': tlsFragment,
+      'mux': muxProtocol,
       'selected': selectedId,
       'routing': routingMode,
       'blockads': blockAds,
@@ -341,11 +367,14 @@ class AppState extends ChangeNotifier {
     if (s.phase != vpn.phase || (s.error != null && s.error != vpn.error)) {
       if (vpn.phase == VpnPhase.connecting && s.phase == VpnPhase.connected) {
         log('connected');
+        unawaited(_fetchConnInfo());
       }
       if (vpn.phase != VpnPhase.stopped && s.phase == VpnPhase.stopped) {
         log('disconnected');
         stats = WayStats.zero;
         statsPoller.reset();
+        connIp = null;
+        connCountry = null;
       }
       vpn = s;
       notifyListeners();
@@ -364,6 +393,36 @@ class AppState extends ChangeNotifier {
     if (vpn.phase != VpnPhase.connected) return;
     stats = await statsPoller.fetch();
     notifyListeners();
+  }
+
+  Future<void> _fetchConnInfo() async {
+    if (_ipFetching) return;
+    final profile = effectiveProfile;
+    if (profile == null) return;
+    _ipFetching = true;
+    try {
+      final info = await bridge.ipInfo(profile: profile, timeout: const Duration(seconds: 8));
+      if (info != null) {
+        if (info['ip']?.isNotEmpty == true) connIp = info['ip'];
+        if (info['country']?.isNotEmpty == true) connCountry = info['country'];
+      }
+    } catch (_) {
+    } finally {
+      _ipFetching = false;
+      notifyListeners();
+    }
+  }
+
+  void _checkSubUpdates() {
+    if (!autoUpdate || autoUpdateMin <= 0) return;
+    final now = DateTime.now();
+    for (final sub in List<Subscription>.from(subs)) {
+      final interval = sub.updateIntervalMin > 0 ? sub.updateIntervalMin : autoUpdateMin;
+      final last = sub.lastUpdate;
+      if (last == null || now.difference(last).inMinutes >= interval) {
+        unawaited(updateSubscription(sub));
+      }
+    }
   }
 
   Future<void> connect() async {
@@ -389,9 +448,10 @@ class AppState extends ChangeNotifier {
         return;
       }
     }
-    final group = autoSelect && engine == 'singbox' && engineProfiles.length > 1
-        ? engineProfiles
+    final groupPool = autoSelect && engine == 'singbox'
+        ? engineProfiles.where((p) => p.protocol != 'wireguard').toList()
         : const <Profile>[];
+    final group = groupPool.length > 1 ? groupPool : const <Profile>[];
     Profile? chainProfile;
     if (group.isEmpty &&
         engine == 'singbox' &&
@@ -408,7 +468,12 @@ class AppState extends ChangeNotifier {
     log('connecting via ${profile.name} ($engine)');
     vpn = const VpnStatus(phase: VpnPhase.connecting);
     notifyListeners();
-    final tun = isDesktop ? (preferTun || killSwitch) : true;
+    final tun = isDesktop ? (preferTun || killSwitch) : preferTun;
+    if (!isDesktop && tun && batteryIgnored == false && !(_prefs?.getBool('way.batt_asked') ?? false)) {
+      await _prefs?.setBool('way.batt_asked', true);
+      pendingBatteryAsk = true;
+      notifyListeners();
+    }
     final result = await bridge.connect(ConnectRequest(
       engine: engine,
       tun: tun,
@@ -422,6 +487,10 @@ class AppState extends ChangeNotifier {
       splitApps: List.unmodifiable(splitApps),
       customRules: List.unmodifiable(customRules),
       chain: chainProfile,
+      dnsHost: dnsHost,
+      dnsStrategy: dnsStrategy,
+      tlsFragment: tlsFragment,
+      muxProtocol: muxProtocol,
     ));
     if (result.error != null) {
       log('error: ${result.error}');
@@ -448,6 +517,8 @@ class AppState extends ChangeNotifier {
     await bridge.disconnect();
     stats = WayStats.zero;
     statsPoller.reset();
+    connIp = null;
+    connCountry = null;
     vpn = await bridge.status();
     notifyListeners();
     if (desktopNotify) {
@@ -471,6 +542,21 @@ class AppState extends ChangeNotifier {
       return;
     }
     final scheme = url.split('://').first.toLowerCase();
+    if (_wrapperSchemes.contains(scheme)) {
+      try {
+        final uri = Uri.parse(url);
+        final target = uri.queryParameters['url'] ??
+            uri.queryParameters['remote'] ??
+            uri.queryParameters['u'] ?? '';
+        if (target.isNotEmpty) {
+          log('deep link: unwrapping $scheme');
+          handleDeepLink(target);
+          return;
+        }
+      } catch (_) {}
+      log('deep link ignored: no url in $scheme wrapper');
+      return;
+    }
     lastImportWasSub = scheme == 'http' || scheme == 'https';
     if (lastImportWasSub) {
       var host = '';
@@ -497,7 +583,10 @@ class AppState extends ChangeNotifier {
   }
 
   void addFromLink(String link, {String subId = ''}) {
-    final parsed = LinkParser.parseMany(link);
+    var parsed = LinkParser.parseMany(link);
+    if (parsed.isEmpty) {
+      parsed = SubFormats.parseAny(link);
+    }
     for (final p in parsed) {
       p.subId = subId;
       profiles.add(p);
@@ -505,6 +594,22 @@ class AppState extends ChangeNotifier {
     if (selectedId == null && profiles.isNotEmpty) selectedId = profiles.first.id;
     log('added ${parsed.length} profile(s)');
     _persist();
+    notifyListeners();
+  }
+
+  void addProfile(Profile p) {
+    profiles.add(p);
+    selectedId ??= p.id;
+    _persist();
+    notifyListeners();
+  }
+
+  Future<void> addWarp() async {
+    final p = await WarpService.register();
+    profiles.add(p);
+    selectedId ??= p.id;
+    await _persist();
+    log('WARP ready: ${p.server}:${p.port}');
     notifyListeners();
   }
 
@@ -641,6 +746,62 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setUpdateInterval(int minutes) {
+    autoUpdateMin = minutes;
+    _persist();
+    notifyListeners();
+  }
+
+  void setDnsHost(String value) {
+    final v = value.trim();
+    dnsHost = v.isEmpty
+        ? '1.1.1.1'
+        : (v.startsWith('https://') ? Uri.tryParse(v)?.host ?? v : v);
+    if (dnsHost.isEmpty) dnsHost = '1.1.1.1';
+    _persist();
+    notifyListeners();
+  }
+
+  void setDnsStrategy(String value) {
+    dnsStrategy = value;
+    _persist();
+    notifyListeners();
+  }
+
+  void setTlsFragment(bool value) {
+    tlsFragment = value;
+    _persist();
+    notifyListeners();
+  }
+
+  void setMux(String value) {
+    muxProtocol = value;
+    _persist();
+    notifyListeners();
+  }
+
+  Future<void> refreshBattery() async {
+    if (isDesktop) return;
+    try {
+      batteryIgnored = await bridge.batteryIgnored();
+    } catch (_) {
+      batteryIgnored = null;
+    }
+    notifyListeners();
+  }
+
+  Future<void> requestBatteryIgnore() async {
+    await bridge.requestBatteryIgnore();
+    await Future.delayed(const Duration(seconds: 2));
+    await refreshBattery();
+  }
+
+  void consumeBatteryAsk() {
+    if (!pendingBatteryAsk) return;
+    pendingBatteryAsk = false;
+    notifyListeners();
+  }
+
   void setRoutingMode(String value) {
     routingMode = value;
     _persist();
@@ -734,6 +895,11 @@ class AppState extends ChangeNotifier {
         'theme': themeMode,
         'locale': localeCode,
         'autoupdate': autoUpdate,
+        'updatemin': autoUpdateMin,
+        'dnshost': dnsHost,
+        'dnsstrategy': dnsStrategy,
+        'tlsfragment': tlsFragment,
+        'mux': muxProtocol,
         'selected': selectedId,
         'routing': routingMode,
         'blockads': blockAds,
@@ -781,6 +947,11 @@ class AppState extends ChangeNotifier {
       themeMode = settings['theme'] as String? ?? themeMode;
       localeCode = settings['locale'] as String? ?? localeCode;
       autoUpdate = settings['autoupdate'] as bool? ?? autoUpdate;
+      autoUpdateMin = (settings['updatemin'] as num?)?.toInt() ?? autoUpdateMin;
+      dnsHost = settings['dnshost'] as String? ?? dnsHost;
+      dnsStrategy = settings['dnsstrategy'] as String? ?? dnsStrategy;
+      tlsFragment = settings['tlsfragment'] as bool? ?? tlsFragment;
+      muxProtocol = settings['mux'] as String? ?? muxProtocol;
       routingMode = settings['routing'] as String? ?? routingMode;
       blockAds = settings['blockads'] as bool? ?? blockAds;
       killSwitch = settings['killswitch'] as bool? ?? killSwitch;
@@ -798,7 +969,6 @@ class AppState extends ChangeNotifier {
               ?.map((e) => RouteRule.fromJson(e as Map<String, dynamic>))
               .toList() ??
           customRules;
-      if (!preferTun && !isDesktop) preferTun = true;
       latencies = {};
       unawaited(tray.setCloseToTray(closeToTray));
       await _persist();
