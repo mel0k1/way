@@ -122,6 +122,35 @@ class L10n {
   String get cores => ru ? 'Ядра' : 'Cores';
   String get license => 'GPL-3.0';
 
+  String get appSection => ru ? 'Приложение' : 'Application';
+  String get autostart => ru ? 'Автозапуск' : 'Autostart';
+  String get autostartHintDesktop => ru
+      ? 'Запускать Way при входе в Windows (ключ Run в реестре).'
+      : 'Start Way when you sign in to Windows (Run registry key).';
+  String get autostartHintAndroid => ru
+      ? 'Восстанавливать VPN после перезагрузки устройства или обновления приложения.'
+      : 'Restore the VPN after device reboot or app update.';
+  String get connectOnLaunch => ru ? 'Подключаться при запуске' : 'Connect on launch';
+  String get connectOnLaunchHint => ru
+      ? 'Автоматически подключаться, когда приложение стартует.'
+      : 'Automatically connect when the app starts.';
+  String get desktopNotifications => ru ? 'Уведомления Windows' : 'Windows notifications';
+  String get desktopNotificationsHint => ru
+      ? 'Всплывающие уведомления при подключении и отключении.'
+      : 'Popup notifications on connect and disconnect.';
+  String get checkUpdates => ru ? 'Проверить обновления' : 'Check for updates';
+  String get checkUpdatesHint => ru
+      ? 'Сверяется с релизами GitHub и предлагает скачать новую версию.'
+      : 'Checks GitHub Releases and offers to download a new version.';
+  String get autoCheckUpdates => ru ? 'Проверять при запуске' : 'Check on startup';
+  String get updateAvailable => ru ? 'Доступна новая версия' : 'New version available';
+  String get upToDate => ru ? 'У вас последняя версия' : 'You are on the latest version';
+  String get download => ru ? 'Скачать' : 'Download';
+  String get later => ru ? 'Позже' : 'Later';
+  String get checking => ru ? 'Проверка…' : 'Checking…';
+  String get whatsNew => ru ? 'Что нового' : "What's new";
+  String get currentVersion => ru ? 'Текущая версия' : 'Current version';
+
   String get logsTitle => ru ? 'Логи' : 'Logs';
   String get clear => ru ? 'Очистить' : 'Clear';
   String get copy => ru ? 'Копировать' : 'Copy';

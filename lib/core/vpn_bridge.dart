@@ -56,6 +56,8 @@ abstract class VpnBridge {
   Future<VpnStatus> connect(ConnectRequest request);
   Future<void> disconnect();
   Future<VpnStatus> status();
+  Future<bool> autostartEnabled();
+  Future<void> setAutostart(bool value);
   bool get tunSupported;
 }
 
@@ -128,6 +130,25 @@ class AndroidBridge implements VpnBridge {
       return const VpnStatus();
     } on PlatformException {
       return const VpnStatus();
+    }
+  }
+
+  @override
+  Future<bool> autostartEnabled() async {
+    try {
+      final result = await _channel.invokeMethod('autostart');
+      return result is Map && result['enabled'] == true;
+    } on PlatformException {
+      return false;
+    }
+  }
+
+  @override
+  Future<void> setAutostart(bool value) async {
+    try {
+      await _channel.invokeMethod('set_autostart', {'enabled': value});
+    } on PlatformException {
+      return;
     }
   }
 }
@@ -247,6 +268,28 @@ class DesktopBridge implements VpnBridge {
     }
     final err = data['error'] as String?;
     return VpnStatus(error: err?.isEmpty == true ? null : err);
+  }
+
+  @override
+  Future<bool> autostartEnabled() async {
+    if (!await _ensureCore()) return false;
+    final data = await _get('/autostart');
+    return data?['enabled'] == true;
+  }
+
+  @override
+  Future<void> setAutostart(bool value) async {
+    if (!await _ensureCore()) return;
+    try {
+      final client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
+      final req = await client.postUrl(Uri.parse('$_base/autostart'));
+      req.headers.set('Content-Type', 'application/json');
+      req.add(utf8.encode(json.encode({'enabled': value})));
+      await req.close();
+      client.close();
+    } catch (_) {
+      return;
+    }
   }
 }
 

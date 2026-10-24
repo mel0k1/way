@@ -8,7 +8,7 @@ import (
         "github.com/sagernet/sing-box/constant"
 )
 
-var WayVersion = "1.0.0"
+var WayVersion = "1.1.0"
 
 func SingBoxVersion() string {
         return constant.Version

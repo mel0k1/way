@@ -3,6 +3,7 @@ package com.mel0k1.way
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -12,6 +13,8 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.ParcelFileDescriptor
+import android.os.SystemClock
+import android.widget.RemoteViews
 import io.mel0k1.waycore.CommandServer
 import io.mel0k1.waycore.PlatformInterface
 import io.mel0k1.waycore.StringIterator
@@ -28,6 +31,7 @@ class WayVpnService : VpnService(), PlatformInterface {
         private const val NOTIFICATION_ID = 7
         private const val PREFS = "way_vpn"
         private const val MAX_RESTARTS = 10
+        private val brandColor: Int = 0xFF2E7D53.toInt()
 
         @Volatile
         var state: String = STATE_STOPPED
@@ -49,6 +53,7 @@ class WayVpnService : VpnService(), PlatformInterface {
     private var splitMode = "off"
     private var splitApps = emptyList<String>()
     private var restartAttempts = 0
+    private var connectStartMs = 0L
     private val watchdog = Handler(Looper.getMainLooper())
     private val watchdogTick = object : Runnable {
         override fun run() {
@@ -74,6 +79,11 @@ class WayVpnService : VpnService(), PlatformInterface {
             restoreConfig()
             return START_STICKY
         }
+        if (intent.getBooleanExtra("restore", false)) {
+            startForegroundCompat(getString(R.string.nt_connecting))
+            restoreConfig()
+            return START_STICKY
+        }
         if (intent.getBooleanExtra("stop", false)) {
             desired = false
             clearSavedConfig()
@@ -88,7 +98,7 @@ class WayVpnService : VpnService(), PlatformInterface {
             ?.map { it.trim() }
             ?.filter { it.isNotEmpty() }
             .orEmpty()
-        startForegroundCompat()
+        startForegroundCompat(getString(R.string.nt_connecting))
         startCore(
             engine = engine,
             singboxConfig = intent.getStringExtra("singbox") ?: "",
@@ -110,31 +120,65 @@ class WayVpnService : VpnService(), PlatformInterface {
         stopSelf()
     }
 
-    private fun startForegroundCompat() {
+    private fun ensureChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Way VPN",
-                NotificationManager.IMPORTANCE_LOW,
-            )
-            manager.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            getString(R.string.nt_channel_name),
+            NotificationManager.IMPORTANCE_LOW,
+        )
+        manager.createNotificationChannel(channel)
+    }
+
+    private fun buildNotification(statusText: String, showTimer: Boolean): Notification {
+        val views = RemoteViews(packageName, R.layout.notification_way)
+        views.setTextViewText(R.id.nt_status, statusText)
+        if (showTimer && connectStartMs > 0) {
+            views.setViewVisibility(R.id.nt_timer, android.view.View.VISIBLE)
+            views.setChronometer(R.id.nt_timer, connectStartMs, null, true)
+        } else {
+            views.setViewVisibility(R.id.nt_timer, android.view.View.GONE)
         }
-        val notification: Notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        views.setOnClickPendingIntent(
+            R.id.nt_action,
+            PendingIntent.getService(
+                this,
+                1,
+                Intent(this, WayVpnService::class.java).putExtra("stop", true),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            ),
+        )
+        val contentIntent = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, CHANNEL_ID)
-                .setContentTitle("Way")
-                .setContentText("Way VPN")
-                .setSmallIcon(android.R.drawable.stat_notify_sync_noanim)
-                .setOngoing(true)
-                .build()
         } else {
             @Suppress("DEPRECATION")
             Notification.Builder(this)
-                .setContentTitle("Way")
-                .setSmallIcon(android.R.drawable.stat_notify_sync_noanim)
-                .setOngoing(true)
-                .build()
         }
+        return builder
+            .setSmallIcon(R.drawable.ic_stat_way)
+            .setContent(views)
+            .setContentIntent(contentIntent)
+            .setColor(brandColor)
+            .setColorized(true)
+            .setOngoing(true)
+            .build()
+    }
+
+    private fun showNotification(statusText: String, showTimer: Boolean) {
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(NOTIFICATION_ID, buildNotification(statusText, showTimer))
+    }
+
+    private fun startForegroundCompat(statusText: String) {
+        ensureChannel()
+        val notification = buildNotification(statusText, false)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(
                 NOTIFICATION_ID,
@@ -169,11 +213,19 @@ class WayVpnService : VpnService(), PlatformInterface {
             restartAttempts = 0
             saveConfig(engine, singboxConfig, xrayConfig, bridgeConfig)
             setState(STATE_STARTED)
+            connectStartMs = SystemClock.elapsedRealtime()
+            showNotification(getString(R.string.nt_connected), true)
             watchdog.removeCallbacks(watchdogTick)
             watchdog.postDelayed(watchdogTick, 5000)
         } catch (e: Throwable) {
             setState(STATE_STOPPED, e.message ?: e.toString())
             stopCore()
+            val err = lastError
+            showNotification(
+                if (err.isNullOrBlank()) getString(R.string.nt_disconnected)
+                else "${getString(R.string.nt_disconnected)} · ${err.take(80)}",
+                false,
+            )
         }
     }
 
@@ -186,7 +238,7 @@ class WayVpnService : VpnService(), PlatformInterface {
             ?.split(",")
             ?.filter { it.isNotBlank() }
             .orEmpty()
-        startForegroundCompat()
+        startForegroundCompat(getString(R.string.nt_connecting))
         startCore(
             engine = engine,
             singboxConfig = singbox,
@@ -212,6 +264,7 @@ class WayVpnService : VpnService(), PlatformInterface {
 
     private fun stopCore() {
         setState(STATE_STOPPING)
+        showNotification(getString(R.string.nt_disconnecting), false)
         watchdog.removeCallbacks(watchdogTick)
         val server = commandServer
         commandServer = null

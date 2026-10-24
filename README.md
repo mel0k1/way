@@ -24,9 +24,17 @@
 ## Features
 
 - **Two cores, one app** — sing-box and xray-core live side by side; the active engine is a single tap in Settings
-- **Material Design 3** — dynamic tonal palettes, large animated connect button, dark & light themes
+- **Material Design 3** — dynamic tonal palettes, squircle connect button, darkened shape background, dark & light themes
 - **TUN mode** — full-device tunneling via Android VpnService and system TUN on Windows
-- **Subscriptions** — import by URL with automatic refresh every 30 minutes
+- **Kill switch** — WFP firewall on Windows, Always-on VPN + lockdown on Android
+- **Split tunneling** — per-app (Android) and per-process (Windows) tunneling rules
+- **Routing presets** — “All via VPN”, “RU direct” (geosite/geoip rule-sets) and ad blocking (category-ads-all)
+- **Fastest server** — urltest group in sing-box and TCP latency testing with auto-select
+- **Subscriptions** — import by URL or QR code, clipboard paste, auto-refresh, panel-compatible User-Agent and quota display
+- **Encrypted storage** — profiles and subscription keys live in flutter_secure_storage (Keystore / DPAPI)
+- **Autostart** — launch on boot (Android) or user sign-in (Windows Run key), optional auto-connect on launch
+- **Custom notifications** — branded Android foreground notification with a disconnect button and session timer, Windows toasts
+- **Update check** — checks GitHub Releases on startup and offers to download the new build
 - **RU + EN interface** — follows the system language, switchable in settings
 - **Realtime stats** — live speed and connection counter via the clash API
 - **NSIS installer** — a proper Windows setup with uninstaller, shortcuts and per-user system proxy
@@ -114,9 +122,17 @@ This project is a client shell around open-source cores. It ships no servers, no
 ### Возможности
 
 - **Два ядра в одном приложении** — sing-box и xray-core, выбор движка в настройках
-- **Material Design 3** — динамические палитры, большая анимированная кнопка подключения, тёмная и светлая темы
+- **Material Design 3** — динамические палитры, скуиркл-кнопка подключения, фон с притемнёнными фигурами, тёмная и светлая темы
 - **Режим TUN** — туннелирование всего трафика через VpnService на Android и системный TUN на Windows
-- **Подписки** — импорт по ссылке с автообновлением каждые 30 минут
+- **Kill switch** — WFP-фаервол на Windows, Always-on VPN + блокировка без VPN на Android
+- **Раздельное туннелирование** — по приложениям (Android) и по процессам (Windows)
+- **Пресеты маршрутизации** — «Всё через VPN», «RU напрямую» (rule-set geosite/geoip) и блокировка рекламы (category-ads-all)
+- **Быстрейший сервер** — urltest-группа в sing-box и TCP-замер задержки с автовыбором
+- **Подписки** — импорт по ссылке или QR-коду, вставка из буфера, автообновление, совместимый с панелями User-Agent и показ квоты
+- **Шифрованное хранилище** — профили и ключи подписок в flutter_secure_storage (Keystore / DPAPI)
+- **Автозапуск** — старт после загрузки (Android) или входа в систему (ключ Run Windows), опциональное авто-подключение при запуске
+- **Кастомные уведомления** — брендированная нотификация Android с кнопкой отключения и таймером сессии, тосты Windows
+- **Проверка обновлений** — сверка с GitHub Releases при старте и предложение скачать сборку
 - **Интерфейс RU + EN** — следует языку системы, переключается в настройках
 - **Статистика в реальном времени** — скорость и число соединений через clash API
 - **NSIS-установщик** — полноценная установка на Windows с деинсталлятором и ярлыками

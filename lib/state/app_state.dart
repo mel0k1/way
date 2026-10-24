@@ -13,6 +13,9 @@ import '../core/parser.dart';
 import '../core/profile.dart';
 import '../core/stats.dart';
 import '../core/subscriptions.dart';
+import '../core/toast.dart';
+import '../core/updates.dart';
+import '../core/version.dart';
 import '../core/vpn_bridge.dart';
 
 class SubEntry extends Subscription {
@@ -49,9 +52,15 @@ class AppState extends ChangeNotifier {
   List<String> splitApps = [];
   String subUserAgent = 'v2rayTun/1.7.6';
   bool autoSelect = false;
+  bool autoStart = false;
+  bool connectOnLaunch = false;
+  bool desktopNotify = true;
+  bool autoCheckUpdates = true;
   String? hwid;
   Map<String, int?> latencies = {};
   bool latencyTesting = false;
+  UpdateInfo? pendingUpdate;
+  bool checkingUpdate = false;
 
   VpnStatus vpn = const VpnStatus();
   WayStats stats = WayStats.zero;
@@ -120,6 +129,10 @@ class AppState extends ChangeNotifier {
         splitApps = (s['splitapps'] as List?)?.cast<String>() ?? splitApps;
         subUserAgent = s['subua'] as String? ?? subUserAgent;
         autoSelect = s['autoselect'] as bool? ?? autoSelect;
+        autoStart = s['autostart'] as bool? ?? autoStart;
+        connectOnLaunch = s['connectlaunch'] as bool? ?? connectOnLaunch;
+        desktopNotify = s['desktopnotify'] as bool? ?? desktopNotify;
+        autoCheckUpdates = s['checkupdates'] as bool? ?? autoCheckUpdates;
       } catch (_) {}
     }
     final docs = await getApplicationSupportDirectory();
@@ -130,8 +143,29 @@ class AppState extends ChangeNotifier {
     _subsTimer = Timer.periodic(const Duration(minutes: 30), (_) {
       if (autoUpdate) updateSubscriptions();
     });
+    if (autoStart || !isDesktop) {
+      await bridge.setAutostart(autoStart);
+    }
+    Timer(const Duration(seconds: 3), _autoConnectOnLaunch);
+    if (autoCheckUpdates) {
+      Timer(const Duration(seconds: 4), () => checkForUpdates());
+    }
     notifyListeners();
   }
+
+  Future<void> _autoConnectOnLaunch() async {
+    if (!connectOnLaunch) return;
+    try {
+      final s = await bridge.status();
+      if (s.phase != VpnPhase.stopped || s.error != null) return;
+      log('auto-connect on launch');
+      await connect();
+    } catch (_) {
+      return;
+    }
+  }
+
+  bool get _ru => effectiveLocale == 'ru';
 
   Future<void> _loadSecure(SharedPreferences prefs) async {
     try {
@@ -208,6 +242,10 @@ class AppState extends ChangeNotifier {
       'splitapps': splitApps,
       'subua': subUserAgent,
       'autoselect': autoSelect,
+      'autostart': autoStart,
+      'connectlaunch': connectOnLaunch,
+      'desktopnotify': desktopNotify,
+      'checkupdates': autoCheckUpdates,
     }));
     try {
       await _secure.write(
@@ -301,6 +339,14 @@ class AppState extends ChangeNotifier {
     }
     vpn = result;
     notifyListeners();
+    final connectedName = profile.name;
+    Timer(const Duration(seconds: 4), () async {
+      if (!desktopNotify) return;
+      final s = await bridge.status();
+      if (s.phase == VpnPhase.connected) {
+        showDesktopToast('Way', _ru ? 'Подключено · $connectedName' : 'Connected · $connectedName');
+      }
+    });
   }
 
   Future<void> disconnect() async {
@@ -311,6 +357,9 @@ class AppState extends ChangeNotifier {
     stats = WayStats.zero;
     vpn = await bridge.status();
     notifyListeners();
+    if (desktopNotify) {
+      showDesktopToast('Way', _ru ? 'Отключено' : 'Disconnected');
+    }
   }
 
   void addFromLink(String link, {String subId = ''}) {
@@ -470,6 +519,63 @@ class AppState extends ChangeNotifier {
   void setSplitApps(List<String> apps) {
     splitApps = apps;
     _persist();
+    notifyListeners();
+  }
+
+  Future<void> setAutoStart(bool value) async {
+    autoStart = value;
+    notifyListeners();
+    try {
+      await bridge.setAutostart(value);
+    } catch (_) {
+      return;
+    }
+    _persist();
+    notifyListeners();
+  }
+
+  void setConnectOnLaunch(bool value) {
+    connectOnLaunch = value;
+    _persist();
+    notifyListeners();
+  }
+
+  void setDesktopNotify(bool value) {
+    desktopNotify = value;
+    _persist();
+    notifyListeners();
+  }
+
+  void setAutoCheckUpdates(bool value) {
+    autoCheckUpdates = value;
+    _persist();
+    notifyListeners();
+  }
+
+  Future<UpdateInfo?> checkForUpdates() async {
+    if (checkingUpdate) return pendingUpdate;
+    checkingUpdate = true;
+    notifyListeners();
+    final info = await UpdateChecker.fetchLatest();
+    checkingUpdate = false;
+    UpdateInfo? found;
+    if (info != null && UpdateChecker.isNewer(info.version, appVersion)) {
+      found = info;
+    }
+    pendingUpdate = found;
+    if (info == null) {
+      log('update check failed');
+    } else {
+      log(found != null
+          ? 'update available: v${found.version}'
+          : 'up to date (v$appVersion)');
+    }
+    notifyListeners();
+    return found;
+  }
+
+  void clearPendingUpdate() {
+    pendingUpdate = null;
     notifyListeners();
   }
 

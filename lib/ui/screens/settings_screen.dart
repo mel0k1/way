@@ -3,9 +3,11 @@ import 'package:flutter/services.dart';
 
 import '../../core/config_builder.dart';
 import '../../core/subscriptions.dart';
+import '../../core/version.dart';
 import '../../l10n.dart';
 import '../../state/app_state.dart';
 import 'package:provider/provider.dart';
+import '../widgets/update_dialog.dart';
 import 'split_apps_screen.dart';
 
 class _SplitProcessesField extends StatefulWidget {
@@ -90,6 +92,20 @@ class SettingsScreen extends StatelessWidget {
       unit++;
     }
     return '${value.toStringAsFixed(value >= 100 || unit == 0 ? 0 : 1)} ${units[unit]}';
+  }
+
+  Future<void> _onCheckUpdates(BuildContext context, AppState state) async {
+    final l10n = L10nScope.of(context);
+    final found = await state.checkForUpdates();
+    if (!context.mounted) return;
+    if (found == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.upToDate)),
+      );
+      return;
+    }
+    await showUpdateDialog(context, found);
+    if (context.mounted) state.clearPendingUpdate();
   }
 
   @override
@@ -293,6 +309,63 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           _SectionCard(
+            title: l10n.appSection,
+            hint: l10n.checkUpdatesHint,
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: Text(l10n.autostart),
+                  subtitle: Text(state.isDesktop
+                      ? l10n.autostartHintDesktop
+                      : l10n.autostartHintAndroid),
+                  value: state.autoStart,
+                  onChanged: (v) => state.setAutoStart(v),
+                  contentPadding: EdgeInsets.zero,
+                ),
+                SwitchListTile(
+                  title: Text(l10n.connectOnLaunch),
+                  subtitle: Text(l10n.connectOnLaunchHint),
+                  value: state.connectOnLaunch,
+                  onChanged: state.setConnectOnLaunch,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                if (state.isDesktop)
+                  SwitchListTile(
+                    title: Text(l10n.desktopNotifications),
+                    subtitle: Text(l10n.desktopNotificationsHint),
+                    value: state.desktopNotify,
+                    onChanged: state.setDesktopNotify,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                SwitchListTile(
+                  title: Text(l10n.autoCheckUpdates),
+                  value: state.autoCheckUpdates,
+                  onChanged: state.setAutoCheckUpdates,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: state.checkingUpdate
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.system_update_alt_rounded),
+                  title: Text(l10n.checkUpdates),
+                  subtitle: state.pendingUpdate != null
+                      ? Text(
+                          '${l10n.updateAvailable}: v${state.pendingUpdate!.version}',
+                          style: TextStyle(color: scheme.primary),
+                        )
+                      : Text('${l10n.currentVersion}: $appVersion'),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => _onCheckUpdates(context, state),
+                ),
+              ],
+            ),
+          ),
+          _SectionCard(
             title: l10n.about,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,7 +388,7 @@ class SettingsScreen extends StatelessWidget {
                           Text('Way',
                               style: Theme.of(context).textTheme.titleMedium),
                           Text(
-                            '${l10n.version}: 1.0.0 · ${l10n.license}',
+                            '${l10n.version}: $appVersion · ${l10n.license}',
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ],

@@ -31,7 +31,7 @@ Section "Install"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Way" "UninstallString" "$INSTDIR\uninstall.exe"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Way" "DisplayIcon" "$INSTDIR\way.exe"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Way" "Publisher" "mel0k1"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Way" "DisplayVersion" "1.0.0"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Way" "DisplayVersion" "1.1.0"
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Way" "EstimatedSize" 250000
 SectionEnd
 

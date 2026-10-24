@@ -8,6 +8,7 @@ import 'ui/screens/logs_screen.dart';
 import 'ui/screens/servers_screen.dart';
 import 'ui/screens/settings_screen.dart';
 import 'ui/widgets/app_background.dart';
+import 'ui/widgets/update_dialog.dart';
 
 class WayApp extends StatelessWidget {
   const WayApp({super.key});
@@ -74,6 +75,22 @@ class WayShell extends StatefulWidget {
 
 class _WayShellState extends State<WayShell> {
   int _index = 0;
+  bool _updateShown = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final state = context.watch<AppState>();
+    final update = state.pendingUpdate;
+    if (!_updateShown && update != null) {
+      _updateShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        await showUpdateDialog(context, update);
+        if (mounted) context.read<AppState>().clearPendingUpdate();
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -1,8 +1,10 @@
 package com.mel0k1.way
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.net.VpnService
 import android.os.Build
 import android.provider.Settings
@@ -51,6 +53,28 @@ class MainActivity : FlutterActivity() {
                 }
                 "apps" -> {
                     result.success(installedApps())
+                }
+                "autostart" -> {
+                    val prefs = getSharedPreferences("way_boot", Context.MODE_PRIVATE)
+                    result.success(mapOf("enabled" to prefs.getBoolean("autostart", false)))
+                }
+                "set_autostart" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: false
+                    getSharedPreferences("way_boot", Context.MODE_PRIVATE)
+                        .edit()
+                        .putBoolean("autostart", enabled)
+                        .apply()
+                    result.success(null)
+                }
+                "open_url" -> {
+                    try {
+                        val url = call.argument<String>("url")
+                        if (url.isNullOrBlank()) throw IllegalArgumentException("url required")
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        result.success(null)
+                    } catch (e: Exception) {
+                        result.error("unavailable", e.message, null)
+                    }
                 }
                 else -> result.notImplemented()
             }

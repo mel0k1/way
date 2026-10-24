@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nt_channel_name">VPN-соединение</string>
+    <string name="nt_title">Way VPN</string>
+    <string name="nt_connecting">Подключение…</string>
+    <string name="nt_connected">Подключено</string>
+    <string name="nt_disconnecting">Отключение…</string>
+    <string name="nt_disconnected">Отключено</string>
+    <string name="nt_action_disconnect">Отключить</string>
+</resources>
