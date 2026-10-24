@@ -15,6 +15,7 @@ class ServersScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = L10nScope.of(context);
     final state = context.watch<AppState>();
+    final scheme = Theme.of(context).colorScheme;
     final body = Column(
       children: [
         Padding(
@@ -42,7 +43,7 @@ class ServersScreen extends StatelessWidget {
                   ),
                 )
               else
-                IconButton(
+                IconButton.filledTonal(
                   icon: const Icon(Icons.speed_rounded),
                   tooltip: l10n.testLatency,
                   onPressed:
@@ -80,7 +81,37 @@ class ServersScreen extends StatelessWidget {
         ),
         Expanded(
           child: state.profiles.isEmpty
-              ? Center(child: Text(l10n.noServers))
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 88,
+                        height: 88,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: scheme.surfaceContainerHighest,
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(Icons.dns_rounded,
+                            size: 40, color: scheme.onSurfaceVariant),
+                      ),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Text(
+                          l10n.noServers,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(
+                                  color: scheme.onSurfaceVariant),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                   itemCount: state.profiles.length + 1,
@@ -129,14 +160,23 @@ class _AutoTile extends StatelessWidget {
         color: state.autoSelect ? scheme.primaryContainer : null,
         child: ListTile(
           onTap: enabled ? () => state.setAutoSelect(true) : null,
-          leading: CircleAvatar(
-            backgroundColor: state.autoSelect
-                ? scheme.primary
-                : scheme.surfaceContainerHighest,
-            foregroundColor: state.autoSelect
-                ? scheme.onPrimary
-                : scheme.onSurfaceVariant,
-            child: const Icon(Icons.bolt_rounded, size: 20),
+          leading: Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              color: state.autoSelect
+                  ? scheme.primary
+                  : scheme.surfaceContainerHighest,
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              Icons.bolt_rounded,
+              size: 22,
+              color: state.autoSelect
+                  ? scheme.onPrimary
+                  : scheme.onSurfaceVariant,
+            ),
           ),
           title: Text(
             l10n.autoFastest,

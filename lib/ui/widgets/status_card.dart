@@ -49,82 +49,121 @@ class StatusCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(
-                  profile == null ? Icons.help_outline_rounded : Icons.dns_rounded,
-                  size: 20,
-                  color: scheme.primary,
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: connected
+                        ? scheme.primaryContainer
+                        : scheme.surfaceContainerHighest,
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    profile == null
+                        ? Icons.help_outline_rounded
+                        : Icons.dns_rounded,
+                    size: 20,
+                    color: connected
+                        ? scheme.onPrimaryContainer
+                        : scheme.onSurfaceVariant,
+                  ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     profile?.name ?? l10n.noProfileSelected,
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (profile != null)
+                if (profile != null) ...[
+                  const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      color: scheme.secondaryContainer,
                       borderRadius: BorderRadius.circular(999),
+                      color: scheme.secondaryContainer,
                     ),
                     child: Text(
                       profile.protocolLabel,
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                         color: scheme.onSecondaryContainer,
                       ),
                     ),
                   ),
+                ],
               ],
             ),
             if (profile != null) ...[
               const SizedBox(height: 4),
-              Text(
-                '${profile.server}:${profile.port}',
-                style: Theme.of(context).textTheme.bodySmall,
+              Padding(
+                padding: const EdgeInsets.only(left: 50),
+                child: Text(
+                  '${profile.server}:${profile.port}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
             if (connected &&
                 (state.connCountry?.isNotEmpty == true ||
                     state.connIp?.isNotEmpty == true)) ...[
               const SizedBox(height: 6),
-              Row(
-                children: [
-                  Icon(Icons.public_rounded, size: 14, color: scheme.primary),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      [_flag(state.connCountry) ?? state.connCountry, state.connIp]
-                          .where((e) => e?.isNotEmpty == true)
-                          .join(' · '),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                      overflow: TextOverflow.ellipsis,
+              Padding(
+                padding: const EdgeInsets.only(left: 50),
+                child: Row(
+                  children: [
+                    Icon(Icons.public_rounded,
+                        size: 14, color: scheme.primary),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        [
+                          _flag(state.connCountry) ?? state.connCountry,
+                          state.connIp
+                        ]
+                            .where((e) => e?.isNotEmpty == true)
+                            .join(' · '),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(
+                              color: scheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
             const SizedBox(height: 16),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _Speed(
-                  icon: Icons.south_rounded,
-                  label: l10n.downSpeed,
-                  value: connected ? formatSpeed(state.stats.downSpeed) : '—',
-                  highlight: scheme.primary,
+                Expanded(
+                  child: _SpeedTile(
+                    icon: Icons.south_rounded,
+                    label: l10n.downSpeed,
+                    value: connected ? formatSpeed(state.stats.downSpeed) : '—',
+                    highlight: scheme.primary,
+                  ),
                 ),
-                _Speed(
-                  icon: Icons.north_rounded,
-                  label: l10n.upSpeed,
-                  value: connected ? formatSpeed(state.stats.upSpeed) : '—',
-                  highlight: scheme.tertiary,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _SpeedTile(
+                    icon: Icons.north_rounded,
+                    label: l10n.upSpeed,
+                    value: connected ? formatSpeed(state.stats.upSpeed) : '—',
+                    highlight: scheme.tertiary,
+                  ),
                 ),
               ],
             ),
@@ -143,13 +182,13 @@ class StatusCard extends StatelessWidget {
   }
 }
 
-class _Speed extends StatelessWidget {
+class _SpeedTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
   final Color highlight;
 
-  const _Speed({
+  const _SpeedTile({
     required this.icon,
     required this.label,
     required this.value,
@@ -158,25 +197,39 @@ class _Speed extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: highlight),
-            const SizedBox(width: 4),
-            Text(label, style: Theme.of(context).textTheme.labelSmall),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: Theme.of(context)
-              .textTheme
-              .headlineSmall
-              ?.copyWith(fontWeight: FontWeight.w600),
-        ),
-      ],
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: scheme.surfaceContainerHigh,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: highlight),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 }

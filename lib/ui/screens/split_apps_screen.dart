@@ -104,7 +104,6 @@ class _SplitAppsScreenState extends State<SplitAppsScreen> {
           autofocus: true,
           decoration: InputDecoration(
             hintText: l10n.appsImportHint,
-            border: const OutlineInputBorder(),
           ),
         ),
         actions: [
@@ -173,7 +172,6 @@ class _SplitAppsScreenState extends State<SplitAppsScreen> {
                       prefixIcon: const Icon(Icons.search_rounded),
                       hintText: l10n.searchApps,
                       isDense: true,
-                      border: const OutlineInputBorder(),
                     ),
                     onChanged: (v) => setState(() => _query = v),
                   ),

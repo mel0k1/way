@@ -58,6 +58,9 @@ class L10n {
   String get themeSystem => ru ? 'Системная' : 'System';
   String get themeLight => ru ? 'Светлая' : 'Light';
   String get themeDark => ru ? 'Тёмная' : 'Dark';
+  String get materialYou => ru ? 'Цвета Material You' : 'Material You colors';
+  String get materialYouHint =>
+      ru ? 'Окрашивать интерфейс в цвета системы (Android 12+)' : 'Tint the UI with system colors (Android 12+)';
   String get language => ru ? 'Язык' : 'Language';
   String get langSystem => ru ? 'Системный' : 'System';
   String get updates => ru ? 'Подписки' : 'Subscriptions';

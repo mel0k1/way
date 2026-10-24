@@ -52,7 +52,6 @@ class _SplitProcessesFieldState extends State<_SplitProcessesField> {
       decoration: InputDecoration(
         labelText: l10n.splitProcesses,
         hintText: 'chrome.exe, firefox.exe',
-        border: const OutlineInputBorder(),
       ),
       onSubmitted: _commit,
       onChanged: _commit,
@@ -322,7 +321,6 @@ class SettingsScreen extends StatelessWidget {
                   onFieldSubmitted: state.setDnsHost,
                   decoration: InputDecoration(
                     labelText: l10n.dnsServer,
-                    border: const OutlineInputBorder(),
                     isDense: true,
                   ),
                 ),
@@ -331,7 +329,6 @@ class SettingsScreen extends StatelessWidget {
                   initialValue: state.dnsStrategy,
                   decoration: InputDecoration(
                     labelText: l10n.dnsStrategy,
-                    border: const OutlineInputBorder(),
                     isDense: true,
                   ),
                   items: [
@@ -363,7 +360,6 @@ class SettingsScreen extends StatelessWidget {
                   decoration: InputDecoration(
                     labelText: l10n.mux,
                     helperText: l10n.muxHint,
-                    border: const OutlineInputBorder(),
                     isDense: true,
                   ),
                   items: [
@@ -459,7 +455,6 @@ class SettingsScreen extends StatelessWidget {
                   onFieldSubmitted: state.setSubUserAgent,
                   decoration: InputDecoration(
                     labelText: l10n.subUserAgent,
-                    border: const OutlineInputBorder(),
                     isDense: true,
                   ),
                 ),
@@ -479,6 +474,15 @@ class SettingsScreen extends StatelessWidget {
                   selected: {state.themeMode},
                   onSelectionChanged: (s) => state.setThemeMode(s.first),
                 ),
+                if (!state.isDesktop) ...[
+                  SwitchListTile(
+                    title: Text(l10n.materialYou),
+                    subtitle: Text(l10n.materialYouHint),
+                    value: state.dynamicColors,
+                    onChanged: state.setDynamicColors,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ],
                 const SizedBox(height: 12),
                 SegmentedButton<String>(
                   segments: [
@@ -663,7 +667,14 @@ class _SectionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: scheme.primary,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.4,
+                  ),
+            ),
             const SizedBox(height: 12),
             child,
             if (hint != null) ...[

@@ -24,7 +24,7 @@
 ## Features
 
 - **Two cores, one app** — sing-box and xray-core live side by side; the active engine is a single tap in Settings
-- **Material Design 3** — dynamic tonal palettes, squircle connect button, darkened shape background, dark & light themes
+- **Material Design 3** — Material You dynamic colors on Android 12+, tonal surfaces, expressive shapes & motion, pulse connect button, soft mesh background, dark & light themes
 - **TUN mode** — full-device tunneling via Android VpnService and system TUN on Windows
 - **Kill switch** — WFP firewall on Windows, Always-on VPN + lockdown on Android
 - **Split tunneling** — per-app (Android) and per-process (Windows) tunneling rules
@@ -136,7 +136,7 @@ This project is a client shell around open-source cores. It ships no servers, no
 ### Возможности
 
 - **Два ядра в одном приложении** — sing-box и xray-core, выбор движка в настройках
-- **Material Design 3** — динамические палитры, скуиркл-кнопка подключения, фон с притемнёнными фигурами, тёмная и светлая темы
+- **Material Design 3** — динамические цвета Material You на Android 12+, тональные поверхности, выразительные формы и анимации, пульсирующая кнопка подключения, мягкий градиентный фон, тёмная и светлая темы
 - **Режим TUN** — туннелирование всего трафика через VpnService на Android и системный TUN на Windows
 - **Kill switch** — WFP-фаервол на Windows, Always-on VPN + блокировка без VPN на Android
 - **Раздельное туннелирование** — по приложениям (Android) и по процессам (Windows)

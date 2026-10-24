@@ -1,3 +1,4 @@
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -7,6 +8,7 @@ import 'ui/screens/home_screen.dart';
 import 'ui/screens/logs_screen.dart';
 import 'ui/screens/servers_screen.dart';
 import 'ui/screens/settings_screen.dart';
+import 'ui/theme.dart';
 import 'ui/widgets/app_background.dart';
 import 'ui/widgets/onboarding.dart';
 import 'ui/widgets/update_dialog.dart';
@@ -21,24 +23,26 @@ class WayApp extends StatelessWidget {
         final l10n = L10n(state.effectiveLocale);
         return L10nScope(
           data: l10n,
-          child: MaterialApp(
-            title: 'Way',
-            debugShowCheckedModeBanner: false,
-            themeMode: _mode(state.themeMode),
-            theme: _theme(ColorScheme.fromSeed(seedColor: const Color(0xFF2E7D53))),
-            darkTheme: _theme(ColorScheme.fromSeed(
-              seedColor: const Color(0xFF9BDDB4),
-              brightness: Brightness.dark,
-            )),
-            builder: (context, child) => Stack(
-              children: [
-                const Positioned.fill(child: AppBackground()),
-                child ?? const SizedBox.shrink(),
-              ],
-            ),
-            home: state.onboardingDone
-                ? const WayShell()
-                : const OnboardingScreen(),
+          child: DynamicColorBuilder(
+            builder: (lightDynamic, darkDynamic) {
+              final useDynamic = state.dynamicColors;
+              return MaterialApp(
+                title: 'Way',
+                debugShowCheckedModeBanner: false,
+                themeMode: _mode(state.themeMode),
+                theme: WayTheme.light(useDynamic ? lightDynamic : null),
+                darkTheme: WayTheme.dark(useDynamic ? darkDynamic : null),
+                builder: (context, child) => Stack(
+                  children: [
+                    const Positioned.fill(child: AppBackground()),
+                    child ?? const SizedBox.shrink(),
+                  ],
+                ),
+                home: state.onboardingDone
+                    ? const WayShell()
+                    : const OnboardingScreen(),
+              );
+            },
           ),
         );
       },
@@ -54,18 +58,6 @@ class WayApp extends StatelessWidget {
       default:
         return ThemeMode.system;
     }
-  }
-
-  ThemeData _theme(ColorScheme scheme) {
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: scheme,
-      scaffoldBackgroundColor: Colors.transparent,
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: scheme.surfaceContainer,
-        indicatorColor: scheme.primaryContainer,
-      ),
-    );
   }
 }
 
@@ -151,7 +143,19 @@ class _WayShellState extends State<WayShell> {
     ];
     return Scaffold(
       body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 300),
+        switchInCurve: Easing.emphasizedDecelerate,
+        switchOutCurve: Easing.emphasizedAccelerate,
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.015),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          ),
+        ),
         child: KeyedSubtree(
           key: ValueKey(_index),
           child: screens[_index],

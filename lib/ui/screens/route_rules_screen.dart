@@ -124,7 +124,6 @@ class RouteRulesScreen extends StatelessWidget {
                 initialValue: type,
                 decoration: InputDecoration(
                   labelText: l10n.ruleType,
-                  border: const OutlineInputBorder(),
                 ),
                 items: [
                   DropdownMenuItem(value: 'suffix', child: Text(l10n.ruleTypeSuffix)),
@@ -141,7 +140,6 @@ class RouteRulesScreen extends StatelessWidget {
                 decoration: InputDecoration(
                   labelText: l10n.ruleValue,
                   hintText: type == 'ip' ? '1.2.3.0/24' : 'example.com',
-                  border: const OutlineInputBorder(),
                 ),
                 autofocus: true,
               ),

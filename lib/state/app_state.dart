@@ -50,6 +50,7 @@ class AppState extends ChangeNotifier {
   String engine = 'singbox';
   bool preferTun = true;
   String themeMode = 'system';
+  bool dynamicColors = true;
   String localeCode = '';
   bool autoUpdate = true;
   int autoUpdateMin = 60;
@@ -183,6 +184,7 @@ class AppState extends ChangeNotifier {
         engine = s['engine'] as String? ?? engine;
         preferTun = s['tun'] as bool? ?? preferTun;
         themeMode = s['theme'] as String? ?? themeMode;
+        dynamicColors = s['dyn'] as bool? ?? dynamicColors;
         localeCode = s['locale'] as String? ?? localeCode;
         autoUpdate = s['autoupdate'] as bool? ?? autoUpdate;
         autoUpdateMin = (s['updatemin'] as num?)?.toInt() ?? autoUpdateMin;
@@ -311,6 +313,7 @@ class AppState extends ChangeNotifier {
       'engine': engine,
       'tun': preferTun,
       'theme': themeMode,
+      'dyn': dynamicColors,
       'locale': localeCode,
       'autoupdate': autoUpdate,
       'updatemin': autoUpdateMin,
@@ -734,6 +737,12 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setDynamicColors(bool value) {
+    dynamicColors = value;
+    _persist();
+    notifyListeners();
+  }
+
   void setLocale(String value) {
     localeCode = value;
     _persist();
@@ -893,6 +902,7 @@ class AppState extends ChangeNotifier {
         'engine': engine,
         'tun': preferTun,
         'theme': themeMode,
+        'dyn': dynamicColors,
         'locale': localeCode,
         'autoupdate': autoUpdate,
         'updatemin': autoUpdateMin,
@@ -945,6 +955,7 @@ class AppState extends ChangeNotifier {
       engine = settings['engine'] as String? ?? engine;
       preferTun = settings['tun'] as bool? ?? preferTun;
       themeMode = settings['theme'] as String? ?? themeMode;
+      dynamicColors = settings['dyn'] as bool? ?? dynamicColors;
       localeCode = settings['locale'] as String? ?? localeCode;
       autoUpdate = settings['autoupdate'] as bool? ?? autoUpdate;
       autoUpdateMin = (settings['updatemin'] as num?)?.toInt() ?? autoUpdateMin;

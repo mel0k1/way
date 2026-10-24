@@ -52,8 +52,8 @@ class LogsScreen extends StatelessWidget {
                 : Container(
                     margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainer,
-                      borderRadius: BorderRadius.circular(16),
+                      color: Theme.of(context).colorScheme.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: ListView.builder(
                       padding: const EdgeInsets.all(12),

@@ -110,14 +110,23 @@ class ProfileTile extends StatelessWidget {
       color: selected ? scheme.primaryContainer : null,
       child: ListTile(
         onTap: () => state.select(profile.id),
-        leading: CircleAvatar(
-          backgroundColor: selected
-              ? scheme.primary
-              : scheme.surfaceContainerHighest,
-          foregroundColor: selected ? scheme.onPrimary : scheme.onSurfaceVariant,
+        leading: Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            color: selected
+                ? scheme.primary
+                : scheme.surfaceContainerHighest,
+          ),
+          alignment: Alignment.center,
           child: Text(
             profile.protocolLabel,
-            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: selected ? scheme.onPrimary : scheme.onSurfaceVariant,
+            ),
           ),
         ),
         title: Text(

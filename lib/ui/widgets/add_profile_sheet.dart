@@ -187,7 +187,6 @@ class _AddSheetState extends State<_AddSheet> {
                 controller: nameController,
                 decoration: InputDecoration(
                   labelText: l10n.nameLabel,
-                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
@@ -196,7 +195,6 @@ class _AddSheetState extends State<_AddSheet> {
                 keyboardType: TextInputType.url,
                 decoration: InputDecoration(
                   labelText: l10n.urlLabel,
-                  border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.content_paste_rounded),
                     tooltip: l10n.paste,
@@ -222,7 +220,6 @@ class _AddSheetState extends State<_AddSheet> {
                 keyboardType: TextInputType.multiline,
                 decoration: InputDecoration(
                   labelText: l10n.linkHint,
-                  border: const OutlineInputBorder(),
                   suffixIcon: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -257,7 +254,6 @@ class _AddSheetState extends State<_AddSheet> {
                 controller: manualName,
                 decoration: InputDecoration(
                   labelText: l10n.nameLabel,
-                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
@@ -265,7 +261,6 @@ class _AddSheetState extends State<_AddSheet> {
                 initialValue: manualType,
                 decoration: InputDecoration(
                   labelText: l10n.manualType,
-                  border: const OutlineInputBorder(),
                 ),
                 items: const [
                   DropdownMenuItem(value: 'vless', child: Text('VLESS')),
@@ -289,7 +284,6 @@ class _AddSheetState extends State<_AddSheet> {
                       controller: manualServer,
                       decoration: InputDecoration(
                         labelText: l10n.manualServer,
-                        border: const OutlineInputBorder(),
                       ),
                     ),
                   ),
@@ -301,7 +295,6 @@ class _AddSheetState extends State<_AddSheet> {
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
                         labelText: l10n.manualPort,
-                        border: const OutlineInputBorder(),
                       ),
                     ),
                   ),
@@ -312,7 +305,6 @@ class _AddSheetState extends State<_AddSheet> {
                 controller: manualSecret,
                 decoration: InputDecoration(
                   labelText: l10n.manualSecret,
-                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
@@ -320,7 +312,6 @@ class _AddSheetState extends State<_AddSheet> {
                 controller: manualSni,
                 decoration: InputDecoration(
                   labelText: l10n.manualSni,
-                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 16),
@@ -337,7 +328,6 @@ class _AddSheetState extends State<_AddSheet> {
                 decoration: InputDecoration(
                   labelText: l10n.addModeJson,
                   helperText: l10n.jsonHint,
-                  border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.content_paste_rounded),
                     tooltip: l10n.paste,
