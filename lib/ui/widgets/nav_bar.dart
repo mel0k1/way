@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 
@@ -92,83 +94,97 @@ class _ExpressiveNavBarState extends State<ExpressiveNavBar>
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: Container(
-              height: 74,
-              decoration: BoxDecoration(
-                color: scheme.surfaceContainer.withValues(
-                  alpha: dark ? 0.96 : 0.98,
-                ),
-                borderRadius: BorderRadius.circular(37),
-                border: Border.all(
-                  color: scheme.outlineVariant.withValues(alpha: 0.45),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: scheme.shadow.withValues(alpha: dark ? 0.36 : 0.12),
-                    blurRadius: 22,
-                    offset: const Offset(0, 8),
+        // Fixed-height wrapper: the bar always reports exactly 74 + 16 dp to
+        // its parent slot, whatever constraints the slot provides. An
+        // expanding Center here would fill any bounded slot (e.g. if a host
+        // scaffold ever hands it body-like constraints) and swallow the body.
+        child: SizedBox(
+          height: 74,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: Container(
+                height: 74,
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainer.withValues(
+                    alpha: dark ? 0.96 : 0.98,
                   ),
-                ],
-              ),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final w = constraints.maxWidth;
-                  if (!_snapped || w != _lastWidth) {
-                    // First layout or window resize: snap without animation.
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted) setState(() => _snapTo(w));
-                    });
-                  }
-                  return Stack(
-                    alignment: Alignment.centerLeft,
-                    children: [
-                      // Sliding, squishing pill indicator.
-                      if (_snapped)
-                        AnimatedBuilder(
-                          animation: _mover,
-                          builder: (context, _) {
-                            final x = _mover.value.clamp(0.0, w);
-                            final v = _mover.velocity.abs();
-                            final stretch = (1.0 + v / 3200).clamp(1.0, 1.22);
-                            final half = _pillSize * stretch / 2;
-                            return Positioned(
-                              left: (x - half).clamp(5.0, w - half * 2 - 5),
-                              top: (74 - 46) / 2,
-                              child: Transform.scale(
-                                scaleX: stretch,
-                                scaleY: 2.0 - stretch,
-                                child: Container(
-                                  width: _pillSize,
-                                  height: 46,
-                                  decoration: BoxDecoration(
-                                    color: scheme.primaryContainer,
-                                    borderRadius: BorderRadius.circular(23),
+                  borderRadius: BorderRadius.circular(37),
+                  border: Border.all(
+                    color: scheme.outlineVariant.withValues(alpha: 0.45),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: scheme.shadow.withValues(
+                        alpha: dark ? 0.36 : 0.12,
+                      ),
+                      blurRadius: 22,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final w = constraints.maxWidth;
+                    if (!_snapped || w != _lastWidth) {
+                      // First layout or window resize: snap without animation.
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) setState(() => _snapTo(w));
+                      });
+                    }
+                    return Stack(
+                      alignment: Alignment.centerLeft,
+                      children: [
+                        // Sliding, squishing pill indicator.
+                        if (_snapped)
+                          AnimatedBuilder(
+                            animation: _mover,
+                            builder: (context, _) {
+                              final x = _mover.value.clamp(0.0, w);
+                              final v = _mover.velocity.abs();
+                              final stretch = (1.0 + v / 3200)
+                                  .clamp(1.0, 1.22);
+                              final half = _pillSize * stretch / 2;
+                              return Positioned(
+                                left: (x - half).clamp(
+                                  5.0,
+                                  math.max(5.0, w - half * 2 - 5),
+                                ),
+                                top: (74 - 46) / 2,
+                                child: Transform.scale(
+                                  scaleX: stretch,
+                                  scaleY: 2.0 - stretch,
+                                  child: Container(
+                                    width: _pillSize,
+                                    height: 46,
+                                    decoration: BoxDecoration(
+                                      color: scheme.primaryContainer,
+                                      borderRadius:
+                                          BorderRadius.circular(23),
+                                    ),
                                   ),
                                 ),
+                              );
+                            },
+                          ),
+                        Row(
+                          children: [
+                            for (var i = 0;
+                                i < widget.destinations.length;
+                                i++)
+                              Expanded(
+                                child: _NavDestination(
+                                  destination: widget.destinations[i],
+                                  selected: i == widget.currentIndex,
+                                  onTap: () => widget.onTap(i),
+                                ),
                               ),
-                            );
-                          },
+                          ],
                         ),
-                      Row(
-                        children: [
-                          for (var i = 0;
-                              i < widget.destinations.length;
-                              i++)
-                            Expanded(
-                              child: _NavDestination(
-                                destination: widget.destinations[i],
-                                selected: i == widget.currentIndex,
-                                onTap: () => widget.onTap(i),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  );
-                },
+                      ],
+                    );
+                  },
+                ),
               ),
             ),
           ),
