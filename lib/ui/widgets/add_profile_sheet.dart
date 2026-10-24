@@ -269,6 +269,7 @@ class _AddSheetState extends State<_AddSheet> {
                   DropdownMenuItem(value: 'shadowsocks', child: Text('Shadowsocks')),
                   DropdownMenuItem(value: 'hysteria2', child: Text('Hysteria2')),
                   DropdownMenuItem(value: 'tuic', child: Text('TUIC')),
+                  DropdownMenuItem(value: 'anytls', child: Text('AnyTLS')),
                 ],
                 onChanged: (v) {
                   if (v != null) setState(() => manualType = v);

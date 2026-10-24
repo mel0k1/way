@@ -21,6 +21,8 @@ class LinkParser {
           return _parseHysteria2(uri);
         case 'tuic':
           return _parseTuic(uri);
+        case 'anytls':
+          return _parseAnytls(uri);
         default:
           return null;
       }
@@ -142,6 +144,23 @@ class LinkParser {
       sni: _q(uri, 'sni').isEmpty ? uri.host : _q(uri, 'sni'),
       insecure: _q(uri, 'allow_insecure') == '1',
       alpn: _q(uri, 'alpn', 'h3'),
+    );
+  }
+
+  static Profile _parseAnytls(Uri uri) {
+    return Profile(
+      id: _genId(),
+      name: Uri.decodeComponent(
+          uri.fragment.isNotEmpty ? uri.fragment : 'AnyTLS'),
+      protocol: 'anytls',
+      server: uri.host,
+      port: uri.port,
+      password: Uri.decodeComponent(uri.userInfo),
+      sni: _q(uri, 'sni').isEmpty ? uri.host : _q(uri, 'sni'),
+      fingerprint: _q(uri, 'fp'),
+      insecure:
+          _q(uri, 'insecure') == '1' || _q(uri, 'allowInsecure') == '1',
+      alpn: _q(uri, 'alpn'),
     );
   }
 

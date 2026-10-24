@@ -104,7 +104,7 @@ class SubFormats {
   static Profile? singboxOutboundToProfile(Map<String, dynamic> m) {
     final type = _s(m['type']).toLowerCase();
     const supported = {
-      'vless', 'vmess', 'trojan', 'shadowsocks', 'hysteria2', 'tuic',
+      'vless', 'vmess', 'trojan', 'shadowsocks', 'hysteria2', 'tuic', 'anytls',
     };
     if (!supported.contains(type)) return null;
     final server = _s(m['server']);
@@ -151,6 +151,9 @@ class SubFormats {
         p.congestion = _s(m['congestion_control']).isEmpty
             ? 'bbr'
             : _s(m['congestion_control']);
+        break;
+      case 'anytls':
+        p.password = _s(m['password']);
         break;
     }
     if (tls['enabled'] == true || (type == 'vless' && tls.isNotEmpty)) {
@@ -206,6 +209,9 @@ class SubFormats {
       case 'tuic':
         protocol = 'tuic';
         break;
+      case 'anytls':
+        protocol = 'anytls';
+        break;
       default:
         return null;
     }
@@ -247,6 +253,9 @@ class SubFormats {
         p.congestion = _s(m['congestion-controller'] ?? m['congestion_control']).isEmpty
             ? 'bbr'
             : _s(m['congestion-controller'] ?? m['congestion_control']);
+        break;
+      case 'anytls':
+        p.password = _s(m['password']);
         break;
     }
     final tlsOn = _b(m['tls']);
@@ -320,6 +329,8 @@ class LinkBuilder {
         return _hysteria2(p);
       case 'tuic':
         return _tuic(p);
+      case 'anytls':
+        return _anytls(p);
       default:
         return null;
     }
@@ -382,6 +393,17 @@ class LinkBuilder {
     };
     return 'tuic://${Uri.encodeComponent(p.uuid ?? '')}:${Uri.encodeComponent(p.password ?? '')}'
         '@${p.server}:${p.port}?${_encodeQuery(q)}${_fragment(p.name)}';
+  }
+
+  static String _anytls(Profile p) {
+    final q = <String, String>{
+      if (p.sni?.isNotEmpty == true) 'sni': p.sni!,
+      if (p.fingerprint?.isNotEmpty == true) 'fp': p.fingerprint!,
+      if (p.alpn?.isNotEmpty == true) 'alpn': p.alpn!,
+      if (p.insecure) 'insecure': '1',
+    };
+    return 'anytls://${Uri.encodeComponent(p.password ?? '')}@${p.server}:${p.port}'
+        '?${_encodeQuery(q)}${_fragment(p.name)}';
   }
 
   static String _b64(String s) =>

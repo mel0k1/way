@@ -44,7 +44,7 @@
 - **Proxy mode on Android** — run a local socks/http proxy on 127.0.0.1:2080 without the VPN permission
 - **Connection info** — external IP and country (with flag) of the active server, fetched through the tunnel
 - **Battery optimization** — one-tap exemption on Android so the background VPN is not killed
-- **Deep links** — tap a `vless://`/`vmess://`/`trojan://`/`ss://`/`hysteria2://`/`tuic://` link or `way://import/<url>` to import profiles and subscriptions instantly (Android and Windows)
+- **Deep links** — tap a `vless://`/`vmess://`/`trojan://`/`ss://`/`hysteria2://`/`tuic://`/`anytls://` link or `way://import/<url>` to import profiles and subscriptions instantly (Android and Windows)
 - **Encrypted storage** — profiles and subscription keys live in flutter_secure_storage (Keystore / DPAPI)
 - **Autostart** — launch on boot (Android) or user sign-in (Windows Run key), optional auto-connect on launch
 - **Custom notifications** — branded Android foreground notification with a disconnect button and session timer, Windows toasts
@@ -63,9 +63,10 @@
 | Shadowsocks (incl. 2022) | ✔ | ✔ |
 | Hysteria2 | ✔ | — |
 | TUIC | ✔ | — |
+| AnyTLS | ✔ | — |
 | WS / gRPC / HTTP transports | ✔ | ✔ |
 
-Links `vless://`, `vmess://`, `trojan://`, `ss://`, `hysteria2://`, `tuic://` are parsed automatically, both one by one and as a whole base64 subscription. Sing-box JSON and Clash YAML subscription bodies work the same way.
+Links `vless://`, `vmess://`, `trojan://`, `ss://`, `hysteria2://`, `tuic://`, `anytls://` are parsed automatically, both one by one and as a whole base64 subscription. Sing-box JSON and Clash YAML subscription bodies work the same way.
 
 ## Architecture
 
@@ -156,7 +157,7 @@ This project is a client shell around open-source cores. It ships no servers, no
 - **Прокси-режим на Android** — локальный socks/http на 127.0.0.1:2080 без разрешения VPN
 - **Информация о соединении** — внешний IP и страна (с флагом) активного сервера, проверяются через туннель
 - **Оптимизация батареи** — исключение Way из оптимизации в один тап, чтобы Android не убивал фоновый VPN
-- **Диплинки** — клик по ссылке `vless://`/`vmess://`/`trojan://`/`ss://`/`hysteria2://`/`tuic://` или `way://import/<url>` мгновенно импортирует профили и подписки (Android и Windows)
+- **Диплинки** — клик по ссылке `vless://`/`vmess://`/`trojan://`/`ss://`/`hysteria2://`/`tuic://`/`anytls://` или `way://import/<url>` мгновенно импортирует профили и подписки (Android и Windows)
 - **Шифрованное хранилище** — профили и ключи подписок в flutter_secure_storage (Keystore / DPAPI)
 - **Автозапуск** — старт после загрузки (Android) или входа в систему (ключ Run Windows), опциональное авто-подключение при запуске
 - **Кастомные уведомления** — брендированная нотификация Android с кнопкой отключения и таймером сессии, тосты Windows
@@ -175,9 +176,10 @@ This project is a client shell around open-source cores. It ships no servers, no
 | Shadowsocks (вкл. 2022) | ✔ | ✔ |
 | Hysteria2 | ✔ | — |
 | TUIC | ✔ | — |
+| AnyTLS | ✔ | — |
 | Транспорты WS / gRPC / HTTP | ✔ | ✔ |
 
-Ссылки `vless://`, `vmess://`, `trojan://`, `ss://`, `hysteria2://`, `tuic://` парсятся автоматически — по одной или целой base64-подпиской.
+Ссылки `vless://`, `vmess://`, `trojan://`, `ss://`, `hysteria2://`, `tuic://`, `anytls://` парсятся автоматически — по одной или целой base64-подпиской.
 
 ### Скачивание
 

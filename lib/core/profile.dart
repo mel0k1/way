@@ -137,7 +137,10 @@ class Profile {
   );
 
   bool supportedOn(String engine) {
-    if (protocol == 'hysteria2' || protocol == 'tuic' || protocol == 'wireguard') {
+    if (protocol == 'hysteria2' ||
+        protocol == 'tuic' ||
+        protocol == 'wireguard' ||
+        protocol == 'anytls') {
       return engine == 'singbox';
     }
     if (network == 'xhttp') return engine == 'xray';

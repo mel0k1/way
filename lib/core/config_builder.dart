@@ -492,6 +492,17 @@ class ConfigBuilder {
           'alpn': ['h3'],
         };
         break;
+      case 'anytls':
+        out['password'] = p.password ?? '';
+        out['tls'] = {
+          'enabled': true,
+          'server_name': p.sni?.isNotEmpty == true ? p.sni : p.server,
+          'insecure': p.insecure,
+          if (p.alpn?.isNotEmpty == true) 'alpn': p.alpn!.split(','),
+          if (p.fingerprint?.isNotEmpty == true)
+            'utls': {'enabled': true, 'fingerprint': p.fingerprint},
+        };
+        break;
     }
     if (mux.isNotEmpty &&
         const {'vless', 'vmess', 'trojan', 'shadowsocks'}.contains(p.protocol)) {

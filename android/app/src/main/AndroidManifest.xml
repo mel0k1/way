@@ -39,6 +39,7 @@
                 <data android:scheme="hysteria2" />
                 <data android:scheme="hy2" />
                 <data android:scheme="tuic" />
+                <data android:scheme="anytls" />
                 <data android:scheme="way" />
                 <data android:scheme="clash" />
                 <data android:scheme="clashmeta" />
