@@ -355,6 +355,7 @@ class SettingsScreen extends StatelessWidget {
                   onChanged: state.setTlsFragment,
                   contentPadding: EdgeInsets.zero,
                 ),
+                const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: state.muxProtocol,
                   decoration: InputDecoration(
@@ -449,7 +450,7 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 12),
                 TextFormField(
                   initialValue: state.subUserAgent,
                   onFieldSubmitted: state.setSubUserAgent,
