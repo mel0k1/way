@@ -663,22 +663,22 @@ class _SectionCard extends StatelessWidget {
     return Card.filled(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: scheme.primary,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.4,
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
                   ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             child,
             if (hint != null) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Text(
                 hint!,
                 style: Theme.of(context)

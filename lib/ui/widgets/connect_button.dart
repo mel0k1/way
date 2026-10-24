@@ -71,6 +71,19 @@ class _ConnectButtonState extends State<ConnectButton>
                     delay: 0.5,
                     color: scheme.primary),
               ],
+              Container(
+                width: 204,
+                height: 204,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: connected
+                        ? scheme.primary.withValues(alpha: 0.45)
+                        : scheme.outlineVariant.withValues(alpha: 0.7),
+                    width: 1.5,
+                  ),
+                ),
+              ),
               AnimatedContainer(
                 duration: const Duration(milliseconds: 400),
                 curve: Easing.standard,
@@ -80,7 +93,11 @@ class _ConnectButtonState extends State<ConnectButton>
                   shape: BoxShape.circle,
                   color: connected
                       ? scheme.primary
-                      : scheme.surfaceContainerHighest,
+                      : scheme.surfaceContainerHigh,
+                  border: Border.all(
+                    color: connected ? scheme.surface : Colors.transparent,
+                    width: 8,
+                  ),
                   boxShadow: [
                     if (connected)
                       BoxShadow(
@@ -102,10 +119,10 @@ class _ConnectButtonState extends State<ConnectButton>
                       )
                     : Icon(
                         Icons.power_settings_new_rounded,
-                        size: 64,
+                        size: 62,
                         color: connected
                             ? scheme.onPrimary
-                            : scheme.onSurfaceVariant,
+                            : scheme.primary,
                       ),
               ),
             ],

@@ -201,7 +201,7 @@ class _SpeedTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         color: scheme.surfaceContainerHigh,
       ),
       child: Column(

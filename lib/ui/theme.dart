@@ -10,12 +10,12 @@ class WayTheme {
       _build(dynamicScheme ?? ColorScheme.fromSeed(seedColor: _seedLight));
 
   static ThemeData dark([ColorScheme? dynamicScheme]) => _build(
-      dynamicScheme ??
-          ColorScheme.fromSeed(seedColor: _seedDark, brightness: Brightness.dark));
+      dynamicScheme ?? ColorScheme.fromSeed(seedColor: _seedDark, brightness: Brightness.dark));
 
   static ThemeData _build(ColorScheme scheme) {
     final base = ThemeData(
       useMaterial3: true,
+      fontFamily: 'Inter',
       colorScheme: scheme,
       splashFactory: InkSparkle.splashFactory,
       pageTransitionsTheme: const PageTransitionsTheme(builders: {
@@ -29,18 +29,44 @@ class WayTheme {
 
     final t = base.textTheme;
     final text = t.copyWith(
-      headlineSmall:
-          t.headlineSmall?.copyWith(fontWeight: FontWeight.w500, letterSpacing: -0.25),
+      headlineSmall: t.headlineSmall?.copyWith(fontWeight: FontWeight.w500),
       titleLarge: t.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+      titleMedium: t.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+      bodyMedium: t.bodyMedium?.copyWith(height: 1.45),
+      bodySmall: t.bodySmall?.copyWith(height: 1.4),
+      labelLarge: t.labelLarge
+          ?.copyWith(fontWeight: FontWeight.w600, letterSpacing: 0.2),
     );
 
+    const fieldRadius = BorderRadius.all(Radius.circular(14));
     final fieldShape = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: fieldRadius,
       borderSide: BorderSide.none,
     );
     final fieldShapeFocused = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: fieldRadius,
       borderSide: BorderSide(color: scheme.primary, width: 2),
+    );
+
+    final segStyle = ButtonStyle(
+      minimumSize: const WidgetStatePropertyAll(Size(0, 46)),
+      shape: WidgetStatePropertyAll(
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+      ),
+      side: WidgetStatePropertyAll(
+        BorderSide(color: scheme.outlineVariant),
+      ),
+      backgroundColor: WidgetStateProperty.resolveWith((states) =>
+          states.contains(WidgetState.selected)
+              ? scheme.secondaryContainer
+              : Colors.transparent),
+      foregroundColor: WidgetStateProperty.resolveWith((states) =>
+          states.contains(WidgetState.selected)
+              ? scheme.onSecondaryContainer
+              : scheme.onSurfaceVariant),
+      textStyle: WidgetStatePropertyAll(
+        t.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+      ),
     );
 
     return base.copyWith(
@@ -57,7 +83,7 @@ class WayTheme {
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
         color: scheme.surfaceContainerLow,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: scheme.surfaceContainerHigh,
@@ -75,15 +101,24 @@ class WayTheme {
         behavior: SnackBarBehavior.floating,
         backgroundColor: scheme.inverseSurface,
         contentTextStyle: t.bodyMedium?.copyWith(color: scheme.onInverseSurface),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        height: 72,
+        height: 80,
         backgroundColor: scheme.surfaceContainer,
         indicatorColor: scheme.primaryContainer,
+        indicatorShape: const StadiumBorder(),
+        surfaceTintColor: Colors.transparent,
+        labelTextStyle: WidgetStatePropertyAll(
+          t.labelMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: scheme.onSurface,
+          ),
+        ),
       ),
       listTileTheme: ListTileThemeData(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        iconColor: scheme.onSurfaceVariant,
       ),
       inputDecorationTheme: InputDecorationThemeData(
         filled: true,
@@ -91,10 +126,11 @@ class WayTheme {
         border: fieldShape,
         enabledBorder: fieldShape,
         focusedBorder: fieldShapeFocused,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: ButtonStyle(
+          shape: const WidgetStatePropertyAll(StadiumBorder()),
           minimumSize: const WidgetStatePropertyAll(Size(64, 48)),
           padding: const WidgetStatePropertyAll(
             EdgeInsets.symmetric(horizontal: 24),
@@ -106,6 +142,7 @@ class WayTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: ButtonStyle(
+          shape: const WidgetStatePropertyAll(StadiumBorder()),
           minimumSize: const WidgetStatePropertyAll(Size(64, 48)),
           padding: const WidgetStatePropertyAll(
             EdgeInsets.symmetric(horizontal: 24),
@@ -115,22 +152,52 @@ class WayTheme {
           ),
         ),
       ),
+      textButtonTheme: TextButtonThemeData(
+        style: ButtonStyle(
+          shape: const WidgetStatePropertyAll(StadiumBorder()),
+          textStyle: WidgetStatePropertyAll(
+            t.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: segStyle,
+        selectedIcon: const Icon(Icons.check_rounded, size: 18),
+      ),
+      chipTheme: ChipThemeData(
+        shape: const StadiumBorder(),
+        side: BorderSide(color: scheme.outlineVariant),
+        backgroundColor: scheme.surfaceContainerLow,
+        labelStyle: t.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       ),
       popupMenuTheme: PopupMenuThemeData(
         color: scheme.surfaceContainerHigh,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       dividerTheme: DividerThemeData(
         color: scheme.outlineVariant,
         thickness: 1,
         space: 1,
       ),
-      progressIndicatorTheme: ProgressIndicatorThemeData(color: scheme.primary),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: scheme.primary,
+        linearTrackColor: scheme.surfaceContainerHighest,
+        circularTrackColor: scheme.surfaceContainerHighest,
+      ),
       scrollbarTheme: ScrollbarThemeData(
         thickness: const WidgetStatePropertyAll(6.0),
         radius: const Radius.circular(999),
+      ),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: scheme.inverseSurface,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        textStyle: t.bodySmall?.copyWith(color: scheme.onInverseSurface),
       ),
     );
   }
