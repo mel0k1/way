@@ -8,4 +8,7 @@
     <string name="nt_disconnected">Disconnected</string>
     <string name="nt_action_disconnect">Disconnect</string>
     <string name="tile_label">Way VPN</string>
+    <string name="widget_on">Protected</string>
+    <string name="widget_off">Unprotected</string>
+    <string name="widget_wait">Connecting…</string>
 </resources>

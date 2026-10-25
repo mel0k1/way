@@ -173,6 +173,10 @@ class WayVpnService : VpnService(), PlatformInterface {
             )
         } catch (_: Throwable) {
         }
+        try {
+            WayAppWidgetProvider.updateAll(this)
+        } catch (_: Throwable) {
+        }
     }
 
     private fun ensureChannel() {

@@ -76,6 +76,17 @@
             </intent-filter>
         </service>
         <receiver
+            android:name=".WayAppWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.mel0k1.way.action.WIDGET_TOGGLE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/way_widget_info" />
+        </receiver>
+        <receiver
             android:name=".BootReceiver"
             android:exported="false">
             <intent-filter>

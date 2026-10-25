@@ -8,4 +8,7 @@
     <string name="nt_disconnected">Отключено</string>
     <string name="nt_action_disconnect">Отключить</string>
     <string name="tile_label">Way VPN</string>
+    <string name="widget_on">Защищено</string>
+    <string name="widget_off">Не защищено</string>
+    <string name="widget_wait">Подключение…</string>
 </resources>
