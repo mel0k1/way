@@ -36,6 +36,8 @@ class ConnectRequest {
   final String dnsStrategy;
   final bool tlsFragment;
   final String muxProtocol;
+  /// Enables the in-core tunnel watchdog (liveness probe + auto-restart).
+  final bool watchdog;
 
   const ConnectRequest({
     required this.engine,
@@ -54,6 +56,7 @@ class ConnectRequest {
     this.dnsStrategy = 'prefer_ipv4',
     this.tlsFragment = false,
     this.muxProtocol = '',
+    this.watchdog = true,
   });
 
   RoutingSettings get _routing => RoutingSettings(
@@ -342,6 +345,11 @@ class DesktopBridge implements VpnBridge {
       'engine': request.engine,
       'mode': request.tun ? 'tun' : 'proxy',
       'kill_switch': request.killSwitch,
+      'watchdog': request.watchdog,
+      // Local proxy inbound the core watchdog probes for tunnel liveness.
+      if (request.watchdog)
+        'probe_port':
+            request.engine == 'singbox' ? WayPorts.mixed : WayPorts.xrayHttp,
     };
     if (request.engine == 'singbox') {
       payload['config'] = ConfigBuilder.singBoxConfig(

@@ -155,6 +155,10 @@ class L10n {
   String get connectOnLaunchHint => ru
       ? 'Автоматически подключаться, когда приложение стартует.'
       : 'Automatically connect when the app starts.';
+  String get autoReconnect => ru ? 'Автопереподключение' : 'Auto-reconnect';
+  String get autoReconnectHint => ru
+      ? 'Watchdog следит за туннелем и восстанавливает связь после обрыва, сна или смены сети.'
+      : 'Watchdog keeps the tunnel alive and restores it after drops, sleep or network changes.';
   String get desktopNotifications => ru ? 'Уведомления Windows' : 'Windows notifications';
   String get desktopNotificationsHint => ru
       ? 'Всплывающие уведомления при подключении и отключении.'

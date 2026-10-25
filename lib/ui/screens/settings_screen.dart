@@ -518,6 +518,13 @@ class SettingsScreen extends StatelessWidget {
                   onChanged: state.setConnectOnLaunch,
                   contentPadding: EdgeInsets.zero,
                 ),
+                SwitchListTile(
+                  title: Text(l10n.autoReconnect),
+                  subtitle: Text(l10n.autoReconnectHint),
+                  value: state.autoReconnect,
+                  onChanged: state.setAutoReconnect,
+                  contentPadding: EdgeInsets.zero,
+                ),
                 if (state.isDesktop)
                   SwitchListTile(
                     title: Text(l10n.desktopNotifications),

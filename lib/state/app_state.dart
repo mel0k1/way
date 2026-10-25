@@ -14,6 +14,7 @@ import '../core/config_builder.dart';
 import '../core/formats.dart';
 import '../core/parser.dart';
 import '../core/profile.dart';
+import '../core/reconnect_policy.dart';
 import '../core/stats.dart';
 import '../core/subscriptions.dart';
 import '../core/toast.dart';
@@ -67,6 +68,7 @@ class AppState extends ChangeNotifier {
   bool autoSelect = false;
   bool autoStart = false;
   bool connectOnLaunch = false;
+  bool autoReconnect = true;
   bool desktopNotify = true;
   bool autoCheckUpdates = true;
   bool closeToTray = true;
@@ -97,6 +99,14 @@ class AppState extends ChangeNotifier {
   Timer? _statsTimer;
   bool _ipFetching = false;
   SharedPreferences? _prefs;
+
+  // --- auto-reconnect watchdog state ---
+  /// True while the user wants the VPN up (set by connect(), cleared by
+  /// disconnect() or a fatal error). Drives automatic reconnection.
+  bool _userWantsConnected = false;
+  int _reconnectAttempt = 0;
+  Timer? _reconnectTimer;
+  DateTime? _connectingSince;
 
   static const _wrapperSchemes = {
     'clash', 'clashmeta', 'sing-box', 'singbox', 'v2rayng', 'v2rayn',
@@ -202,6 +212,7 @@ class AppState extends ChangeNotifier {
         autoSelect = s['autoselect'] as bool? ?? autoSelect;
         autoStart = s['autostart'] as bool? ?? autoStart;
         connectOnLaunch = s['connectlaunch'] as bool? ?? connectOnLaunch;
+        autoReconnect = s['autoreconnect'] as bool? ?? autoReconnect;
         desktopNotify = s['desktopnotify'] as bool? ?? desktopNotify;
         autoCheckUpdates = s['checkupdates'] as bool? ?? autoCheckUpdates;
         closeToTray = s['closetray'] as bool? ?? closeToTray;
@@ -331,6 +342,7 @@ class AppState extends ChangeNotifier {
       'autoselect': autoSelect,
       'autostart': autoStart,
       'connectlaunch': connectOnLaunch,
+      'autoreconnect': autoReconnect,
       'desktopnotify': desktopNotify,
       'checkupdates': autoCheckUpdates,
       'closetray': closeToTray,
@@ -382,6 +394,23 @@ class AppState extends ChangeNotifier {
       vpn = s;
       notifyListeners();
     }
+    // --- auto-reconnect watchdog bookkeeping ---
+    if (s.phase == VpnPhase.connected) {
+      _connectingSince = null;
+      _reconnectAttempt = 0;
+    } else if (s.phase == VpnPhase.connecting) {
+      _connectingSince ??= DateTime.now();
+      final stuck =
+          DateTime.now().difference(_connectingSince!) > ReconnectPolicy.connectingStuckAfter;
+      if (stuck) {
+        log('watchdog: connecting stuck, forcing reconnect cycle');
+        _connectingSince = null;
+        unawaited(_forceCycle());
+      }
+    }
+    if (s.phase == VpnPhase.stopped && _userWantsConnected && _reconnectTimer == null) {
+      _scheduleReconnect();
+    }
     final connected = vpn.phase == VpnPhase.connected;
     if (connected && _statsTimer == null) {
       _statsTimer = Timer.periodic(const Duration(seconds: 1), (_) => _statsTick());
@@ -390,6 +419,45 @@ class AppState extends ChangeNotifier {
       _statsTimer = null;
     }
     unawaited(tray.update(phase: vpn.phase, l10n: L10n(effectiveLocale)));
+  }
+
+  /// Tears the core down without clearing the reconnect intent, so the
+  /// watchdog can rebuild the session afterwards.
+  Future<void> _forceCycle() async {
+    try {
+      await bridge.disconnect();
+    } catch (_) {}
+  }
+
+  void _cancelReconnect() {
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    _reconnectAttempt = 0;
+  }
+
+  void _scheduleReconnect({bool afterError = false}) {
+    if (!autoReconnect || !_userWantsConnected) return;
+    if (_reconnectTimer != null) return;
+    if (ReconnectPolicy.fatalErrors.contains(vpn.error)) {
+      _userWantsConnected = false;
+      return;
+    }
+    if (afterError && _reconnectAttempt >= ReconnectPolicy.maxErrorAttempts) {
+      log('watchdog: gave up after ${_reconnectAttempt + 1} failed attempts');
+      _userWantsConnected = false;
+      return;
+    }
+    final delay = afterError
+        ? ReconnectPolicy.errorDelay(_reconnectAttempt)
+        : ReconnectPolicy.dropDelay(_reconnectAttempt);
+    final attempt = _reconnectAttempt + 1;
+    _reconnectAttempt = attempt;
+    log('watchdog: reconnect in ${delay.inSeconds}s (attempt $attempt)');
+    _reconnectTimer = Timer(delay, () {
+      _reconnectTimer = null;
+      if (!_userWantsConnected || vpn.phase != VpnPhase.stopped) return;
+      unawaited(connect());
+    });
   }
 
   Future<void> _statsTick() async {
@@ -429,6 +497,8 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> connect() async {
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
     var profile = selected;
     if (autoSelect) {
       final best = bestProfile;
@@ -436,6 +506,7 @@ class AppState extends ChangeNotifier {
     }
     if (profile == null) {
       vpn = const VpnStatus(error: 'no_profile');
+      _userWantsConnected = false;
       notifyListeners();
       return;
     }
@@ -447,6 +518,7 @@ class AppState extends ChangeNotifier {
       } else {
         log('profile "${profile.name}" is not supported by any engine');
         vpn = VpnStatus(error: 'unsupported_profile');
+        _userWantsConnected = false;
         notifyListeners();
         return;
       }
@@ -469,6 +541,8 @@ class AppState extends ChangeNotifier {
       }
     }
     log('connecting via ${profile.name} ($engine)');
+    _userWantsConnected = true;
+    _connectingSince = DateTime.now();
     vpn = const VpnStatus(phase: VpnPhase.connecting);
     notifyListeners();
     final tun = isDesktop ? (preferTun || killSwitch) : preferTun;
@@ -494,14 +568,18 @@ class AppState extends ChangeNotifier {
       dnsStrategy: dnsStrategy,
       tlsFragment: tlsFragment,
       muxProtocol: muxProtocol,
+      watchdog: autoReconnect,
     ));
+    _connectingSince = null;
     if (result.error != null) {
       log('error: ${result.error}');
       vpn = VpnStatus(error: result.error);
       notifyListeners();
+      _scheduleReconnect(afterError: true);
       return;
     }
     vpn = result;
+    _reconnectAttempt = 0;
     notifyListeners();
     final connectedName = profile.name;
     Timer(const Duration(seconds: 4), () async {
@@ -515,6 +593,9 @@ class AppState extends ChangeNotifier {
 
   Future<void> disconnect() async {
     log('disconnecting');
+    _userWantsConnected = false;
+    _connectingSince = null;
+    _cancelReconnect();
     vpn = const VpnStatus(phase: VpnPhase.disconnecting);
     notifyListeners();
     await bridge.disconnect();
@@ -859,6 +940,19 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setAutoReconnect(bool value) {
+    autoReconnect = value;
+    if (!value) {
+      _reconnectTimer?.cancel();
+      _reconnectTimer = null;
+    } else if (_userWantsConnected && vpn.phase == VpnPhase.stopped) {
+      _reconnectAttempt = 0;
+      _scheduleReconnect();
+    }
+    _persist();
+    notifyListeners();
+  }
+
   void setDesktopNotify(bool value) {
     desktopNotify = value;
     _persist();
@@ -920,6 +1014,7 @@ class AppState extends ChangeNotifier {
         'autoselect': autoSelect,
         'autostart': autoStart,
         'connectlaunch': connectOnLaunch,
+        'autoreconnect': autoReconnect,
         'desktopnotify': desktopNotify,
         'checkupdates': autoCheckUpdates,
         'closetray': closeToTray,
@@ -973,6 +1068,7 @@ class AppState extends ChangeNotifier {
       autoSelect = settings['autoselect'] as bool? ?? autoSelect;
       autoStart = settings['autostart'] as bool? ?? autoStart;
       connectOnLaunch = settings['connectlaunch'] as bool? ?? connectOnLaunch;
+      autoReconnect = settings['autoreconnect'] as bool? ?? autoReconnect;
       desktopNotify = settings['desktopnotify'] as bool? ?? desktopNotify;
       autoCheckUpdates = settings['checkupdates'] as bool? ?? autoCheckUpdates;
       closeToTray = settings['closetray'] as bool? ?? closeToTray;
@@ -1048,6 +1144,7 @@ class AppState extends ChangeNotifier {
     _statusTimer?.cancel();
     _subsTimer?.cancel();
     _statsTimer?.cancel();
+    _reconnectTimer?.cancel();
     statsPoller.dispose();
     super.dispose();
   }

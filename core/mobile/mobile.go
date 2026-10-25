@@ -4,7 +4,9 @@ import (
         "context"
         "fmt"
         "net/netip"
+        "os"
         "sync"
+        "time"
 
         core "github.com/mel0k1/way/core"
 
@@ -114,10 +116,17 @@ func (it *stringIterator) HasNext() bool {
 }
 
 type CommandServer struct {
-        mu       sync.Mutex
-        platform PlatformInterface
-        instance *box.Box
-        cancel   context.CancelFunc
+        mu          sync.Mutex
+        platform    PlatformInterface
+        instance    *box.Box
+        cancel      context.CancelFunc
+        lastConfig  string
+        probePort   int
+        probeFails  int
+        failStreak  int
+        lastAttempt time.Time
+        watchStop   chan struct{}
+        watchOnce   sync.Once
 }
 
 func NewCommandServer(platform PlatformInterface) (*CommandServer, error) {
@@ -131,6 +140,18 @@ func (s *CommandServer) Start() error {
 func (s *CommandServer) StartOrReloadService(configContent string) error {
         s.mu.Lock()
         defer s.mu.Unlock()
+        if err := s.startLocked(configContent); err != nil {
+                return err
+        }
+        s.lastConfig = configContent
+        s.probePort = core.ProbePortFromConfig([]byte(configContent))
+        s.probeFails = 0
+        s.failStreak = 0
+        s.startWatchdogLocked()
+        return nil
+}
+
+func (s *CommandServer) startLocked(configContent string) error {
         if s.instance != nil {
                 _ = s.instance.Close()
                 s.instance = nil
@@ -165,9 +186,109 @@ func (s *CommandServer) StartOrReloadService(configContent string) error {
         return nil
 }
 
+// startWatchdogLocked keeps the Android tunnel healthy: it restarts the
+// sing-box instance when it dies and probes it through the local mixed
+// inbound to recover from silent tunnel death (network switch, sleep).
+func (s *CommandServer) startWatchdogLocked() {
+        if s.watchStop != nil {
+                return
+        }
+        s.watchStop = make(chan struct{})
+        stop := s.watchStop
+        go func() {
+                ticker := time.NewTicker(10 * time.Second)
+                defer ticker.Stop()
+                for {
+                        select {
+                        case <-stop:
+                                return
+                        case <-ticker.C:
+                                s.mu.Lock()
+                                config := s.lastConfig
+                                instanceAlive := s.instance != nil
+                                probePort := s.probePort
+                                s.mu.Unlock()
+                                if config == "" {
+                                        continue
+                                }
+                                if !instanceAlive {
+                                        s.restart("engine down")
+                                        continue
+                                }
+                                if probePort <= 0 {
+                                        continue
+                                }
+                                alive := core.ProbeProxyPort(probePort)
+                                s.mu.Lock()
+                                if s.lastConfig == "" {
+                                        s.mu.Unlock()
+                                        continue
+                                }
+                                if alive {
+                                        s.probeFails = 0
+                                        s.failStreak = 0
+                                } else {
+                                        s.probeFails++
+                                        if s.probeFails >= core.ProbeFailLimit {
+                                                s.restartLocked("tunnel dead")
+                                        }
+                                }
+                                s.mu.Unlock()
+                        }
+                }
+        }()
+}
+
+func (s *CommandServer) restart(reason string) {
+        s.mu.Lock()
+        defer s.mu.Unlock()
+        s.restartLocked(reason)
+}
+
+// restartLocked rebuilds the instance from the last known-good config.
+// Retries are damped by core.RestartBackoff driven by failStreak, which is only
+// reset once a tunnel probe succeeds. Caller must hold s.mu.
+func (s *CommandServer) restartLocked(reason string) {
+        if time.Since(s.lastAttempt) < core.RestartBackoff(s.failStreak) {
+                return
+        }
+        config := s.lastConfig
+        if config == "" {
+                return
+        }
+        s.failStreak++
+        s.lastAttempt = time.Now()
+        s.closeLocked()
+        if err := s.startLocked(config); err != nil {
+                fmt.Fprintf(os.Stderr, "waycore watchdog: %s: restart failed: %v\n", reason, err)
+                return
+        }
+        fmt.Fprintf(os.Stderr, "waycore watchdog: %s: instance restarted\n", reason)
+}
+
+func (s *CommandServer) closeLocked() {
+        if s.instance != nil {
+                _ = s.instance.Close()
+                s.instance = nil
+        }
+        if s.cancel != nil {
+                s.cancel()
+                s.cancel = nil
+        }
+}
+
 func (s *CommandServer) CloseService() error {
         s.mu.Lock()
         defer s.mu.Unlock()
+        if s.watchStop != nil {
+                s.watchOnce.Do(func() { close(s.watchStop) })
+                s.watchStop = nil
+                s.watchOnce = sync.Once{}
+        }
+        s.lastConfig = ""
+        s.probePort = 0
+        s.probeFails = 0
+        s.failStreak = 0
         var firstErr error
         if s.instance != nil {
                 if err := s.instance.Close(); err != nil {

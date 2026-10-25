@@ -47,6 +47,7 @@
 - **Deep links** — tap a `vless://`/`vmess://`/`trojan://`/`ss://`/`hysteria2://`/`tuic://`/`anytls://` link or `way://import/<url>` to import profiles and subscriptions instantly (Android and Windows)
 - **Encrypted storage** — profiles and subscription keys live in flutter_secure_storage (Keystore / DPAPI)
 - **Autostart** — launch on boot (Android) or user sign-in (Windows Run key), optional auto-connect on launch
+- **Watchdog & auto-reconnect** — the core probes the tunnel every few seconds and silently rebuilds the session after a drop, network switch or system sleep; the app re-establishes failed connects with exponential backoff
 - **Custom notifications** — branded Android foreground notification with a disconnect button and session timer, Windows toasts
 - **Update check** — checks GitHub Releases on startup and offers to download the new build
 - **RU + EN interface** — follows the system language, switchable in settings
@@ -146,6 +147,7 @@ This project is a client shell around open-source cores. It ships no servers, no
 - **Цепочки прокси** — маршрут через выбранный сервер поверх текущего (sing-box `dialer_proxy`)
 - **Трей Windows** — иконка в трее с быстрым подключением, скрытием окна в трей и иконкой-статусом
 - **Плитка Android** — подключение/отключение из шторки быстрых настроек, восстановление последнего сервера
+- **Watchdog и автопереподключение** — ядро пробивает туннель каждые несколько секунд и молча пересобирает сессию после обрыва, смены сети или сна системы; приложение повторяет неудачные подключения с экспоненциальной задержкой
 - **Бэкап и восстановление** — экспорт профилей, подписок и настроек в JSON (SAF на Android, диалог сохранения на Windows)
 - **Быстрейший сервер** — urltest-группа в sing-box и реальный замер задержки через прокси (временный инстанс ядра на сервер, TCP-фолбэк) с автовыбором
 - **Подписки** — импорт по ссылке или QR-коду, вставка из буфера, автообновление с настраиваемым интервалом (с учётом `profile-update-interval`), совместимый с панелями User-Agent и показ квоты

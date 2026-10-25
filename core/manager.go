@@ -5,6 +5,7 @@ import (
         "encoding/json"
         "errors"
         "fmt"
+        "os"
         "sync"
         "time"
 
@@ -32,6 +33,9 @@ type StartRequest struct {
         SystemProxy     bool            `json:"system_proxy,omitempty"`
         SystemProxyPort int             `json:"system_proxy_port,omitempty"`
         KillSwitch      bool            `json:"kill_switch,omitempty"`
+        // ProbePort is the local proxy inbound the watchdog probes for tunnel
+        // liveness. 0 disables the probe (the engine-down watchdog stays active).
+        ProbePort int `json:"probe_port,omitempty"`
 }
 
 type Status struct {
@@ -43,25 +47,31 @@ type Status struct {
         Platform   string `json:"platform"`
         KillSwitch bool   `json:"kill_switch"`
         Watchdog   bool   `json:"watchdog"`
+        Reconnects int64  `json:"reconnects"`
         Error      string `json:"error,omitempty"`
 }
 
 type Manager struct {
-        mu         sync.Mutex
-        ctx        context.Context
-        cancel     context.CancelFunc
-        instance   *box.Box
-        bridge     *box.Box
-        xray       *XrayController
-        engine     string
-        mode       string
-        started    time.Time
-        lastErr    string
-        desired    bool
-        killSwitch bool
-        lastReq    *StartRequest
-        watchStop  chan struct{}
-        watchOnce  sync.Once
+        mu          sync.Mutex
+        ctx         context.Context
+        cancel      context.CancelFunc
+        instance    *box.Box
+        bridge      *box.Box
+        xray        *XrayController
+        engine      string
+        mode        string
+        started     time.Time
+        lastErr     string
+        desired     bool
+        killSwitch  bool
+        lastReq     *StartRequest
+        probePort   int
+        probeFails  int
+        failStreak  int
+        reconnects  int64
+        lastAttempt time.Time
+        watchStop   chan struct{}
+        watchOnce   sync.Once
 }
 
 func NewManager() *Manager {
@@ -78,6 +88,11 @@ func buildContext() (context.Context, context.CancelFunc) {
 func (m *Manager) Start(req StartRequest) error {
         m.mu.Lock()
         defer m.mu.Unlock()
+        // Idempotent start: while the watchdog holds a desired connection the
+        // engine may be mid-restart; re-issuing /start must not conflict.
+        if m.desired && (m.instance != nil || m.xray.Running()) {
+                return nil
+        }
         if m.instance != nil || m.xray.Running() {
                 return errors.New("way: engine already running")
         }
@@ -93,6 +108,9 @@ func (m *Manager) Start(req StartRequest) error {
         m.desired = true
         m.lastReq = &req
         m.killSwitch = req.KillSwitch
+        m.probePort = req.ProbePort
+        m.probeFails = 0
+        m.failStreak = 0
         m.startWatchdogLocked()
         return nil
 }
@@ -196,21 +214,71 @@ func (m *Manager) startWatchdogLocked() {
                                 return
                         case <-ticker.C:
                                 m.mu.Lock()
-                                req := m.lastReq
-                                if m.desired && m.instance == nil && !m.xray.Running() && req != nil {
-                                        m.closeEnginesLocked()
-                                        if m.cancel != nil {
-                                                m.cancel()
-                                                m.cancel = nil
-                                        }
-                                        if err := m.startLocked(*req); err != nil {
-                                                m.lastErr = err.Error()
+                                if !m.desired || m.lastReq == nil {
+                                        m.mu.Unlock()
+                                        continue
+                                }
+                                running := m.instance != nil || m.xray.Running()
+                                probePort := m.probePort
+                                started := m.started
+                                if !running {
+                                        m.restartLocked("engine down")
+                                        m.mu.Unlock()
+                                        continue
+                                }
+                                m.mu.Unlock()
+                                // Engine objects are alive; verify the tunnel
+                                // actually passes traffic. Skip the first 15s
+                                // so a fresh start can settle.
+                                if probePort <= 0 || time.Since(started) < 15*time.Second {
+                                        continue
+                                }
+                                alive := ProbeProxyPort(probePort)
+                                m.mu.Lock()
+                                if m.desired {
+                                        if alive {
+                                                m.probeFails = 0
+                                                m.failStreak = 0
+                                        } else {
+                                                m.probeFails++
+                                                if m.probeFails >= ProbeFailLimit {
+                                                        m.restartLocked("tunnel dead")
+                                                }
                                         }
                                 }
                                 m.mu.Unlock()
                         }
                 }
         }()
+}
+
+// restartLocked tears the engines down and starts them again from the last
+// known-good request. Retries are damped by an exponential backoff driven by
+// failStreak, which is only reset once a tunnel probe succeeds.
+// Caller must hold m.mu.
+func (m *Manager) restartLocked(reason string) {
+        if time.Since(m.lastAttempt) < RestartBackoff(m.failStreak) {
+                return
+        }
+        req := m.lastReq
+        if req == nil {
+                return
+        }
+        m.failStreak++
+        m.lastAttempt = time.Now()
+        m.closeEnginesLocked()
+        if m.cancel != nil {
+                m.cancel()
+                m.cancel = nil
+        }
+        if err := m.startLocked(*req); err != nil {
+                m.lastErr = err.Error()
+                fmt.Fprintf(os.Stderr, "waycore watchdog: %s: restart failed: %v\n", reason, err)
+                return
+        }
+        m.reconnects++
+        m.probeFails = 0
+        fmt.Fprintf(os.Stderr, "waycore watchdog: %s: engines restarted (reconnects=%d)\n", reason, m.reconnects)
 }
 
 func (m *Manager) closeEnginesLocked() {
@@ -230,6 +298,10 @@ func (m *Manager) Stop() error {
         defer m.mu.Unlock()
         m.desired = false
         m.lastReq = nil
+        m.probePort = 0
+        m.probeFails = 0
+        m.failStreak = 0
+        m.lastAttempt = time.Time{}
         if m.watchStop != nil {
                 m.watchOnce.Do(func() { close(m.watchStop) })
                 m.watchStop = nil
@@ -268,6 +340,7 @@ func (m *Manager) Status() Status {
                 Platform:   PlatformName,
                 KillSwitch: m.killSwitch,
                 Watchdog:   m.watchStop != nil,
+                Reconnects: m.reconnects,
                 Error:      m.lastErr,
         }
 }
