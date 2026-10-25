@@ -1193,7 +1193,7 @@ class AppState extends ChangeNotifier {
         final size = raf.lengthSync();
         final start = size > maxBytes ? size - maxBytes : 0;
         raf.setPositionSync(start);
-        var content = raf.readStringSync(size - start);
+        var content = utf8.decode(raf.readSync(size - start), allowMalformed: true);
         if (start > 0) {
           final nl = content.indexOf('\n');
           if (nl >= 0) content = content.substring(nl + 1);
