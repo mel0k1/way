@@ -1,7 +1,7 @@
 name: way
 description: "Way — cross-platform VPN client with sing-box and xray cores."
 publish_to: "none"
-version: 1.7.0+8
+version: 1.8.0+9
 
 environment:
   sdk: ">=3.5.0 <4.0.0"
@@ -33,6 +33,7 @@ flutter:
     - assets/icon/way.png
     - assets/icon/way.ico
     - assets/icon/way_off.ico
+    - assets/icon/way_wait.ico
   fonts:
     - family: Inter
       fonts:

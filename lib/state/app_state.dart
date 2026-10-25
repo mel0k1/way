@@ -506,7 +506,15 @@ class AppState extends ChangeNotifier {
       _statsTimer?.cancel();
       _statsTimer = null;
     }
-    unawaited(tray.update(phase: vpn.phase, l10n: L10n(effectiveLocale)));
+    unawaited(tray.update(
+      phase: vpn.phase,
+      l10n: L10n(effectiveLocale),
+      serverName: effectiveProfile?.name,
+      downMbps: vpn.phase == VpnPhase.connected
+          ? stats.downSpeed * 8 / 1e6
+          : null,
+      upMbps: vpn.phase == VpnPhase.connected ? stats.upSpeed * 8 / 1e6 : null,
+    ));
   }
 
   /// Tears the core down without clearing the reconnect intent, so the
