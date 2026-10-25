@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../core/vpn_bridge.dart';
-import '../../l10n.dart';
 import '../../state/app_state.dart';
 import '../motion.dart';
 import 'package:provider/provider.dart';
@@ -349,41 +348,6 @@ class _PulseRing extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class StatusLabel extends StatelessWidget {
-  const StatusLabel({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = L10nScope.of(context);
-    final state = context.watch<AppState>();
-    final scheme = Theme.of(context).colorScheme;
-    final text = switch (state.vpn.phase) {
-      VpnPhase.connected => l10n.connected,
-      VpnPhase.connecting => l10n.connecting,
-      VpnPhase.disconnecting => l10n.disconnecting,
-      VpnPhase.stopped => l10n.stopped,
-    };
-    if (state.vpn.error != null) {
-      return Text(
-        l10n.errorText(state.vpn.error),
-        style: TextStyle(
-          color: scheme.error,
-          fontSize: 14,
-        ),
-        textAlign: TextAlign.center,
-      );
-    }
-    final connected = state.vpn.phase == VpnPhase.connected;
-    return Text(
-      text,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: connected ? scheme.primary : scheme.onSurfaceVariant,
-          ),
     );
   }
 }

@@ -6,6 +6,7 @@ import '../motion.dart';
 import 'servers_screen.dart';
 import '../widgets/connect_button.dart';
 import '../widgets/status_card.dart';
+import '../widgets/status_plaque.dart';
 import '../widgets/wavy_divider.dart';
 import 'package:provider/provider.dart';
 
@@ -28,7 +29,7 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 8),
               const ConnectButton(),
               const SizedBox(height: 20),
-              const StatusLabel(),
+              const StatusPlaque(),
               const WavyDivider(topGap: 22, bottomGap: 22),
               const StatusCard(),
               const WavyDivider(topGap: 18, bottomGap: 14),

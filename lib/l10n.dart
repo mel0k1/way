@@ -328,6 +328,21 @@ class L10n {
   String get qrTooBig => ru
       ? 'Слишком много серверов для одного QR — используйте резервную копию'
       : 'Too many servers for one QR — use a backup file instead';
+
+  // Domain split — "send this site around the VPN".
+  String get bypassSite => ru ? 'Сайт мимо VPN' : 'Site bypass';
+  String get bypassSiteLabel => ru ? 'Домен или суффикс' : 'Domain or suffix';
+  String get bypassSiteHint => ru ? 'example.com' : 'example.com';
+  String get bypassSiteExplain => ru
+      ? 'Сайты с таким доменом (и поддоменами) пойдут напрямую, минуя VPN.'
+      : 'Sites on this domain (and subdomains) will go direct, bypassing the VPN.';
+  String bypassSiteDone(String domain) => ru
+      ? '$domain — теперь мимо VPN'
+      : '$domain now bypasses the VPN';
+  String get bypassSiteExists => ru
+      ? 'Такое правило уже есть'
+      : 'This rule already exists';
+  String get mbpsShort => ru ? 'Мбит/с' : 'Mbps';
   String get nothingToTransfer => ru
       ? 'Нет серверов для переноса'
       : 'Nothing to transfer';
