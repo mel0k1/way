@@ -30,47 +30,84 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 32),
               const StatusCard(),
               const SizedBox(height: 16),
-              Card.filled(
-                child: ListTile(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const ServersScreen(fullPage: true),
-                    ),
+              _Squish(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const ServersScreen(fullPage: true),
                   ),
-                  leading: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: scheme.primaryContainer,
+                ),
+                child: Card.filled(
+                  margin: EdgeInsets.zero,
+                  child: ListTile(
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: scheme.primaryContainer,
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        state.autoSelect
+                            ? Icons.bolt_rounded
+                            : Icons.dns_rounded,
+                        size: 22,
+                        color: scheme.onPrimaryContainer,
+                      ),
                     ),
-                    alignment: Alignment.center,
-                    child: Icon(
+                    title: Text(
                       state.autoSelect
-                          ? Icons.bolt_rounded
-                          : Icons.dns_rounded,
-                      size: 22,
-                      color: scheme.onPrimaryContainer,
+                          ? l10n.autoFastest
+                          : (profile?.name ?? l10n.navServers),
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w600),
                     ),
+                    subtitle: profile != null
+                        ? Text('${profile.server}:${profile.port}',
+                            overflow: TextOverflow.ellipsis)
+                        : Text(l10n.noServers),
+                    trailing: const Icon(Icons.chevron_right_rounded),
                   ),
-                  title: Text(
-                    state.autoSelect ? l10n.autoFastest : (profile?.name ?? l10n.navServers),
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: profile != null
-                      ? Text('${profile.server}:${profile.port}',
-                          overflow: TextOverflow.ellipsis)
-                      : Text(l10n.noServers),
-                  trailing: const Icon(Icons.chevron_right_rounded),
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Press feedback with a slight squish — an expressive touch for tappable
+/// cards on the home screen.
+class _Squish extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+
+  const _Squish({required this.child, this.onTap});
+
+  @override
+  State<_Squish> createState() => _SquishState();
+}
+
+class _SquishState extends State<_Squish> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: _pressed ? Curves.easeOutCubic : Curves.easeOutBack,
+        child: widget.child,
       ),
     );
   }

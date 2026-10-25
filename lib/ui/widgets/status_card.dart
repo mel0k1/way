@@ -61,14 +61,24 @@ class StatusCard extends StatelessWidget {
                         : scheme.surfaceContainerHighest,
                   ),
                   alignment: Alignment.center,
-                  child: Icon(
-                    profile == null
-                        ? Icons.help_outline_rounded
-                        : Icons.dns_rounded,
-                    size: 20,
-                    color: connected
-                        ? scheme.onPrimaryContainer
-                        : scheme.onSurfaceVariant,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 420),
+                    switchInCurve: Curves.easeOutBack,
+                    switchOutCurve: Curves.easeIn,
+                    transitionBuilder: (child, anim) => ScaleTransition(
+                      scale: anim,
+                      child: child,
+                    ),
+                    child: Icon(
+                      profile == null
+                          ? Icons.help_outline_rounded
+                          : Icons.dns_rounded,
+                      key: ValueKey(connected),
+                      size: 20,
+                      color: connected
+                          ? scheme.onPrimaryContainer
+                          : scheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -170,6 +180,10 @@ class StatusCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
+            if (state.isReconnecting) ...[
+              _WatchdogChip(attempt: state.reconnectAttempt),
+              const SizedBox(height: 12),
+            ],
             Text(
               connected ? _totalsLine(l10n, state.stats) : l10n.totalIdle,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -181,6 +195,47 @@ class StatusCard extends StatelessWidget {
               const SizedBox(height: 12),
               const _WaveLine(),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Springy pill shown while the watchdog is scheduling a reconnect.
+class _WatchdogChip extends StatelessWidget {
+  final int attempt;
+
+  const _WatchdogChip({required this.attempt});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.6, end: 1),
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutBack,
+      builder: (context, scale, child) => Transform.scale(scale: scale, child: child),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          color: scheme.tertiaryContainer,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.autorenew_rounded,
+                size: 14, color: scheme.onTertiaryContainer),
+            const SizedBox(width: 6),
+            Text(
+              L10nScope.of(context).reconnectingAttempt(attempt),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: scheme.onTertiaryContainer,
+              ),
+            ),
           ],
         ),
       ),
@@ -202,6 +257,18 @@ class _WaveLineState extends State<_WaveLine>
     vsync: this,
     duration: const Duration(milliseconds: 3200),
   );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Respect the platform "remove animations" accessibility setting.
+    final disabled = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    if (disabled && _c.isAnimating) {
+      _c.stop();
+    } else if (!disabled && !_c.isAnimating) {
+      _c.repeat();
+    }
+  }
 
   @override
   void initState() {
@@ -300,13 +367,38 @@ class _SpeedTile extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontFeatures: const [FontFeature.tabularFigures()],
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 260),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInToLinear,
+            layoutBuilder: (currentChild, previousChildren) => Stack(
+              alignment: Alignment.centerLeft,
+              children: [
+                ...previousChildren,
+                if (currentChild != null) currentChild,
+              ],
+            ),
+            transitionBuilder: (child, anim) {
+              final incoming = child.key == ValueKey<String>(value);
+              return ClipRect(
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: incoming ? const Offset(0, 0.35) : const Offset(0, -0.35),
+                    end: Offset.zero,
+                  ).animate(anim),
+                  child: FadeTransition(opacity: anim, child: child),
                 ),
-            overflow: TextOverflow.ellipsis,
+              );
+            },
+            child: Text(
+              value,
+              key: ValueKey<String>(value),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),

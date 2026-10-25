@@ -159,6 +159,8 @@ class L10n {
   String get autoReconnectHint => ru
       ? 'Watchdog следит за туннелем и восстанавливает связь после обрыва, сна или смены сети.'
       : 'Watchdog keeps the tunnel alive and restores it after drops, sleep or network changes.';
+  String reconnectingAttempt(int n) =>
+      ru ? 'Переподключение · попытка $n' : 'Reconnecting · attempt $n';
   String get desktopNotifications => ru ? 'Уведомления Windows' : 'Windows notifications';
   String get desktopNotificationsHint => ru
       ? 'Всплывающие уведомления при подключении и отключении.'

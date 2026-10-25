@@ -143,6 +143,16 @@ class AppState extends ChangeNotifier {
       !kIsWeb &&
       (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
+  /// True while the watchdog holds a pending reconnect for a dropped session
+  /// (the UI shows a "reconnecting · attempt N" hint).
+  bool get isReconnecting =>
+      _userWantsConnected &&
+      vpn.phase == VpnPhase.stopped &&
+      _reconnectTimer != null;
+
+  /// Current watchdog attempt number (1-based) when [isReconnecting].
+  int get reconnectAttempt => _reconnectAttempt;
+
   String get effectiveLocale {
     if (localeCode.isNotEmpty) return localeCode;
     final system = PlatformDispatcher.instance.locale.languageCode;
