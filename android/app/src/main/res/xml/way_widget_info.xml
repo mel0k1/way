@@ -4,7 +4,7 @@
     android:minHeight="52dp"
     android:targetCellWidth="3"
     android:targetCellHeight="1"
-    android:updatePeriodMs="0"
+    android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_way"
     android:resizeMode="none"
     android:widgetCategory="home_screen" />
