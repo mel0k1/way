@@ -119,7 +119,7 @@ class AppState extends ChangeNotifier {
   late final LocalApiServer localApiServer = LocalApiServer(
     status: () async => {
       'ok': true,
-      'phase': vpn.name,
+      'phase': vpn.phase.name,
       'error': vpn.error,
       'profile': selected?.name,
       'stats': {

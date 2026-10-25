@@ -319,6 +319,75 @@ class _SpinHaloPainter extends CustomPainter {
       oldDelegate.rotation != rotation || oldDelegate.color != color;
 }
 
+class _PulseRing extends StatelessWidget {
+  final AnimationController controller;
+  final double delay;
+  final Color color;
+
+  const _PulseRing({
+    required this.controller,
+    required this.delay,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final t = (controller.value - delay).clamp(0.0, 1.0) / (1 - delay);
+        final eased = Curves.easeOut.transform(t);
+        return Container(
+          width: 176 + 96 * eased,
+          height: 176 + 96 * eased,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: color.withValues(alpha: 0.30 * (1 - eased)),
+              width: 2.5,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class StatusLabel extends StatelessWidget {
+  const StatusLabel({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10nScope.of(context);
+    final state = context.watch<AppState>();
+    final scheme = Theme.of(context).colorScheme;
+    final text = switch (state.vpn.phase) {
+      VpnPhase.connected => l10n.connected,
+      VpnPhase.connecting => l10n.connecting,
+      VpnPhase.disconnecting => l10n.disconnecting,
+      VpnPhase.stopped => l10n.stopped,
+    };
+    if (state.vpn.error != null) {
+      return Text(
+        l10n.errorText(state.vpn.error),
+        style: TextStyle(
+          color: scheme.error,
+          fontSize: 14,
+        ),
+        textAlign: TextAlign.center,
+      );
+    }
+    final connected = state.vpn.phase == VpnPhase.connected;
+    return Text(
+      text,
+      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: connected ? scheme.primary : scheme.onSurfaceVariant,
+          ),
+    );
+  }
+}
+
 /// Live download-speed gauge wrapping the connected button: a 270° arc with
 /// a gradient sweep and a soft track.
 class _SpeedGaugePainter extends CustomPainter {

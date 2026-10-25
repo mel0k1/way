@@ -93,8 +93,6 @@ class LocalApiServer {
       }
     } catch (e) {
       _json(request, 500, {'ok': false, 'error': '$e'});
-    } finally {
-      unawaited(request.response.drain().catchError((_) {}));
     }
   }
 
