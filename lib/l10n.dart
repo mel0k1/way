@@ -321,6 +321,26 @@ class L10n {
   String get favorites => ru ? 'Избранное' : 'Favorites';
   String get addFavorite => ru ? 'В избранное' : 'Add to favorites';
   String get removeFavorite => ru ? 'Из избранного' : 'Remove from favorites';
+
+  // Subscription profile groups in the servers list.
+  String get manualGroup => ru ? 'Добавленные вручную' : 'Added manually';
+  String get subscriptionFallback => ru ? 'Подписка' : 'Subscription';
+  String serversPlural(int n) {
+    if (!ru) return n == 1 ? 'server' : 'servers';
+    final mod10 = n % 10;
+    final mod100 = n % 100;
+    if (mod10 == 1 && mod100 != 11) return 'сервер';
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+      return 'сервера';
+    }
+    return 'серверов';
+  }
+  String deleteGroupConfirm(String name, int n) => ru
+      ? 'Удалить профиль «$name» и все его серверы ($n)?'
+      : 'Delete the profile "$name" and all of its $n servers?';
+  String groupDeleted(String name) => ru
+      ? 'Профиль «$name» удалён'
+      : 'Profile "$name" deleted';
   String get transferQr => ru ? 'QR на телефон' : 'Phone QR';
   String get transferQrHint => ru
       ? 'Отсканируйте код в Way на телефоне — серверы и подписки перенесутся сами.'

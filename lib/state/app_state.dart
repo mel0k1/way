@@ -38,6 +38,23 @@ class SubEntry extends Subscription {
   });
 }
 
+/// One collapsible section of the servers list: the virtual "Favorites"
+/// bucket on top, one group per subscription (keeping the subscription's
+/// own VPN name), or the bucket of manually added servers.
+class ServerGroup {
+  final String subId;
+  final String name;
+  final bool favorite;
+  final List<Profile> profiles;
+
+  ServerGroup({
+    required this.subId,
+    required this.name,
+    required this.favorite,
+    required this.profiles,
+  });
+}
+
 class AppState extends ChangeNotifier {
   static const autoId = '__auto__';
 
@@ -890,9 +907,20 @@ class AppState extends ChangeNotifier {
         for (final p in profiles.where((p) => p.subId == sub.id))
           fingerprint(p): p.id,
       };
+      final oldById = {
+        for (final p in profiles.where((p) => p.subId == sub.id)) p.id: p,
+      };
       for (final p in fetched) {
         final stable = oldIdsByFp[fingerprint(p)];
-        if (stable != null) p.id = stable;
+        if (stable == null) continue;
+        p.id = stable;
+        // Favorite pins and chain links live on the old objects — carry them
+        // over, otherwise every subscription refresh silently resets them.
+        final old = oldById[stable];
+        if (old != null) {
+          p.favorite = old.favorite;
+          p.chainTo = old.chainTo;
+        }
       }
       ProfileIds.ensureUnique(
         fetched,
@@ -926,9 +954,27 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Bulk removal for the servers screen: drops whole groups of profiles at
+  /// once, repairs the selection, unlinks chain references pointing at the
+  /// removed servers and clears their latency cache entries in one pass.
+  void removeProfilesByIds(Iterable<String> ids) {
+    final doomed = ids.toSet();
+    if (doomed.isEmpty) return;
+    profiles.removeWhere((p) => doomed.contains(p.id));
+    if (selectedId != null && doomed.contains(selectedId)) {
+      selectedId = profiles.isNotEmpty ? profiles.first.id : null;
+    }
+    for (final p in profiles) {
+      if (p.chainTo != null && doomed.contains(p.chainTo)) p.chainTo = null;
+    }
+    latencies.removeWhere((k, _) => doomed.contains(k));
+    _persist();
+    notifyListeners();
+  }
+
   void removeSubscription(String id) {
+    removeProfilesByIds([for (final p in profiles) if (p.subId == id) p.id]);
     subs.removeWhere((s) => s.id == id);
-    profiles.removeWhere((p) => p.subId == id);
     _persist();
     notifyListeners();
   }
@@ -991,20 +1037,21 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Profiles filtered by the search query and ordered: favorites pinned on
-  /// top, then the chosen sort mode. Selection order inside equals groups is
-  /// kept stable so the engine sees the same list.
-  List<Profile> get visibleProfiles {
-    Iterable<Profile> list = profiles;
+  /// Servers grouped for the list UI: the virtual favorites bucket on top,
+  /// then one group per subscription in first-appearance order (the group
+  /// carries the subscription's own VPN name), then manually added servers.
+  /// Honors [serverQuery] and [serverSort] inside every bucket; buckets that
+  /// match nothing are dropped, so search never shows empty groups.
+  List<ServerGroup> get serverGroups {
     final q = serverQuery.toLowerCase();
-    if (q.isNotEmpty) {
-      list = list.where((p) =>
-          p.name.toLowerCase().contains(q) ||
-          p.server.toLowerCase().contains(q) ||
-          p.protocolLabel.toLowerCase().contains(q));
-    }
-    final result = list.toList();
-    int Function(Profile, Profile) compare;
+    bool match(Profile p) =>
+        q.isEmpty ||
+        p.name.toLowerCase().contains(q) ||
+        p.server.toLowerCase().contains(q) ||
+        p.protocolLabel.toLowerCase().contains(q);
+    final filtered = profiles.where(match).toList();
+
+    int Function(Profile, Profile)? compare;
     switch (serverSort) {
       case 'latency':
         compare = (a, b) {
@@ -1020,12 +1067,41 @@ class AppState extends ChangeNotifier {
         compare =
             (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase());
         break;
-      default:
-        compare = (a, b) => 0;
     }
-    if (serverSort != 'default') result.sort(compare);
-    // Favorites always float to the top, preserving the inner order.
-    result.sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0));
+
+    final result = <ServerGroup>[];
+
+    final favorites = filtered.where((p) => p.favorite).toList();
+    if (compare != null) favorites.sort(compare);
+    if (favorites.isNotEmpty) {
+      result.add(ServerGroup(
+        subId: '',
+        name: '',
+        favorite: true,
+        profiles: favorites,
+      ));
+    }
+
+    final subsById = {for (final s in subs) s.id: s};
+    final order = <String>[];
+    final buckets = <String, List<Profile>>{};
+    for (final p in filtered) {
+      if (p.favorite) continue;
+      buckets.putIfAbsent(p.subId, () {
+        order.add(p.subId);
+        return <Profile>[];
+      }).add(p);
+    }
+    for (final key in order) {
+      final bucket = buckets[key]!;
+      if (compare != null) bucket.sort(compare);
+      result.add(ServerGroup(
+        subId: key,
+        name: key.isEmpty ? '' : (subsById[key]?.name ?? ''),
+        favorite: false,
+        profiles: bucket,
+      ));
+    }
     return result;
   }
 

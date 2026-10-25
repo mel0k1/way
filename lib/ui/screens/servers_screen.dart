@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../l10n.dart';
 import '../../state/app_state.dart';
@@ -6,20 +7,92 @@ import '../motion.dart';
 import '../widgets/add_profile_sheet.dart';
 import '../widgets/profile_tile.dart';
 import '../widgets/qr_export_dialog.dart';
-import 'package:provider/provider.dart';
 
-class ServersScreen extends StatelessWidget {
+class ServersScreen extends StatefulWidget {
   final bool fullPage;
 
   const ServersScreen({super.key, this.fullPage = false});
+
+  @override
+  State<ServersScreen> createState() => _ServersScreenState();
+}
+
+class _ServersScreenState extends State<ServersScreen> {
+  /// Collapsed group keys: 'fav', 'manual' or the subscription id.
+  final Set<String> _collapsed = {};
+
+  String _key(ServerGroup g) {
+    if (g.favorite) return 'fav';
+    if (g.subId.isEmpty) return 'manual';
+    return g.subId;
+  }
+
+  bool _isCollapsed(ServerGroup g, bool searching) {
+    // While searching every group expands so no hit can hide behind a fold.
+    if (searching) return false;
+    return _collapsed.contains(_key(g));
+  }
+
+  Future<void> _confirmDeleteGroup(
+    BuildContext context,
+    AppState state,
+    ServerGroup group,
+    String title,
+  ) async {
+    final l10n = L10nScope.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.delete),
+        content: Text(l10n.deleteGroupConfirm(title, group.profiles.length)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    if (group.subId.isEmpty) {
+      // Manually added servers — drop the whole bucket by ids.
+      state.removeProfilesByIds([for (final p in group.profiles) p.id]);
+    } else {
+      // Subscription profile: its servers would be refetched on the next
+      // update, so remove the subscription itself along with the servers.
+      state.removeSubscription(group.subId);
+    }
+    if (!mounted) return;
+    setState(() => _collapsed.remove(_key(group)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(l10n.groupDeleted(title)),
+      behavior: SnackBarBehavior.floating,
+      width: 320,
+    ));
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = L10nScope.of(context);
     final state = context.watch<AppState>();
     final scheme = Theme.of(context).colorScheme;
-    final visible = state.visibleProfiles;
+    final groups = state.serverGroups;
     final searching = state.serverQuery.isNotEmpty;
+    final visibleCount =
+        groups.fold<int>(0, (n, g) => n + g.profiles.length);
+
+    // Slot plan: index 0 is the auto tile, then per group a header slot and
+    // a tile-block slot (the block itself collapses via AnimatedSize).
+    final slots = <_Slot>[];
+    slots.add(const _Slot.auto());
+    for (var gi = 0; gi < groups.length; gi++) {
+      slots.add(_Slot.header(gi));
+      slots.add(_Slot.block(gi));
+    }
 
     final body = Column(
       children: [
@@ -27,7 +100,7 @@ class ServersScreen extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
           child: Row(
             children: [
-              if (fullPage)
+              if (widget.fullPage)
                 IconButton(
                   icon: const Icon(Icons.arrow_back_rounded),
                   onPressed: () => Navigator.of(context).pop(),
@@ -131,8 +204,8 @@ class ServersScreen extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(
                   searching
-                      ? l10n.foundCount(visible.length)
-                      : '${visible.length} ${l10n.entries}',
+                      ? l10n.foundCount(visibleCount)
+                      : '$visibleCount ${l10n.serversPlural(visibleCount)}',
                   style: Theme.of(context)
                       .textTheme
                       .labelSmall
@@ -199,7 +272,7 @@ class ServersScreen extends StatelessWidget {
                     ],
                   ),
                 )
-              : visible.isEmpty
+              : visibleCount == 0
                   ? Center(
                       child: Padding(
                         padding: const EdgeInsets.all(32),
@@ -214,72 +287,217 @@ class ServersScreen extends StatelessWidget {
                     )
                   : ListView.builder(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                      itemCount: visible.length + 1,
+                      itemCount: slots.length,
                       itemBuilder: (context, i) {
-                        if (i == 0) {
-                          return _Entrance(
-                            index: 0,
-                            child: _AutoTile(
-                              enabled: state.engineProfiles.length > 1,
-                            ),
-                          );
+                        final slot = slots[i];
+                        switch (slot.kind) {
+                          case 0:
+                            return _Entrance(
+                              index: 0,
+                              child: _AutoTile(
+                                enabled: state.engineProfiles.length > 1,
+                              ),
+                            );
+                          case 1:
+                            return _buildGroupHeader(
+                              context,
+                              state,
+                              groups[slot.group],
+                              searching,
+                            );
+                          default:
+                            return _buildGroupBlock(
+                              context,
+                              state,
+                              groups[slot.group],
+                              searching,
+                            );
                         }
-                        final profile = visible[i - 1];
-                        final previous = i >= 2 ? visible[i - 2] : null;
-                        final showFavHeader = profile.favorite &&
-                            (previous == null || !previous.favorite);
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (showFavHeader)
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                    left: 12, top: 10, bottom: 2),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.star_rounded,
-                                      size: 14,
-                                      color: scheme.primary,
-                                    ),
-                                    const SizedBox(width: 5),
-                                    Text(
-                                      l10n.favorites,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelSmall
-                                          ?.copyWith(
-                                            color: scheme.primary,
-                                            fontWeight: FontWeight.w700,
-                                            letterSpacing: 0.4,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            _Entrance(
-                              index: i,
-                              child: ProfileTile(
-                                profile: profile,
-                                // Compare with the resolved selection (which
-                                // falls back to the first profile) so the
-                                // highlight always matches what connect()
-                                // will actually use.
-                                selected: profile.id == state.selected?.id &&
-                                    !state.autoSelect,
-                                latency: state.latencies[profile.id],
-                              ),
-                            ),
-                          ],
-                        );
                       },
                     ),
         ),
       ],
     );
 
-    if (fullPage) return Scaffold(body: SafeArea(child: body));
+    if (widget.fullPage) return Scaffold(body: SafeArea(child: body));
     return SafeArea(child: body);
+  }
+
+  Widget _buildGroupHeader(
+    BuildContext context,
+    AppState state,
+    ServerGroup group,
+    bool searching,
+  ) {
+    final l10n = L10nScope.of(context);
+    final title = group.favorite
+        ? l10n.favorites
+        : group.subId.isEmpty
+            ? l10n.manualGroup
+            : (group.name.isEmpty
+                ? l10n.subscriptionFallback
+                : group.name);
+    return _GroupHeader(
+      group: group,
+      title: title,
+      count: group.profiles.length,
+      collapsed: _isCollapsed(group, searching),
+      onToggle: () => setState(() {
+        final key = _key(group);
+        if (!_collapsed.remove(key)) _collapsed.add(key);
+      }),
+      // Favorites is a virtual view — deleting it would mean deleting every
+      // favorited server across all profiles, so no bulk action here.
+      onDelete: group.favorite
+          ? null
+          : () => _confirmDeleteGroup(context, state, group, title),
+    );
+  }
+
+  Widget _buildGroupBlock(
+    BuildContext context,
+    AppState state,
+    ServerGroup group,
+    bool searching,
+  ) {
+    final collapsed = _isCollapsed(group, searching);
+    return AnimatedSize(
+      duration: WayMotion.medium,
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: collapsed
+          ? const SizedBox(width: double.infinity)
+          : Column(
+              children: [
+                for (var j = 0; j < group.profiles.length; j++)
+                  _Entrance(
+                    index: j,
+                    child: ProfileTile(
+                      profile: group.profiles[j],
+                      // Compare with the resolved selection (which falls back
+                      // to the first profile) so the highlight always matches
+                      // what connect() will actually use.
+                      selected: group.profiles[j].id == state.selected?.id &&
+                          !state.autoSelect,
+                      latency: state.latencies[group.profiles[j].id],
+                    ),
+                  ),
+              ],
+            ),
+    );
+  }
+}
+
+/// Lightweight slot descriptor for the grouped list:
+/// 0 = auto tile, 1 = group header, 2 = group tile block.
+class _Slot {
+  final int kind;
+  final int group;
+
+  const _Slot.auto()
+      : kind = 0,
+        group = -1;
+  const _Slot.header(this.group) : kind = 1;
+  const _Slot.block(this.group) : kind = 2;
+}
+
+/// Section header of a server group: icon, the subscription's own VPN name,
+/// a server count, a collapse chevron and (for deletable groups) a bulk
+/// delete button.
+class _GroupHeader extends StatelessWidget {
+  final ServerGroup group;
+  final String title;
+  final int count;
+  final bool collapsed;
+  final VoidCallback onToggle;
+  final VoidCallback? onDelete;
+
+  const _GroupHeader({
+    required this.group,
+    required this.title,
+    required this.count,
+    required this.collapsed,
+    required this.onToggle,
+    this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10nScope.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final color = group.favorite ? scheme.primary : scheme.onSurfaceVariant;
+    final icon = group.favorite
+        ? Icons.star_rounded
+        : group.subId.isEmpty
+            ? Icons.link_rounded
+            : Icons.rss_feed_rounded;
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, top: 14, bottom: 4),
+      child: Row(
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: onToggle,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 14, color: color),
+                  const SizedBox(width: 6),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 220),
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: color,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                          ),
+                    ),
+                  ),
+                  const SizedBox(width: 7),
+                  Text(
+                    '$count ${l10n.serversPlural(count)}',
+                    style: Theme.of(context)
+                        .textTheme
+                        .labelSmall
+                        ?.copyWith(
+                          color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  AnimatedRotation(
+                    turns: collapsed ? -0.25 : 0,
+                    duration: WayMotion.medium,
+                    curve: Curves.easeOutCubic,
+                    child: Icon(
+                      Icons.expand_more_rounded,
+                      size: 18,
+                      color: color,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Spacer(),
+          if (onDelete != null)
+            IconButton(
+              tooltip: l10n.delete,
+              visualDensity: VisualDensity.compact,
+              iconSize: 18,
+              icon: Icon(
+                Icons.delete_outline_rounded,
+                color: scheme.error.withValues(alpha: 0.75),
+              ),
+              onPressed: onDelete,
+            ),
+        ],
+      ),
+    );
   }
 }
 
