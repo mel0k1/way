@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/config_builder.dart';
+import '../../core/parser.dart';
 import '../../l10n.dart';
 import '../../state/app_state.dart';
 
@@ -172,7 +173,7 @@ class RouteRulesScreen extends StatelessWidget {
     valueController.dispose();
     if (ok != true || value.isEmpty) return;
     state.addRule(RouteRule(
-      id: 'r${DateTime.now().microsecondsSinceEpoch}',
+      id: LinkParser.genId(),
       type: type,
       value: value,
       action: action,

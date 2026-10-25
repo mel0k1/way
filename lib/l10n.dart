@@ -39,6 +39,8 @@ class L10n {
   String get cancel => ru ? 'Отмена' : 'Cancel';
   String get delete => ru ? 'Удалить' : 'Delete';
   String get deleteConfirm => ru ? 'Удалить этот сервер?' : 'Delete this server?';
+  String get deleteSubConfirm =>
+      ru ? 'Удалить подписку вместе с её серверами?' : 'Delete this subscription and its servers?';
   String get updateNow => ru ? 'Обновить' : 'Update';
   String get never => ru ? 'никогда' : 'never';
   String get entries => ru ? 'серверов' : 'entries';

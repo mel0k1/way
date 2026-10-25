@@ -444,9 +444,41 @@ class SettingsScreen extends StatelessWidget {
                       leading: const Icon(Icons.rss_feed_rounded),
                       title: Text(s.name, overflow: TextOverflow.ellipsis),
                       subtitle: Text(_subLine(s, l10n)),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.refresh_rounded),
-                        onPressed: () => state.updateSubscription(s),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.refresh_rounded),
+                            tooltip: l10n.updateNow,
+                            onPressed: () => state.updateSubscription(s),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline_rounded),
+                            tooltip: l10n.delete,
+                            onPressed: () async {
+                              final ok = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: Text(l10n.delete),
+                                  content: Text(l10n.deleteSubConfirm),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
+                                      child: Text(l10n.cancel),
+                                    ),
+                                    FilledButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
+                                      child: Text(l10n.delete),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (ok == true) state.removeSubscription(s.id);
+                            },
+                          ),
+                        ],
                       ),
                     ),
                   ),

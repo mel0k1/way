@@ -129,8 +129,11 @@ class ServersScreen extends StatelessWidget {
                       index: i,
                       child: ProfileTile(
                         profile: profile,
-                        selected:
-                            profile.id == state.selectedId && !state.autoSelect,
+                        // Compare with the resolved selection (which falls
+                        // back to the first profile) so the highlight always
+                        // matches what connect() will actually use.
+                        selected: profile.id == state.selected?.id &&
+                            !state.autoSelect,
                         latency: state.latencies[profile.id],
                       ),
                     );

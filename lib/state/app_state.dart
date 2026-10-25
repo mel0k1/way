@@ -98,6 +98,7 @@ class AppState extends ChangeNotifier {
   Timer? _subsTimer;
   Timer? _statsTimer;
   bool _ipFetching = false;
+  final Set<String> _updatingSubs = {};
   SharedPreferences? _prefs;
 
   // --- auto-reconnect watchdog state ---
@@ -292,6 +293,17 @@ class AppState extends ChangeNotifier {
           profiles = list
               .map((e) => Profile.fromJson(e as Map<String, dynamic>))
               .toList();
+          // Older builds could store several profiles under one id (timestamp
+          // collisions while parsing a subscription) — repairing keeps each
+          // server individually selectable.
+          final repaired = ProfileIds.repair(profiles);
+          if (repaired > 0) {
+            await _secure.write(
+              key: 'way.profiles',
+              value: json.encode(profiles.map((p) => p.toJson()).toList()),
+            );
+            debugPrint('repaired $repaired duplicate profile id(s)');
+          }
         } catch (_) {}
       }
       final subsRaw = await _secure.read(key: 'way.subs');
@@ -681,6 +693,9 @@ class AppState extends ChangeNotifier {
     if (parsed.isEmpty) {
       parsed = SubFormats.parseAny(link);
     }
+    ProfileIds.ensureUnique(parsed, existingIds: {
+      for (final p in profiles) p.id,
+    });
     for (final p in parsed) {
       p.subId = subId;
       profiles.add(p);
@@ -692,6 +707,9 @@ class AppState extends ChangeNotifier {
   }
 
   void addProfile(Profile p) {
+    ProfileIds.ensureUnique([p], existingIds: {
+      for (final other in profiles) other.id,
+    });
     profiles.add(p);
     selectedId ??= p.id;
     _persist();
@@ -718,11 +736,34 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> updateSubscription(Subscription sub) async {
+    // Guard against overlapping refreshes of the same subscription (manual
+    // tap + auto-update timer) — two interleaved fetches would duplicate the
+    // profile list.
+    if (_updatingSubs.contains(sub.id)) return;
+    _updatingSubs.add(sub.id);
     try {
       final fetched = await subsService.fetch(
         sub,
         userAgent: subUserAgent,
         hwid: hwid,
+      );
+      // Keep ids stable for servers that survived the refresh: selection,
+      // latency cache and chain links stay attached to the same server.
+      String fingerprint(Profile p) =>
+          '${p.protocol}|${p.server}|${p.port}|${p.uuid ?? ''}|${p.password ?? ''}';
+      final oldIdsByFp = {
+        for (final p in profiles.where((p) => p.subId == sub.id))
+          fingerprint(p): p.id,
+      };
+      for (final p in fetched) {
+        final stable = oldIdsByFp[fingerprint(p)];
+        if (stable != null) p.id = stable;
+      }
+      ProfileIds.ensureUnique(
+        fetched,
+        existingIds: {
+          for (final p in profiles.where((p) => p.subId != sub.id)) p.id,
+        },
       );
       profiles.removeWhere((p) => p.subId == sub.id);
       profiles.addAll(fetched);
@@ -739,6 +780,8 @@ class AppState extends ChangeNotifier {
     } catch (e) {
       log('subscription "${sub.name}" failed: $e');
       notifyListeners();
+    } finally {
+      _updatingSubs.remove(sub.id);
     }
   }
 
@@ -1141,9 +1184,28 @@ class AppState extends ChangeNotifier {
     try {
       final file = File(path);
       if (!file.existsSync()) return const [];
-      final content = file.readAsStringSync();
-      final all = content.split('\n');
-      return all.length <= lines ? all : all.sublist(all.length - lines);
+      // Read at most the last 256 KB — the screen refreshes every second and
+      // a long session can grow the log to many megabytes.
+      const maxBytes = 256 * 1024;
+      RandomAccessFile? raf;
+      try {
+        raf = file.openSync();
+        final size = raf.lengthSync();
+        final start = size > maxBytes ? size - maxBytes : 0;
+        raf.setPositionSync(start);
+        var content = raf.readStringSync(size - start);
+        if (start > 0) {
+          final nl = content.indexOf('\n');
+          if (nl >= 0) content = content.substring(nl + 1);
+        }
+        var all = content.split('\n');
+        while (all.isNotEmpty && all.last.isEmpty) {
+          all.removeLast();
+        }
+        return all.length <= lines ? all : all.sublist(all.length - lines);
+      } finally {
+        raf?.closeSync();
+      }
     } catch (_) {
       return const [];
     }

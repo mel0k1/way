@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'profile.dart';
 
@@ -66,9 +67,21 @@ class LinkParser {
     return uri.queryParameters[key] ?? fallback;
   }
 
-  static String genId() =>
-      DateTime.now().microsecondsSinceEpoch.toRadixString(36) +
-      (1000 + (DateTime.now().microsecond % 9000)).toRadixString(36);
+  static final Random _rng = Random.secure();
+  static int _seq = 0;
+
+  /// Collision-proof profile id: timestamp + monotonic sequence + crypto salt.
+  ///
+  /// The previous timestamp-only scheme produced identical ids when a
+  /// subscription was parsed in a tight loop (system clock granularity is
+  /// coarser than one parse iteration, notably on Windows), which made
+  /// several servers share one id and highlight together.
+  static String genId() {
+    final stamp = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
+    final seq = (_seq++ & 0xFFF).toRadixString(36).padLeft(2, '0');
+    final salt = _rng.nextInt(0x10000).toRadixString(36).padLeft(3, '0');
+    return '$stamp-$seq$salt';
+  }
 
   static Profile _parseVless(Uri uri) {
     final type = _q(uri, 'type', 'tcp');
@@ -243,4 +256,40 @@ class LinkParser {
   }
 
   static String _genId() => genId();
+}
+
+/// Id hygiene helpers shared by import, subscription updates and load-time
+/// repair of data written by older builds.
+class ProfileIds {
+  ProfileIds._();
+
+  /// Reassigns empty/duplicate ids so every profile stays uniquely
+  /// addressable. Returns the number of ids that were changed.
+  static int repair(List<Profile> profiles) {
+    final seen = <String>{};
+    var changed = 0;
+    for (final p in profiles) {
+      if (p.id.isEmpty || seen.contains(p.id)) {
+        p.id = LinkParser.genId();
+        changed++;
+      }
+      seen.add(p.id);
+    }
+    return changed;
+  }
+
+  /// Ensures [incoming] profiles carry ids that are unique among themselves
+  /// and among [existingIds] (ids of profiles that will stay in the list).
+  static void ensureUnique(
+    List<Profile> incoming, {
+    Set<String> existingIds = const {},
+  }) {
+    final seen = Set.of(existingIds);
+    for (final p in incoming) {
+      if (p.id.isEmpty || seen.contains(p.id)) {
+        p.id = LinkParser.genId();
+      }
+      seen.add(p.id);
+    }
+  }
 }

@@ -5,8 +5,38 @@ import '../../l10n.dart';
 import '../../state/app_state.dart';
 import 'package:provider/provider.dart';
 
-class LogsScreen extends StatelessWidget {
+class LogsScreen extends StatefulWidget {
   const LogsScreen({super.key});
+
+  @override
+  State<LogsScreen> createState() => _LogsScreenState();
+}
+
+class _LogsScreenState extends State<LogsScreen> {
+  final ScrollController _scroll = ScrollController();
+  int _lastCount = -1;
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// Keeps the newest line visible, but never fights the reader: only snaps
+  /// to the bottom when the view was already there (or on the first fill).
+  void _follow(int count) {
+    if (count == _lastCount) return;
+    final nearBottom = !_scroll.hasClients ||
+        _scroll.position.maxScrollExtent - _scroll.offset < 240;
+    final firstFill = _lastCount == -1;
+    _lastCount = count;
+    if (!nearBottom && !firstFill) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scroll.hasClients) {
+        _scroll.jumpTo(_scroll.position.maxScrollExtent);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,6 +44,7 @@ class LogsScreen extends StatelessWidget {
     final state = context.watch<AppState>();
     final coreLogs = state.coreLogTail();
     final lines = [...state.logLines, if (coreLogs.isNotEmpty) ...coreLogs];
+    _follow(lines.length);
 
     return SafeArea(
       child: Column(
@@ -56,6 +87,7 @@ class LogsScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(28),
                     ),
                     child: ListView.builder(
+                      controller: _scroll,
                       padding: const EdgeInsets.all(12),
                       itemCount: lines.length,
                       itemBuilder: (context, i) => Text(
