@@ -42,6 +42,17 @@ class ReconnectPolicy {
     'unsupported_profile',
   };
 
+  /// Fatal-error matcher for raw platform messages: Android surfaces native
+  /// exception texts (e.g. "missing vpn permission") that are not exact keys
+  /// of [fatalErrors] but are just as hopeless to retry.
+  static bool isFatal(String? error) {
+    if (error == null || error.isEmpty) return false;
+    if (fatalErrors.contains(error)) return true;
+    return error.contains('permission') ||
+        error.contains('no_profile') ||
+        error.contains('unsupported_profile');
+  }
+
   static Duration _pick(List<Duration> schedule, int attempt) {
     if (attempt < 0) attempt = 0;
     if (attempt >= schedule.length) return schedule.last;

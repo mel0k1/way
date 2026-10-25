@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/physics.dart';
 
 /// Unified Material 3 Expressive motion tokens for the whole app.
 ///
@@ -38,14 +37,16 @@ abstract final class WayMotion {
 
   // --- springs ---
   /// Default spring for simulation-driven widgets (nav pill).
-  static final SpringDescription springDesc = SpringDescription.withDampingRatio(
+  static final SpringDescription springDesc =
+      SpringDescription.withDampingRatio(
     mass: 1,
     stiffness: 420,
     ratio: 0.68,
   );
 
   /// Softer spring for larger surfaces.
-  static final SpringDescription softSpring = SpringDescription.withDampingRatio(
+  static final SpringDescription softSpring =
+      SpringDescription.withDampingRatio(
     mass: 1,
     stiffness: 260,
     ratio: 0.72,

@@ -60,7 +60,10 @@ class _ProfileTileState extends State<ProfileTile> {
     Profile? chain;
     if (profile.chainTo?.isNotEmpty == true) {
       for (final p in state.profiles) {
-        if (p.id == profile.chainTo) chain = p;
+        if (p.id == profile.chainTo) {
+          chain = p;
+          break;
+        }
       }
     }
 
@@ -73,109 +76,109 @@ class _ProfileTileState extends State<ProfileTile> {
             onLongPressStart: (details) =>
                 _showContextMenu(context, state, details.globalPosition),
             child: ListTile(
-            onTap: () {
-              if (selected) {
-                setState(() => _expanded = !_expanded);
-              } else {
-                state.select(profile.id);
-              }
-            },
-            leading: _LatencyBadge(
-              label: profile.protocolLabel,
-              latency: widget.latency,
-              color: color,
-              selected: selected,
-              scheme: scheme,
-            ),
-            title: Text(
-              profile.name,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              onTap: () {
+                if (selected) {
+                  setState(() => _expanded = !_expanded);
+                } else {
+                  state.select(profile.id);
+                }
+              },
+              leading: _LatencyBadge(
+                label: profile.protocolLabel,
+                latency: widget.latency,
+                color: color,
+                selected: selected,
+                scheme: scheme,
               ),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (chain != null)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.account_tree_rounded,
-                          size: 13, color: scheme.primary),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          chain.name,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: scheme.primary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
+              title: Text(
+                profile.name,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (chain != null)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.account_tree_rounded,
+                            size: 13, color: scheme.primary),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            chain.name,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: scheme.primary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                  Text(
+                    '${profile.server}:${profile.port}',
+                    overflow: TextOverflow.ellipsis,
                   ),
-                Text(
-                  '${profile.server}:${profile.port}',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (profile.favorite)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
+                ],
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (profile.favorite)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Icon(
+                        Icons.star_rounded,
+                        size: 18,
+                        color: scheme.primary,
+                      ),
+                    ),
+                  if (widget.latency != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        color: color.withValues(alpha: 0.14),
+                      ),
+                      child: Text(
+                        '${widget.latency} ${l10n.ms}',
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    )
+                  else if (state.latencyTesting)
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  AnimatedRotation(
+                    turns: _expanded && selected ? 0.5 : 0.0,
+                    duration: WayMotion.medium,
+                    curve: Curves.easeOutCubic,
                     child: Icon(
-                      Icons.star_rounded,
-                      size: 18,
-                      color: scheme.primary,
+                      Icons.expand_more_rounded,
+                      size: 20,
+                      color: selected
+                          ? scheme.onPrimaryContainer
+                          : scheme.onSurfaceVariant,
                     ),
                   ),
-                if (widget.latency != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      color: color.withValues(alpha: 0.14),
-                    ),
-                    child: Text(
-                      '${widget.latency} ${l10n.ms}',
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  )
-                else if (state.latencyTesting)
-                  const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                AnimatedRotation(
-                  turns: _expanded && selected ? 0.5 : 0.0,
-                  duration: WayMotion.medium,
-                  curve: Curves.easeOutCubic,
-                  child: Icon(
-                    Icons.expand_more_rounded,
-                    size: 20,
-                    color: selected
-                        ? scheme.onPrimaryContainer
-                        : scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
           ),
           // Container transform: the tile stretches into a details card once
           // selected; a second tap folds it back.
@@ -190,8 +193,7 @@ class _ProfileTileState extends State<ProfileTile> {
                     state: state,
                     scheme: scheme,
                     l10n: l10n,
-                    onMenu: (value) =>
-                        _handleMenu(context, state, value),
+                    onMenu: (value) => _handleMenu(context, state, value),
                   )
                 : const SizedBox(width: double.infinity),
           ),
@@ -208,8 +210,7 @@ class _ProfileTileState extends State<ProfileTile> {
     Offset globalPosition,
   ) async {
     final l10n = L10nScope.of(context);
-    final overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final box = context.findRenderObject() as RenderBox;
     final local = box.globalToLocal(globalPosition);
     final profile = widget.profile;
@@ -278,7 +279,7 @@ class _ProfileTileState extends State<ProfileTile> {
     } else if (value == 'qr') {
       showQrExport(context, widget.profile);
     } else if (value == 'bypass') {
-      _showBypassDialog(context, state);
+      _showBypassDialog(state);
     }
   }
 
@@ -304,10 +305,10 @@ class _ProfileTileState extends State<ProfileTile> {
     if (ok == true) state.removeProfile(widget.profile.id);
   }
 
-  void _showBypassDialog(BuildContext context, AppState state) {
+  Future<void> _showBypassDialog(AppState state) async {
     final l10n = L10nScope.of(context);
     final controller = TextEditingController();
-    showDialog<bool>(
+    final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         icon: const Icon(Icons.language_rounded),
@@ -346,49 +347,52 @@ class _ProfileTileState extends State<ProfileTile> {
           ),
         ],
       ),
-    ).then((ok) {
-      final raw = controller.text.trim().toLowerCase();
+    );
+    if (!mounted) {
       controller.dispose();
-      if (ok != true) return;
-      // Accept full URLs too: https://example.com/page → example.com.
-      final domain = raw
-          .replaceFirst(RegExp(r'^[a-z0-9]+://'), '')
-          .split('/')
-          .first
-          .split(':')
-          .first
-          .trim();
-      if (domain.isEmpty || domain.contains(' ')) return;
-      final exists = state.customRules.any(
-        (r) => r.type == 'suffix' && r.value == domain,
-      );
-      if (exists) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(l10n.bypassSiteExists),
-          behavior: SnackBarBehavior.floating,
-          width: 320,
-        ));
-        return;
-      }
-      state.addRule(RouteRule(
-        id: LinkParser.genId(),
-        type: 'suffix',
-        value: domain,
-        action: 'direct',
-      ));
+      return;
+    }
+    final raw = controller.text.trim().toLowerCase();
+    controller.dispose();
+    if (ok != true) return;
+    // Accept full URLs too: https://example.com/page → example.com.
+    final domain = raw
+        .replaceFirst(RegExp(r'^[a-z0-9]+://'), '')
+        .split('/')
+        .first
+        .split(':')
+        .first
+        .trim();
+    if (domain.isEmpty || domain.contains(' ')) return;
+    final exists = state.customRules.any(
+      (r) => r.type == 'suffix' && r.value == domain,
+    );
+    if (exists) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(l10n.bypassSiteDone(domain)),
+        content: Text(l10n.bypassSiteExists),
         behavior: SnackBarBehavior.floating,
         width: 320,
       ));
-    });
+      return;
+    }
+    state.addRule(RouteRule(
+      id: LinkParser.genId(),
+      type: 'suffix',
+      value: domain,
+      action: 'direct',
+    ));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(l10n.bypassSiteDone(domain)),
+      behavior: SnackBarBehavior.floating,
+      width: 320,
+    ));
   }
 
-  void _showChainDialog(BuildContext context, AppState state, String profileId) {
+  void _showChainDialog(
+      BuildContext context, AppState state, String profileId) {
     final l10n = L10nScope.of(context);
-    final candidates = state.engineProfiles
-        .where((p) => p.id != profileId)
-        .toList();
+    final candidates =
+        state.engineProfiles.where((p) => p.id != profileId).toList();
     if (candidates.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(l10n.chainHint),
@@ -478,9 +482,8 @@ class _LatencyBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Quality 0..1 — 1200ms+ reads as an empty gauge.
-    final value = latency == null
-        ? 0.0
-        : 1.0 - (latency! / 1200).clamp(0.0, 1.0);
+    final value =
+        latency == null ? 0.0 : 1.0 - (latency! / 1200).clamp(0.0, 1.0);
     return SizedBox(
       width: 48,
       height: 48,
@@ -643,7 +646,8 @@ class _DetailsBody extends StatelessWidget {
               mono: true,
             ),
             if (meta.isNotEmpty)
-              _DetailRow(icon: Icons.lock_outline_rounded, text: meta, scheme: scheme),
+              _DetailRow(
+                  icon: Icons.lock_outline_rounded, text: meta, scheme: scheme),
             if (chain != null)
               _DetailRow(
                 icon: Icons.account_tree_rounded,
@@ -654,9 +658,8 @@ class _DetailsBody extends StatelessWidget {
             Row(
               children: [
                 _ActionIcon(
-                  tooltip: profile.favorite
-                      ? l10n.removeFavorite
-                      : l10n.addFavorite,
+                  tooltip:
+                      profile.favorite ? l10n.removeFavorite : l10n.addFavorite,
                   icon: profile.favorite
                       ? Icons.star_rounded
                       : Icons.star_outline_rounded,
@@ -717,7 +720,9 @@ class _DetailRow extends StatelessWidget {
       padding: const EdgeInsets.only(top: 6),
       child: Row(
         children: [
-          Icon(icon, size: 14, color: scheme.onPrimaryContainer.withValues(alpha: 0.7)),
+          Icon(icon,
+              size: 14,
+              color: scheme.onPrimaryContainer.withValues(alpha: 0.7)),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -725,9 +730,8 @@ class _DetailRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 12.5,
-                fontFeatures: mono
-                    ? const [FontFeature.tabularFigures()]
-                    : null,
+                fontFeatures:
+                    mono ? const [FontFeature.tabularFigures()] : null,
                 letterSpacing: mono ? 0.1 : null,
                 color: scheme.onPrimaryContainer.withValues(alpha: 0.9),
               ),

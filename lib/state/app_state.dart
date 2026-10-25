@@ -159,8 +159,14 @@ class AppState extends ChangeNotifier {
   DateTime? _connectingSince;
 
   static const _wrapperSchemes = {
-    'clash', 'clashmeta', 'sing-box', 'singbox', 'v2rayng', 'v2rayn',
-    'sn', 'hiddify',
+    'clash',
+    'clashmeta',
+    'sing-box',
+    'singbox',
+    'v2rayng',
+    'v2rayn',
+    'sn',
+    'hiddify',
   };
 
   Profile? get selected {
@@ -174,9 +180,7 @@ class AppState extends ChangeNotifier {
       profiles.where((p) => p.supportedOn(engine)).toList();
 
   Profile? get bestProfile {
-    final rated = engineProfiles
-        .where((p) => latencies[p.id] != null)
-        .toList()
+    final rated = engineProfiles.where((p) => latencies[p.id] != null).toList()
       ..sort((a, b) => latencies[a.id]!.compareTo(latencies[b.id]!));
     return rated.isEmpty ? null : rated.first;
   }
@@ -190,8 +194,7 @@ class AppState extends ChangeNotifier {
   }
 
   bool get isDesktop =>
-      !kIsWeb &&
-      (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+      !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
   /// True while the watchdog holds a pending reconnect for a dropped session
   /// (the UI shows a "reconnecting · attempt N" hint).
@@ -302,7 +305,8 @@ class AppState extends ChangeNotifier {
       });
     }
     _statusTimer = Timer.periodic(const Duration(seconds: 2), (_) => _tick());
-    _subsTimer = Timer.periodic(const Duration(minutes: 5), (_) => _checkSubUpdates());
+    _subsTimer =
+        Timer.periodic(const Duration(minutes: 5), (_) => _checkSubUpdates());
     if (autoStart || !isDesktop) {
       try {
         final native = await bridge.autostartEnabled();
@@ -395,9 +399,7 @@ class AppState extends ChangeNotifier {
     final bytes = List<int>.generate(16, (_) => rand.nextInt(256));
     bytes[6] = (bytes[6] & 0x0f) | 0x40;
     bytes[8] = (bytes[8] & 0x3f) | 0x80;
-    final hex = bytes
-        .map((b) => b.toRadixString(16).padLeft(2, '0'))
-        .join();
+    final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
     return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
         '${hex.substring(12, 16)}-${hex.substring(16, 20)}-'
         '${hex.substring(20)}';
@@ -406,36 +408,38 @@ class AppState extends ChangeNotifier {
   Future<void> _persist() async {
     final prefs = _prefs;
     if (prefs == null) return;
-    await prefs.setString('way.settings', json.encode({
-      'engine': engine,
-      'tun': preferTun,
-      'theme': themeMode,
-      'dyn': dynamicColors,
-      'locale': localeCode,
-      'autoupdate': autoUpdate,
-      'updatemin': autoUpdateMin,
-      'dnshost': dnsHost,
-      'dnsstrategy': dnsStrategy,
-      'tlsfragment': tlsFragment,
-      'mux': muxProtocol,
-      'selected': selectedId,
-      'routing': routingMode,
-      'blockads': blockAds,
-      'killswitch': killSwitch,
-      'splitmode': splitMode,
-      'splitapps': splitApps,
-      'subua': subUserAgent,
-      'autoselect': autoSelect,
-      'autostart': autoStart,
-      'connectlaunch': connectOnLaunch,
-      'autoreconnect': autoReconnect,
-      'desktopnotify': desktopNotify,
-      'checkupdates': autoCheckUpdates,
-      'closetray': closeToTray,
-      'localapi': localApi,
-      'localapiport': localApiPort,
-      'rules': customRules.map((r) => r.toJson()).toList(),
-    }));
+    await prefs.setString(
+        'way.settings',
+        json.encode({
+          'engine': engine,
+          'tun': preferTun,
+          'theme': themeMode,
+          'dyn': dynamicColors,
+          'locale': localeCode,
+          'autoupdate': autoUpdate,
+          'updatemin': autoUpdateMin,
+          'dnshost': dnsHost,
+          'dnsstrategy': dnsStrategy,
+          'tlsfragment': tlsFragment,
+          'mux': muxProtocol,
+          'selected': selectedId,
+          'routing': routingMode,
+          'blockads': blockAds,
+          'killswitch': killSwitch,
+          'splitmode': splitMode,
+          'splitapps': splitApps,
+          'subua': subUserAgent,
+          'autoselect': autoSelect,
+          'autostart': autoStart,
+          'connectlaunch': connectOnLaunch,
+          'autoreconnect': autoReconnect,
+          'desktopnotify': desktopNotify,
+          'checkupdates': autoCheckUpdates,
+          'closetray': closeToTray,
+          'localapi': localApi,
+          'localapiport': localApiPort,
+          'rules': customRules.map((r) => r.toJson()).toList(),
+        }));
     try {
       await _secure.write(
         key: 'way.profiles',
@@ -467,41 +471,62 @@ class AppState extends ChangeNotifier {
       } catch (_) {}
     }
     final s = await bridge.status();
-    if (s.phase != vpn.phase || (s.error != null && s.error != vpn.error)) {
-      if (vpn.phase == VpnPhase.connecting && s.phase == VpnPhase.connected) {
+    // In-flight guards: while connect()/disconnect() is awaiting the bridge,
+    // the core can transiently report the opposite phase (e.g. desktop /start
+    // takes seconds to arm TUN + kill switch, so /status still says stopped).
+    // Do not let the UI regress and do not trigger the watchdog in that
+    // window — connect() itself reports the outcome when it returns.
+    var phase = s.phase;
+    if (phase == VpnPhase.stopped &&
+        s.error == null &&
+        vpn.phase == VpnPhase.connecting &&
+        _connectingSince != null) {
+      phase = VpnPhase.connecting;
+    }
+    if (phase == VpnPhase.connected && vpn.phase == VpnPhase.disconnecting) {
+      phase = VpnPhase.disconnecting;
+    }
+    final observed = VpnStatus(phase: phase, error: s.error);
+    if (observed.phase != vpn.phase ||
+        (observed.error != null && observed.error != vpn.error)) {
+      if (vpn.phase == VpnPhase.connecting &&
+          observed.phase == VpnPhase.connected) {
         log('connected');
         unawaited(_fetchConnInfo());
       }
-      if (vpn.phase != VpnPhase.stopped && s.phase == VpnPhase.stopped) {
+      if (vpn.phase != VpnPhase.stopped && observed.phase == VpnPhase.stopped) {
         log('disconnected');
         stats = WayStats.zero;
         statsPoller.reset();
         connIp = null;
         connCountry = null;
       }
-      vpn = s;
+      vpn = observed;
       notifyListeners();
     }
     // --- auto-reconnect watchdog bookkeeping ---
-    if (s.phase == VpnPhase.connected) {
+    if (phase == VpnPhase.connected) {
       _connectingSince = null;
       _reconnectAttempt = 0;
     } else if (s.phase == VpnPhase.connecting) {
       _connectingSince ??= DateTime.now();
-      final stuck =
-          DateTime.now().difference(_connectingSince!) > ReconnectPolicy.connectingStuckAfter;
+      final stuck = DateTime.now().difference(_connectingSince!) >
+          ReconnectPolicy.connectingStuckAfter;
       if (stuck) {
         log('watchdog: connecting stuck, forcing reconnect cycle');
         _connectingSince = null;
         unawaited(_forceCycle());
       }
     }
-    if (s.phase == VpnPhase.stopped && _userWantsConnected && _reconnectTimer == null) {
+    if (phase == VpnPhase.stopped &&
+        _userWantsConnected &&
+        _reconnectTimer == null) {
       _scheduleReconnect();
     }
     final connected = vpn.phase == VpnPhase.connected;
     if (connected && _statsTimer == null) {
-      _statsTimer = Timer.periodic(const Duration(seconds: 1), (_) => _statsTick());
+      _statsTimer =
+          Timer.periodic(const Duration(seconds: 1), (_) => _statsTick());
     } else if (!connected && _statsTimer != null) {
       _statsTimer?.cancel();
       _statsTimer = null;
@@ -510,9 +535,8 @@ class AppState extends ChangeNotifier {
       phase: vpn.phase,
       l10n: L10n(effectiveLocale),
       serverName: effectiveProfile?.name,
-      downMbps: vpn.phase == VpnPhase.connected
-          ? stats.downSpeed * 8 / 1e6
-          : null,
+      downMbps:
+          vpn.phase == VpnPhase.connected ? stats.downSpeed * 8 / 1e6 : null,
       upMbps: vpn.phase == VpnPhase.connected ? stats.upSpeed * 8 / 1e6 : null,
     ));
   }
@@ -534,7 +558,7 @@ class AppState extends ChangeNotifier {
   void _scheduleReconnect({bool afterError = false}) {
     if (!autoReconnect || !_userWantsConnected) return;
     if (_reconnectTimer != null) return;
-    if (ReconnectPolicy.fatalErrors.contains(vpn.error)) {
+    if (ReconnectPolicy.isFatal(vpn.error)) {
       _userWantsConnected = false;
       return;
     }
@@ -568,7 +592,8 @@ class AppState extends ChangeNotifier {
     if (profile == null) return;
     _ipFetching = true;
     try {
-      final info = await bridge.ipInfo(profile: profile, timeout: const Duration(seconds: 8));
+      final info = await bridge.ipInfo(
+          profile: profile, timeout: const Duration(seconds: 8));
       if (info != null) {
         if (info['ip']?.isNotEmpty == true) connIp = info['ip'];
         if (info['country']?.isNotEmpty == true) connCountry = info['country'];
@@ -584,7 +609,8 @@ class AppState extends ChangeNotifier {
     if (!autoUpdate || autoUpdateMin <= 0) return;
     final now = DateTime.now();
     for (final sub in List<Subscription>.from(subs)) {
-      final interval = sub.updateIntervalMin > 0 ? sub.updateIntervalMin : autoUpdateMin;
+      final interval =
+          sub.updateIntervalMin > 0 ? sub.updateIntervalMin : autoUpdateMin;
       final last = sub.lastUpdate;
       if (last == null || now.difference(last).inMinutes >= interval) {
         unawaited(updateSubscription(sub));
@@ -642,7 +668,10 @@ class AppState extends ChangeNotifier {
     vpn = const VpnStatus(phase: VpnPhase.connecting);
     notifyListeners();
     final tun = isDesktop ? (preferTun || killSwitch) : preferTun;
-    if (!isDesktop && tun && batteryIgnored == false && !(_prefs?.getBool('way.batt_asked') ?? false)) {
+    if (!isDesktop &&
+        tun &&
+        batteryIgnored == false &&
+        !(_prefs?.getBool('way.batt_asked') ?? false)) {
       await _prefs?.setBool('way.batt_asked', true);
       pendingBatteryAsk = true;
       notifyListeners();
@@ -652,7 +681,9 @@ class AppState extends ChangeNotifier {
       tun: tun,
       profile: profile,
       group: group,
-      logPath: engine == 'xray' ? (xrayLogPath ?? '/tmp/wayxray.log') : (singBoxLogPath ?? '/tmp/waybox.log'),
+      logPath: engine == 'xray'
+          ? (xrayLogPath ?? '/tmp/wayxray.log')
+          : (singBoxLogPath ?? '/tmp/waybox.log'),
       killSwitch: killSwitch && isDesktop,
       routingMode: routingMode,
       blockAds: blockAds,
@@ -682,7 +713,8 @@ class AppState extends ChangeNotifier {
       if (!desktopNotify) return;
       final s = await bridge.status();
       if (s.phase == VpnPhase.connected) {
-        showDesktopToast('Way', _ru ? 'Подключено · $connectedName' : 'Connected · $connectedName');
+        showDesktopToast('Way',
+            _ru ? 'Подключено · $connectedName' : 'Connected · $connectedName');
       }
     });
   }
@@ -706,7 +738,13 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  void handleDeepLink(String raw) {
+  void handleDeepLink(String raw, {int depth = 0}) {
+    // Wrapper schemes (clash://…?url=…) unwrap recursively; a crafted QR can
+    // nest them in a loop — cap the depth instead of overflowing the stack.
+    if (depth > 5) {
+      log('deep link ignored: too deeply nested');
+      return;
+    }
     var url = raw.trim().replaceAll('\n', '').replaceAll('\r', '');
     if (url.isEmpty) return;
     var fromWay = false;
@@ -743,10 +781,11 @@ class AppState extends ChangeNotifier {
         final uri = Uri.parse(url);
         final target = uri.queryParameters['url'] ??
             uri.queryParameters['remote'] ??
-            uri.queryParameters['u'] ?? '';
+            uri.queryParameters['u'] ??
+            '';
         if (target.isNotEmpty) {
           log('deep link: unwrapping $scheme');
-          handleDeepLink(target);
+          handleDeepLink(target, depth: depth + 1);
           return;
         }
       } catch (_) {}
@@ -790,14 +829,18 @@ class AppState extends ChangeNotifier {
       p.subId = subId;
       profiles.add(p);
     }
-    if (selectedId == null && profiles.isNotEmpty) selectedId = profiles.first.id;
+    if (selectedId == null && profiles.isNotEmpty) {
+      selectedId = profiles.first.id;
+    }
     log('added ${parsed.length} profile(s)');
     _persist();
     notifyListeners();
   }
 
   void addProfile(Profile p) {
-    ProfileIds.ensureUnique([p], existingIds: {
+    ProfileIds.ensureUnique([
+      p
+    ], existingIds: {
       for (final other in profiles) other.id,
     });
     profiles.add(p);
@@ -817,7 +860,9 @@ class AppState extends ChangeNotifier {
 
   void addSubscription(String url, String name) {
     final sub = Subscription(
-      id: 'sub${DateTime.now().millisecondsSinceEpoch}',
+      // Collision-proof id: two subscriptions added in the same millisecond
+      // (QR transfer with several subs) must not share one id.
+      id: 'sub${LinkParser.genId()}',
       name: name.isEmpty ? 'Subscription' : name,
       url: url,
     );
@@ -972,8 +1017,8 @@ class AppState extends ChangeNotifier {
         };
         break;
       case 'name':
-        compare = (a, b) =>
-            a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        compare =
+            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase());
         break;
       default:
         compare = (a, b) => 0;
@@ -1008,8 +1053,18 @@ class AppState extends ChangeNotifier {
   // --- clipboard sniffer -----------------------------------------------------
 
   static const _clipSchemes = [
-    'vless://', 'vmess://', 'ss://', 'trojan://', 'hysteria2://', 'hy2://',
-    'tuic://', 'anytls://', 'way://', 'https://', 'clash://', 'sing-box://',
+    'vless://',
+    'vmess://',
+    'ss://',
+    'trojan://',
+    'hysteria2://',
+    'hy2://',
+    'tuic://',
+    'anytls://',
+    'way://',
+    'https://',
+    'clash://',
+    'sing-box://',
   ];
 
   Future<void> sniffClipboard() async {
@@ -1110,7 +1165,9 @@ class AppState extends ChangeNotifier {
 
   void removeProfile(String id) {
     profiles.removeWhere((p) => p.id == id);
-    if (selectedId == id) selectedId = profiles.isNotEmpty ? profiles.first.id : null;
+    if (selectedId == id) {
+      selectedId = profiles.isNotEmpty ? profiles.first.id : null;
+    }
     for (final p in profiles) {
       if (p.chainTo == id) p.chainTo = null;
     }
@@ -1366,6 +1423,9 @@ class AppState extends ChangeNotifier {
           .map((e) => Profile.fromJson(e as Map<String, dynamic>))
           .where((p) => p.protocol.isNotEmpty && p.server.isNotEmpty)
           .toList();
+      // A backup may carry duplicate ids (legacy exports, hand-edited files);
+      // without this the "several servers highlight at once" bug returns.
+      ProfileIds.ensureUnique(importedProfiles);
       final importedSubs = ((data['subscriptions'] as List?) ?? const [])
           .map((e) => Subscription.fromJson(e as Map<String, dynamic>))
           .toList();
@@ -1388,8 +1448,7 @@ class AppState extends ChangeNotifier {
       blockAds = settings['blockads'] as bool? ?? blockAds;
       killSwitch = settings['killswitch'] as bool? ?? killSwitch;
       splitMode = settings['splitmode'] as String? ?? splitMode;
-      splitApps =
-          (settings['splitapps'] as List?)?.cast<String>() ?? splitApps;
+      splitApps = (settings['splitapps'] as List?)?.cast<String>() ?? splitApps;
       subUserAgent = settings['subua'] as String? ?? subUserAgent;
       autoSelect = settings['autoselect'] as bool? ?? autoSelect;
       autoStart = settings['autostart'] as bool? ?? autoStart;
@@ -1466,7 +1525,8 @@ class AppState extends ChangeNotifier {
         final size = raf.lengthSync();
         final start = size > maxBytes ? size - maxBytes : 0;
         raf.setPositionSync(start);
-        var content = utf8.decode(raf.readSync(size - start), allowMalformed: true);
+        var content =
+            utf8.decode(raf.readSync(size - start), allowMalformed: true);
         if (start > 0) {
           final nl = content.indexOf('\n');
           if (nl >= 0) content = content.substring(nl + 1);

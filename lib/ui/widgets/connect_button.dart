@@ -93,9 +93,7 @@ class _ConnectButtonState extends State<ConnectButton>
               if (connected) ...[
                 _PulseRing(controller: _pulse, delay: 0, color: scheme.primary),
                 _PulseRing(
-                    controller: _pulse,
-                    delay: 0.5,
-                    color: scheme.primary),
+                    controller: _pulse, delay: 0.5, color: scheme.primary),
               ],
               // Plain decorative ring while idle; replaced by the live
               // speedometer gauge once connected.
@@ -203,9 +201,7 @@ class _MorphBody extends StatelessWidget {
                     size: const Size(150, 150),
                     painter: _WavyRingPainter(
                       phase: wave.value,
-                      color: connected
-                          ? scheme.onPrimary
-                          : scheme.primary,
+                      color: connected ? scheme.onPrimary : scheme.primary,
                     ),
                   ),
                 )
@@ -252,8 +248,8 @@ class _WavyRingPainter extends CustomPainter {
     for (var i = 0; i <= steps; i++) {
       final t = i / steps;
       final theta = t * 2 * math.pi;
-      final r = base +
-          amplitude * math.sin(waves * theta + phase * 2 * math.pi);
+      final r =
+          base + amplitude * math.sin(waves * theta + phase * 2 * math.pi);
       final p = center + Offset(r * math.cos(theta), r * math.sin(theta));
       if (i == 0) {
         path.moveTo(p.dx, p.dy);
@@ -410,7 +406,8 @@ class _SpeedGaugePainter extends CustomPainter {
   bool shouldRepaint(_SpeedGaugePainter oldDelegate) =>
       oldDelegate.value != value ||
       oldDelegate.track != track ||
-      oldDelegate.color != color;
+      oldDelegate.color != color ||
+      oldDelegate.colorHigh != colorHigh;
 }
 
 /// Interpolates between a circle contour (t = 0) and a shield contour
@@ -488,8 +485,7 @@ class _ShapeMorphPainter extends CustomPainter {
     final metric = path.computeMetrics().first;
     return List.generate(_points, (i) {
       final d = i * metric.length / _points;
-      return metric.getTangentForOffset(d)?.position ??
-          Offset(ox + sw / 2, oy);
+      return metric.getTangentForOffset(d)?.position ?? Offset(ox + sw / 2, oy);
     });
   }
 
