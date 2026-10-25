@@ -184,6 +184,10 @@ class StatusCard extends StatelessWidget {
               _WatchdogChip(attempt: state.reconnectAttempt),
               const SizedBox(height: 12),
             ],
+            if (connected) ...[
+              _SpeedTestRow(state: state),
+              const SizedBox(height: 12),
+            ],
             Text(
               connected ? _totalsLine(l10n, state.stats) : l10n.totalIdle,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -327,6 +331,69 @@ class _WaveLinePainter extends CustomPainter {
   @override
   bool shouldRepaint(_WaveLinePainter oldDelegate) =>
       oldDelegate.phase != phase || oldDelegate.color != color;
+}
+
+/// Speed test chip: measures download through the current route and shows
+/// the result inline.
+class _SpeedTestRow extends StatelessWidget {
+  final AppState state;
+
+  const _SpeedTestRow({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10nScope.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final testing = state.speedTesting;
+    final result = state.speedtestMbps;
+    String label;
+    if (testing) {
+      label = l10n.speedtesting;
+    } else if (result != null) {
+      label = l10n.speedtestResult(result >= 10
+          ? result.toStringAsFixed(1)
+          : result.toStringAsFixed(2));
+    } else {
+      label = l10n.speedtest;
+    }
+    return Row(
+      children: [
+        SizedBox(
+          height: 34,
+          child: FilledButton.tonalIcon(
+            onPressed: testing ? null : state.runSpeedTest,
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              minimumSize: const Size(0, 34),
+              textStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            icon: testing
+                ? const SizedBox(
+                    width: 13,
+                    height: 13,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.speed_rounded, size: 16),
+            label: Text(label),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            result == null && !testing ? l10n.speedtestHint : '',
+            style: Theme.of(context)
+                .textTheme
+                .labelSmall
+                ?.copyWith(color: scheme.onSurfaceVariant),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 2,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _SpeedTile extends StatelessWidget {

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'l10n.dart';
 import 'state/app_state.dart';
+import 'ui/motion.dart';
 import 'ui/screens/home_screen.dart';
 import 'ui/screens/logs_screen.dart';
 import 'ui/screens/servers_screen.dart';
@@ -69,15 +70,68 @@ class WayShell extends StatefulWidget {
   State<WayShell> createState() => _WayShellState();
 }
 
-class _WayShellState extends State<WayShell> {
+class _WayShellState extends State<WayShell>
+    with WidgetsBindingObserver {
   int _index = 0;
   bool _updateShown = false;
   bool _batteryShown = false;
+  String? _clipboardBannerShown;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Clipboard reads are only reliable on Android while resumed.
+      context.read<AppState>().sniffClipboard();
+    }
+  }
+
+  void _showClipboardBanner(AppState state) {
+    final l10n = L10nScope.of(context);
+    final text = state.pendingClipboard;
+    if (text == null || text == _clipboardBannerShown) return;
+    _clipboardBannerShown = text;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      final controller = ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          width: 380,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 6),
+          content: Text(l10n.clipboardFound),
+          action: SnackBarAction(
+            label: l10n.clipboardImport,
+            onPressed: () => state.acceptClipboardImport(),
+          ),
+        ),
+      );
+      // The banner vanished without importing — stop suggesting this text.
+      controller.closed.then((reason) {
+        if (state.pendingClipboard != null &&
+            state.pendingClipboard == text) {
+          state.dismissClipboardImport();
+        }
+      });
+    });
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final state = context.watch<AppState>();
+    _showClipboardBanner(state);
     final update = state.pendingUpdate;
     if (!_updateShown && update != null) {
       _updateShown = true;
@@ -144,9 +198,9 @@ class _WayShellState extends State<WayShell> {
     ];
     return Scaffold(
       body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        switchInCurve: Easing.emphasizedDecelerate,
-        switchOutCurve: Easing.emphasizedAccelerate,
+        duration: WayMotion.medium,
+        switchInCurve: WayMotion.emphasized,
+        switchOutCurve: WayMotion.emphasizedIn,
         transitionBuilder: (child, animation) => FadeTransition(
           opacity: animation,
           child: SlideTransition(

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/vpn_bridge.dart';
 import '../../l10n.dart';
 import '../../state/app_state.dart';
+import '../motion.dart';
 import 'package:provider/provider.dart';
 
 class ConnectButton extends StatefulWidget {
@@ -71,6 +72,10 @@ class _ConnectButtonState extends State<ConnectButton>
       _spin.stop();
     }
 
+    // Live speedometer: download bytes/s normalized to a 100 Mbps full scale.
+    final gaugeValue =
+        ((state.stats.downSpeed * 8 / 1e6) / 100).clamp(0.0, 1.0).toDouble();
+
     return GestureDetector(
       onTap: () => _tap(connected, busy),
       onTapDown: (_) => setState(() => _pressed = true),
@@ -78,8 +83,8 @@ class _ConnectButtonState extends State<ConnectButton>
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedScale(
         scale: _pressed ? 0.93 : 1.0,
-        duration: const Duration(milliseconds: 340),
-        curve: Curves.easeOutBack,
+        duration: WayMotion.fast,
+        curve: WayMotion.springy,
         child: SizedBox(
           width: 216,
           height: 216,
@@ -93,19 +98,20 @@ class _ConnectButtonState extends State<ConnectButton>
                     delay: 0.5,
                     color: scheme.primary),
               ],
-              Container(
-                width: 204,
-                height: 204,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: connected
-                        ? scheme.primary.withValues(alpha: 0.45)
-                        : scheme.outlineVariant.withValues(alpha: 0.7),
-                    width: 1.5,
+              // Plain decorative ring while idle; replaced by the live
+              // speedometer gauge once connected.
+              if (!connected && !busy)
+                Container(
+                  width: 204,
+                  height: 204,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: scheme.outlineVariant.withValues(alpha: 0.7),
+                      width: 1.5,
+                    ),
                   ),
                 ),
-              ),
               // Expressive loading halo: a rotating gradient arc while busy.
               if (busy)
                 AnimatedBuilder(
@@ -118,60 +124,109 @@ class _ConnectButtonState extends State<ConnectButton>
                     ),
                   ),
                 ),
+              // Live speedometer arc around the shield while connected.
+              if (connected)
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: gaugeValue),
+                  duration: const Duration(milliseconds: 700),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, value, _) => CustomPaint(
+                    size: const Size(204, 204),
+                    painter: _SpeedGaugePainter(
+                      value: value,
+                      track: scheme.surfaceContainerHighest,
+                      color: scheme.primary,
+                      colorHigh: scheme.tertiary,
+                    ),
+                  ),
+                ),
               // Springy bounce whenever the connection state flips.
               TweenAnimationBuilder<double>(
                 key: ValueKey(connected),
                 tween: Tween(begin: 0.9, end: 1.0),
-                duration: const Duration(milliseconds: 520),
-                curve: Curves.elasticOut,
+                duration: WayMotion.spring,
+                curve: WayMotion.elastic,
                 builder: (context, t, child) =>
                     Transform.scale(scale: t, child: child),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 400),
-                  curve: Easing.standard,
-                  width: connected ? 176 : 168,
-                  height: connected ? 176 : 168,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: connected
-                        ? scheme.primary
-                        : scheme.surfaceContainerHigh,
-                    border: Border.all(
-                      color: connected ? scheme.surface : Colors.transparent,
-                      width: 8,
-                    ),
-                    boxShadow: [
-                      if (connected)
-                        BoxShadow(
-                          color: scheme.primary.withValues(alpha: 0.32),
-                          blurRadius: 44,
-                          spreadRadius: 4,
-                        ),
-                    ],
-                  ),
-                  child: busy
-                      ? AnimatedBuilder(
-                          animation: _wave,
-                          builder: (context, _) => CustomPaint(
-                            painter: _WavyRingPainter(
-                              phase: _wave.value,
-                              color: connected
-                                  ? scheme.onPrimary
-                                  : scheme.primary,
-                            ),
-                          ),
-                        )
-                      : Icon(
-                          Icons.power_settings_new_rounded,
-                          size: 62,
-                          color: connected
-                              ? scheme.onPrimary
-                              : scheme.primary,
-                        ),
+                child: _MorphBody(
+                  connected: connected,
+                  busy: busy,
+                  scheme: scheme,
+                  wave: _wave,
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The morphing button body: a circle when idle, a shield once connected.
+class _MorphBody extends StatelessWidget {
+  final bool connected;
+  final bool busy;
+  final ColorScheme scheme;
+  final AnimationController wave;
+
+  const _MorphBody({
+    required this.connected,
+    required this.busy,
+    required this.scheme,
+    required this.wave,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      duration: WayMotion.slow,
+      curve: WayMotion.morph,
+      tween: Tween(begin: 0, end: connected ? 1.0 : 0.0),
+      builder: (context, t, child) => CustomPaint(
+        size: const Size(176, 176),
+        painter: _ShapeMorphPainter(
+          t: t,
+          fill: connected ? scheme.primary : scheme.surfaceContainerHigh,
+          border: connected ? scheme.surface : Colors.transparent,
+          borderWidth: 8,
+        ),
+        child: child,
+      ),
+      child: SizedBox(
+        width: 176,
+        height: 176,
+        child: Center(
+          child: busy
+              ? AnimatedBuilder(
+                  animation: wave,
+                  builder: (context, _) => CustomPaint(
+                    size: const Size(150, 150),
+                    painter: _WavyRingPainter(
+                      phase: wave.value,
+                      color: connected
+                          ? scheme.onPrimary
+                          : scheme.primary,
+                    ),
+                  ),
+                )
+              : AnimatedSwitcher(
+                  duration: WayMotion.fast,
+                  switchInCurve: WayMotion.springy,
+                  switchOutCurve: WayMotion.emphasizedIn,
+                  transitionBuilder: (child, anim) => ScaleTransition(
+                    scale: anim,
+                    child: FadeTransition(opacity: anim, child: child),
+                  ),
+                  child: Icon(
+                    connected
+                        ? Icons.shield_rounded
+                        : Icons.power_settings_new_rounded,
+                    key: ValueKey(connected),
+                    size: 60,
+                    color: connected ? scheme.onPrimary : scheme.primary,
+                  ),
+                ),
         ),
       ),
     );
@@ -264,71 +319,150 @@ class _SpinHaloPainter extends CustomPainter {
       oldDelegate.rotation != rotation || oldDelegate.color != color;
 }
 
-class _PulseRing extends StatelessWidget {
-  final AnimationController controller;
-  final double delay;
+/// Live download-speed gauge wrapping the connected button: a 270° arc with
+/// a gradient sweep and a soft track.
+class _SpeedGaugePainter extends CustomPainter {
+  final double value;
+  final Color track;
   final Color color;
+  final Color colorHigh;
 
-  const _PulseRing({
-    required this.controller,
-    required this.delay,
+  _SpeedGaugePainter({
+    required this.value,
+    required this.track,
     required this.color,
+    required this.colorHigh,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, _) {
-        final t = (controller.value - delay).clamp(0.0, 1.0) / (1 - delay);
-        final eased = Curves.easeOut.transform(t);
-        return Container(
-          width: 176 + 96 * eased,
-          height: 176 + 96 * eased,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: color.withValues(alpha: 0.30 * (1 - eased)),
-              width: 2.5,
-            ),
-          ),
-        );
-      },
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.shortestSide / 2 - 1;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    const start = -math.pi * 0.75;
+    const sweep = math.pi * 1.5;
+
+    canvas.drawArc(
+      rect,
+      start,
+      sweep,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round
+        ..color = track.withValues(alpha: 0.55),
+    );
+
+    final v = value.clamp(0.0, 1.0);
+    if (v <= 0.001) return;
+    canvas.drawArc(
+      rect,
+      start,
+      sweep * v,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.5
+        ..strokeCap = StrokeCap.round
+        ..shader = SweepGradient(
+          startAngle: start,
+          endAngle: start + sweep,
+          colors: [color, colorHigh],
+        ).createShader(rect),
     );
   }
-}
-
-class StatusLabel extends StatelessWidget {
-  const StatusLabel({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final l10n = L10nScope.of(context);
-    final state = context.watch<AppState>();
-    final scheme = Theme.of(context).colorScheme;
-    final text = switch (state.vpn.phase) {
-      VpnPhase.connected => l10n.connected,
-      VpnPhase.connecting => l10n.connecting,
-      VpnPhase.disconnecting => l10n.disconnecting,
-      VpnPhase.stopped => l10n.stopped,
-    };
-    if (state.vpn.error != null) {
-      return Text(
-        l10n.errorText(state.vpn.error),
-        style: TextStyle(
-          color: scheme.error,
-          fontSize: 14,
-        ),
-        textAlign: TextAlign.center,
+  bool shouldRepaint(_SpeedGaugePainter oldDelegate) =>
+      oldDelegate.value != value ||
+      oldDelegate.track != track ||
+      oldDelegate.color != color;
+}
+
+/// Interpolates between a circle contour (t = 0) and a shield contour
+/// (t = 1). Both contours share the same anchor (top center) and winding
+/// direction, so the morph stays clean without path-ops libraries.
+class _ShapeMorphPainter extends CustomPainter {
+  final double t;
+  final Color fill;
+  final Color border;
+  final double borderWidth;
+
+  _ShapeMorphPainter({
+    required this.t,
+    required this.fill,
+    required this.border,
+    required this.borderWidth,
+  });
+
+  static const _points = 140;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final body = _lerpContour(size);
+    final path = Path()..addPolygon(body, true);
+    if (borderWidth > 0 && border != Colors.transparent) {
+      canvas.drawPath(
+        path,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = borderWidth
+          ..color = border,
       );
     }
-    final connected = state.vpn.phase == VpnPhase.connected;
-    return Text(
-      text,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: connected ? scheme.primary : scheme.onSurfaceVariant,
-          ),
-    );
+    canvas.drawPath(path, Paint()..color = fill);
   }
+
+  List<Offset> _lerpContour(Size size) {
+    final from = _circleContour(size);
+    final to = _shieldContour(size);
+    final tt = t.clamp(-0.2, 1.35);
+    return List.generate(_points, (i) {
+      final a = from[i];
+      final b = to[i];
+      return Offset(
+        a.dx + (b.dx - a.dx) * tt,
+        a.dy + (b.dy - a.dy) * tt,
+      );
+    });
+  }
+
+  static List<Offset> _circleContour(Size size) {
+    final r = size.shortestSide / 2;
+    final c = Offset(size.width / 2, size.height / 2);
+    return List.generate(_points, (i) {
+      final a = -math.pi / 2 + i * 2 * math.pi / _points;
+      return c + Offset(r * math.cos(a), r * math.sin(a));
+    });
+  }
+
+  static List<Offset> _shieldContour(Size size) {
+    final sw = size.width * 0.80;
+    final sh = size.height * 0.94;
+    final ox = (size.width - sw) / 2;
+    final oy = (size.height - sh) / 2;
+    final path = Path()
+      ..moveTo(ox + sw / 2, oy)
+      ..lineTo(ox + sw - sw * 0.10, oy)
+      ..quadraticBezierTo(ox + sw, oy, ox + sw, oy + sw * 0.14)
+      ..lineTo(ox + sw, oy + sh * 0.50)
+      ..quadraticBezierTo(ox + sw, oy + sh * 0.72, ox + sw / 2, oy + sh)
+      ..quadraticBezierTo(ox, oy + sh * 0.72, ox, oy + sh * 0.50)
+      ..lineTo(ox, oy + sw * 0.14)
+      ..quadraticBezierTo(ox, oy, ox + sw * 0.10, oy)
+      ..close();
+    final metric = path.computeMetrics().first;
+    return List.generate(_points, (i) {
+      final d = i * metric.length / _points;
+      return metric.getTangentForOffset(d)?.position ??
+          Offset(ox + sw / 2, oy);
+    });
+  }
+
+  @override
+  bool shouldRepaint(_ShapeMorphPainter oldDelegate) =>
+      oldDelegate.t != t ||
+      oldDelegate.fill != fill ||
+      oldDelegate.border != border;
 }

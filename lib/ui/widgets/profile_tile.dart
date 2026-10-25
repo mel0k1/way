@@ -176,6 +176,15 @@ class ProfileTile extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (profile.favorite)
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: Icon(
+                  Icons.star_rounded,
+                  size: 18,
+                  color: scheme.primary,
+                ),
+              ),
             if (latency != null)
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -203,7 +212,9 @@ class ProfileTile extends StatelessWidget {
               ),
             PopupMenuButton<String>(
               onSelected: (value) async {
-                if (value == 'delete') {
+                if (value == 'fav') {
+                  state.toggleFavorite(profile.id);
+                } else if (value == 'delete') {
                   final ok = await showDialog<bool>(
                     context: context,
                     builder: (context) => AlertDialog(
@@ -229,6 +240,22 @@ class ProfileTile extends StatelessWidget {
                 }
               },
               itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'fav',
+                  child: Row(
+                    children: [
+                      Icon(
+                        profile.favorite
+                            ? Icons.star_outline_rounded
+                            : Icons.star_rounded,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(profile.favorite
+                          ? l10n.removeFavorite
+                          : l10n.addFavorite),
+                    ],
+                  ),
+                ),
                 PopupMenuItem(
                   value: 'qr',
                   child: Row(

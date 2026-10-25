@@ -312,6 +312,61 @@ class L10n {
       ? 'QR для этого протокола недоступен'
       : 'QR is not available for this protocol';
 
+  String get searchServers => ru ? 'Поиск серверов…' : 'Search servers…';
+  String foundCount(int n) => ru ? 'Найдено: $n' : 'Found: $n';
+  String get sortBy => ru ? 'Сортировка' : 'Sort by';
+  String get sortDefault => ru ? 'По добавлению' : 'Default order';
+  String get sortLatency => ru ? 'По задержке' : 'By latency';
+  String get sortName => ru ? 'По имени' : 'By name';
+  String get favorites => ru ? 'Избранное' : 'Favorites';
+  String get addFavorite => ru ? 'В избранное' : 'Add to favorites';
+  String get removeFavorite => ru ? 'Из избранного' : 'Remove from favorites';
+  String get transferQr => ru ? 'QR на телефон' : 'Phone QR';
+  String get transferQrHint => ru
+      ? 'Отсканируйте код в Way на телефоне — серверы и подписки перенесутся сами.'
+      : 'Scan this in Way on your phone — servers and subscriptions transfer automatically.';
+  String get qrTooBig => ru
+      ? 'Слишком много серверов для одного QR — используйте резервную копию'
+      : 'Too many servers for one QR — use a backup file instead';
+  String get nothingToTransfer => ru
+      ? 'Нет серверов для переноса'
+      : 'Nothing to transfer';
+
+  String get speedtest => ru ? 'Тест скорости' : 'Speed test';
+  String get speedtestHint => ru
+      ? 'Замерит загрузку через текущий маршрут (нужно подключение)'
+      : 'Measures download through the current route (connect first)';
+  String get speedtesting => ru ? 'Замер…' : 'Measuring…';
+  String speedtestResult(String mbps) => ru
+      ? 'Скорость: $mbps Mbps'
+      : 'Speed: $mbps Mbps';
+  String get speedtestFailed => ru
+      ? 'Не удалось замерить скорость'
+      : 'Speed test failed';
+
+  String get clipboardFound => ru
+      ? 'Найдена ссылка в буфере — импортировать?'
+      : 'Link found in clipboard — import it?';
+  String get clipboardImport => ru ? 'Импортировать' : 'Import';
+  String get clipboardIgnore => ru ? 'Игнорировать' : 'Ignore';
+
+  String get importFromFile => ru ? 'Из файла (Clash/JSON)' : 'From file (Clash/JSON)';
+  String get importFromFileHint => ru
+      ? 'Clash YAML, конфиг sing-box JSON или список ссылок'
+      : 'Clash YAML, a sing-box JSON config or a link list';
+  String get importFromFileEmpty => ru
+      ? 'В файле не найдено серверов'
+      : 'No servers found in the file';
+
+  String get localApi => ru ? 'Локальный API' : 'Local API';
+  String get localApiHint => ru
+      ? 'HTTP-управление Way с этой же машины: GET /ping /status /servers, POST /connect /disconnect /select?id=. Только 127.0.0.1, токен обязателен.'
+      : 'HTTP control of Way from this machine: GET /ping /status /servers, POST /connect /disconnect /select?id=. Loopback only, token required.';
+  String get apiToken => ru ? 'Токен доступа' : 'Access token';
+  String get apiPort => ru ? 'Порт' : 'Port';
+  String get apiRunning => ru ? 'API работает' : 'API running';
+  String get apiStopped => ru ? 'API выключен' : 'API off';
+
   String get warp => 'Cloudflare WARP';
   String get warpHint => ru
       ? 'Бесплатный туннель WireGuard от Cloudflare — без подписки (sing-box).'

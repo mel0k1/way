@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 
+import '../motion.dart';
+
 /// One destination for [ExpressiveNavBar].
 class ExpressiveNavDestination {
   final IconData icon;
@@ -44,12 +46,8 @@ class _ExpressiveNavBarState extends State<ExpressiveNavBar>
   late final AnimationController _mover =
       AnimationController.unbounded(vsync: this);
 
-  /// Expressive spatial spring: dampingRatio 0.68 → a lively overshoot.
-  static final SpringDescription _spring = SpringDescription.withDampingRatio(
-    mass: 1,
-    stiffness: 420,
-    ratio: 0.68,
-  );
+  /// Expressive spatial spring from the shared motion tokens.
+  static final SpringDescription _spring = WayMotion.springDesc;
 
   double _lastWidth = 0;
   bool _snapped = false;

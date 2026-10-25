@@ -5,6 +5,26 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+/// Generic text/config file picker used by the Clash/sing-box import.
+class FileFormats {
+  static Future<String?> pickText() async {
+    if (kIsWeb) return null;
+    try {
+      const groups = [
+        XTypeGroup(label: 'Configs', extensions: [
+          'json', 'yaml', 'yml', 'txt', 'conf', 'cfg',
+        ]),
+        XTypeGroup(label: 'All files', extensions: ['*']),
+      ];
+      final file = await openFile(acceptedTypeGroups: groups);
+      if (file == null) return null;
+      return await file.readAsString();
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
 class BackupService {
   static const _channel = MethodChannel('way/core');
   static const version = 1;

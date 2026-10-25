@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,9 +13,11 @@ import '../core/latency.dart';
 import '../core/backup.dart';
 import '../core/config_builder.dart';
 import '../core/formats.dart';
+import '../core/local_api.dart';
 import '../core/parser.dart';
 import '../core/profile.dart';
 import '../core/reconnect_policy.dart';
+import '../core/speedtest.dart';
 import '../core/stats.dart';
 import '../core/subscriptions.dart';
 import '../core/toast.dart';
@@ -74,6 +77,18 @@ class AppState extends ChangeNotifier {
   bool closeToTray = true;
   bool onboardingDone = true;
   List<RouteRule> customRules = [];
+  // Server list controls (search / sort) shared with the servers screen.
+  String serverQuery = '';
+  String serverSort = 'default'; // default | latency | name
+  // Speed test of the current route.
+  bool speedTesting = false;
+  double? speedtestMbps;
+  // Clipboard sniffer suggestion ("found vless:// — import?").
+  String? pendingClipboard;
+  // Loopback HTTP API for external control.
+  bool localApi = false;
+  int localApiPort = 20718;
+  String? apiToken;
   String? hwid;
   Map<String, int?> latencies = {};
   bool latencyTesting = false;
@@ -97,8 +112,42 @@ class AppState extends ChangeNotifier {
   Timer? _statusTimer;
   Timer? _subsTimer;
   Timer? _statsTimer;
+  Timer? _clipboardTimer;
   bool _ipFetching = false;
   final Set<String> _updatingSubs = {};
+  final Set<String> _dismissedClipboard = {};
+  late final LocalApiServer localApiServer = LocalApiServer(
+    status: () async => {
+      'ok': true,
+      'phase': vpn.name,
+      'error': vpn.error,
+      'profile': selected?.name,
+      'stats': {
+        'up_bps': stats.upSpeed,
+        'down_bps': stats.downSpeed,
+        'total_up': stats.totalUp,
+        'total_down': stats.totalDown,
+        'connections': stats.connections,
+      },
+      'ip': connIp,
+      'country': connCountry,
+    },
+    servers: () async => [
+      for (final p in profiles)
+        {
+          'id': p.id,
+          'name': p.name,
+          'protocol': p.protocol,
+          'server': p.server,
+          'port': p.port,
+          'latency': latencies[p.id],
+          'favorite': p.favorite,
+        },
+    ],
+    select: (id) async => select(id),
+    connect: () => connect(),
+    disconnect: () => disconnect(),
+  );
   SharedPreferences? _prefs;
 
   // --- auto-reconnect watchdog state ---
@@ -227,6 +276,8 @@ class AppState extends ChangeNotifier {
         desktopNotify = s['desktopnotify'] as bool? ?? desktopNotify;
         autoCheckUpdates = s['checkupdates'] as bool? ?? autoCheckUpdates;
         closeToTray = s['closetray'] as bool? ?? closeToTray;
+        localApi = s['localapi'] as bool? ?? localApi;
+        localApiPort = (s['localapiport'] as num?)?.toInt() ?? localApiPort;
         customRules = (s['rules'] as List?)
                 ?.map((e) => RouteRule.fromJson(e as Map<String, dynamic>))
                 .toList() ??
@@ -237,6 +288,19 @@ class AppState extends ChangeNotifier {
     final docs = await getApplicationSupportDirectory();
     singBoxLogPath = '${docs.path}/waybox.log';
     xrayLogPath = '${docs.path}/wayxray.log';
+    try {
+      apiToken = await _secure.read(key: 'way.apitoken');
+    } catch (_) {}
+    if (localApi) {
+      unawaited(startLocalApi());
+    }
+    // Desktop-only clipboard sniffing loop — Android reads the clipboard on
+    // app resume instead (background reads are restricted since Android 10).
+    if (isDesktop) {
+      _clipboardTimer = Timer.periodic(const Duration(seconds: 9), (_) {
+        unawaited(sniffClipboard());
+      });
+    }
     _statusTimer = Timer.periodic(const Duration(seconds: 2), (_) => _tick());
     _subsTimer = Timer.periodic(const Duration(minutes: 5), (_) => _checkSubUpdates());
     if (autoStart || !isDesktop) {
@@ -368,6 +432,8 @@ class AppState extends ChangeNotifier {
       'desktopnotify': desktopNotify,
       'checkupdates': autoCheckUpdates,
       'closetray': closeToTray,
+      'localapi': localApi,
+      'localapiport': localApiPort,
       'rules': customRules.map((r) => r.toJson()).toList(),
     }));
     try {
@@ -635,7 +701,9 @@ class AppState extends ChangeNotifier {
   void handleDeepLink(String raw) {
     var url = raw.trim().replaceAll('\n', '').replaceAll('\r', '');
     if (url.isEmpty) return;
+    var fromWay = false;
     if (url.toLowerCase().startsWith('way://')) {
+      fromWay = true;
       var rest = url.substring(6);
       if (rest.toLowerCase().startsWith('import/')) rest = rest.substring(7);
       try {
@@ -643,7 +711,21 @@ class AppState extends ChangeNotifier {
       } catch (_) {}
       url = rest.trim();
     }
-    if (url.isEmpty || !url.contains('://')) {
+    if (url.isEmpty) {
+      log('deep link ignored: empty payload');
+      return;
+    }
+    // QR transfer payload: way://import/<base64url of newline-joined links>
+    if (fromWay && !url.contains('://')) {
+      final before = profiles.length;
+      addFromLink(url);
+      lastImportCount = profiles.length - before;
+      lastImportWasSub = false;
+      pendingTab = 1;
+      notifyListeners();
+      return;
+    }
+    if (!url.contains('://')) {
       log('deep link ignored: unsupported format');
       return;
     }
@@ -831,6 +913,189 @@ class AppState extends ChangeNotifier {
 
   void setSubUserAgent(String value) {
     subUserAgent = value.trim().isEmpty ? 'v2rayTun/1.7.6' : value.trim();
+    _persist();
+    notifyListeners();
+  }
+
+  // --- server list: favorites / search / sort -------------------------------
+
+  void toggleFavorite(String id) {
+    for (final p in profiles) {
+      if (p.id == id) p.favorite = !p.favorite;
+    }
+    _persist();
+    notifyListeners();
+  }
+
+  void setServerQuery(String value) {
+    serverQuery = value.trim();
+    notifyListeners();
+  }
+
+  void setServerSort(String value) {
+    serverSort = value;
+    _persist();
+    notifyListeners();
+  }
+
+  /// Profiles filtered by the search query and ordered: favorites pinned on
+  /// top, then the chosen sort mode. Selection order inside equals groups is
+  /// kept stable so the engine sees the same list.
+  List<Profile> get visibleProfiles {
+    Iterable<Profile> list = profiles;
+    final q = serverQuery.toLowerCase();
+    if (q.isNotEmpty) {
+      list = list.where((p) =>
+          p.name.toLowerCase().contains(q) ||
+          p.server.toLowerCase().contains(q) ||
+          p.protocolLabel.toLowerCase().contains(q));
+    }
+    final result = list.toList();
+    int Function(Profile, Profile) compare;
+    switch (serverSort) {
+      case 'latency':
+        compare = (a, b) {
+          final la = latencies[a.id];
+          final lb = latencies[b.id];
+          if (la == null && lb == null) return 0;
+          if (la == null) return 1;
+          if (lb == null) return -1;
+          return la.compareTo(lb);
+        };
+        break;
+      case 'name':
+        compare = (a, b) =>
+            a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        break;
+      default:
+        compare = (a, b) => 0;
+    }
+    if (serverSort != 'default') result.sort(compare);
+    // Favorites always float to the top, preserving the inner order.
+    result.sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0));
+    return result;
+  }
+
+  // --- speed test ------------------------------------------------------------
+
+  Future<void> runSpeedTest() async {
+    if (speedTesting) return;
+    speedTesting = true;
+    speedtestMbps = null;
+    notifyListeners();
+    try {
+      final mbps = await SpeedTester.measure();
+      speedtestMbps = mbps;
+      log(mbps == null
+          ? 'speedtest failed'
+          : 'speedtest: ${mbps.toStringAsFixed(1)} Mbps');
+    } catch (_) {
+      speedtestMbps = null;
+    } finally {
+      speedTesting = false;
+      notifyListeners();
+    }
+  }
+
+  // --- clipboard sniffer -----------------------------------------------------
+
+  static const _clipSchemes = [
+    'vless://', 'vmess://', 'ss://', 'trojan://', 'hysteria2://', 'hy2://',
+    'tuic://', 'anytls://', 'way://', 'https://', 'clash://', 'sing-box://',
+  ];
+
+  Future<void> sniffClipboard() async {
+    try {
+      final data = await Clipboard.getData('text/plain');
+      final text = data?.text?.trim() ?? '';
+      if (text.isEmpty ||
+          text.length > 8192 ||
+          text == _lastClipboardSeen ||
+          _dismissedClipboard.contains(text)) {
+        return;
+      }
+      final lower = text.toLowerCase();
+      if (!_clipSchemes.any(lower.startsWith)) return;
+      // Subscriptions and plain config links both qualify; anything already
+      // sitting in the profiles list is ignored.
+      if (profiles.any((p) => LinkBuilder.build(p) == text)) return;
+      _lastClipboardSeen = text;
+      pendingClipboard = text;
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  String? _lastClipboardSeen;
+
+  void acceptClipboardImport() {
+    final text = pendingClipboard;
+    pendingClipboard = null;
+    if (text == null) return;
+    handleDeepLink(text);
+  }
+
+  void dismissClipboardImport() {
+    final text = pendingClipboard;
+    pendingClipboard = null;
+    if (text != null) {
+      _dismissedClipboard.add(text);
+      while (_dismissedClipboard.length > 8) {
+        _dismissedClipboard.remove(_dismissedClipboard.first);
+      }
+    }
+    notifyListeners();
+  }
+
+  // --- file import (Clash YAML / sing-box JSON / link lists) ------------------
+
+  Future<void> importFromFile() async {
+    final raw = await FileFormats.pickText();
+    if (raw == null) return;
+    final before = profiles.length;
+    addFromLink(raw);
+    lastImportCount = profiles.length - before;
+    lastImportWasSub = false;
+    pendingTab = -1;
+    log('file import: $lastImportCount profile(s)');
+    notifyListeners();
+  }
+
+  // --- local HTTP API ---------------------------------------------------------
+
+  Future<void> startLocalApi() async {
+    try {
+      apiToken ??= _genUuidV4();
+      try {
+        await _secure.write(key: 'way.apitoken', value: apiToken!);
+      } catch (_) {}
+      await localApiServer.start(localApiPort, apiToken ?? '');
+      log('local api on 127.0.0.1:$localApiPort');
+    } catch (e) {
+      log('local api failed: $e');
+    }
+    notifyListeners();
+  }
+
+  Future<void> stopLocalApi() async {
+    await localApiServer.stop();
+    log('local api stopped');
+    notifyListeners();
+  }
+
+  Future<void> setLocalApi(bool value) async {
+    localApi = value;
+    _persist();
+    notifyListeners();
+    if (value) {
+      await startLocalApi();
+    } else {
+      await stopLocalApi();
+    }
+  }
+
+  void setLocalApiPort(int value) {
+    localApiPort = value <= 0 ? 20718 : value;
+    if (localApi) unawaited(startLocalApi());
     _persist();
     notifyListeners();
   }
@@ -1217,6 +1482,8 @@ class AppState extends ChangeNotifier {
     _subsTimer?.cancel();
     _statsTimer?.cancel();
     _reconnectTimer?.cancel();
+    _clipboardTimer?.cancel();
+    unawaited(localApiServer.stop());
     statsPoller.dispose();
     super.dispose();
   }

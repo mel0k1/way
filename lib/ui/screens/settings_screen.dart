@@ -602,6 +602,52 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           _SectionCard(
+            title: l10n.localApi,
+            hint: l10n.localApiHint,
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: Text(l10n.localApi),
+                  subtitle: Text(
+                    state.localApiServer.running
+                        ? '${l10n.apiRunning} · http://127.0.0.1:${state.localApiPort}'
+                        : l10n.apiStopped,
+                  ),
+                  value: state.localApi,
+                  onChanged: (v) => state.setLocalApi(v),
+                  contentPadding: EdgeInsets.zero,
+                ),
+                if (state.localApi && state.apiToken?.isNotEmpty == true)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.key_rounded),
+                    title: Text(l10n.apiToken),
+                    subtitle: Text(
+                      state.apiToken ?? '',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontFamily: 'monospace'),
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.copy_rounded),
+                      tooltip: l10n.copy,
+                      onPressed: () async {
+                        await Clipboard.setData(
+                          ClipboardData(text: state.apiToken ?? ''),
+                        );
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(l10n.copied),
+                            behavior: SnackBarBehavior.floating,
+                            width: 320,
+                          ));
+                        }
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          _SectionCard(
             title: l10n.dataSection,
             hint: l10n.backupHint,
             child: Column(

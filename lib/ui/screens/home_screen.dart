@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../l10n.dart';
 import '../../state/app_state.dart';
+import '../motion.dart';
 import 'servers_screen.dart';
 import '../widgets/connect_button.dart';
 import '../widgets/status_card.dart';
+import '../widgets/wavy_divider.dart';
 import 'package:provider/provider.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -27,9 +29,9 @@ class HomeScreen extends StatelessWidget {
               const ConnectButton(),
               const SizedBox(height: 20),
               const StatusLabel(),
-              const SizedBox(height: 32),
+              const WavyDivider(topGap: 22, bottomGap: 22),
               const StatusCard(),
-              const SizedBox(height: 16),
+              const WavyDivider(topGap: 18, bottomGap: 14),
               _Squish(
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
@@ -105,8 +107,8 @@ class _SquishState extends State<_Squish> {
       onTap: widget.onTap,
       child: AnimatedScale(
         scale: _pressed ? 0.97 : 1.0,
-        duration: const Duration(milliseconds: 200),
-        curve: _pressed ? Curves.easeOutCubic : Curves.easeOutBack,
+        duration: WayMotion.fast,
+        curve: _pressed ? Curves.easeOutCubic : WayMotion.springy,
         child: widget.child,
       ),
     );

@@ -26,6 +26,7 @@ class Profile {
   String? extra;
   String subId;
   String? chainTo;
+  bool favorite;
 
   Profile({
     required this.id,
@@ -55,6 +56,7 @@ class Profile {
     this.extra,
     this.subId = '',
     this.chainTo,
+    this.favorite = false,
   });
 
   String get protocolLabel {
@@ -103,6 +105,7 @@ class Profile {
     'mode': mode,
     'extra': extra,
     'sub_id': subId,
+    'favorite': favorite,
     if (chainTo != null) 'chain_to': chainTo,
   };
 
@@ -133,6 +136,7 @@ class Profile {
     mode: j['mode'] as String?,
     extra: j['extra'] as String?,
     subId: j['sub_id'] as String? ?? '',
+    favorite: j['favorite'] as bool? ?? false,
     chainTo: j['chain_to'] as String?,
   );
 
