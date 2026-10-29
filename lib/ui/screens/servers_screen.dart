@@ -378,9 +378,6 @@ class _ServersScreenState extends State<ServersScreen> {
     bool searching,
   ) {
     final collapsed = _isCollapsed(group, searching);
-    // Inside a group running auto mode the effective (fastest) server gets
-    // the highlight — exactly what connect() will pick.
-    final gAuto = state.groupAuto.contains(group.subId);
     return AnimatedSize(
       duration: WayMotion.medium,
       curve: Curves.easeOutCubic,
@@ -396,11 +393,11 @@ class _ServersScreenState extends State<ServersScreen> {
                       profile: group.profiles[j],
                       // Compare with the resolved selection (auto-group best
                       // or first-profile fallback) so the highlight always
-                      // matches what connect() will actually use.
+                      // matches what connect() will actually use — including
+                      // a group running fast-pick mode.
                       selected: group.profiles[j].id ==
                               state.effectiveProfile?.id &&
-                          !state.autoSelect &&
-                          !gAuto,
+                          !state.autoSelect,
                       latency: state.latencies[group.profiles[j].id],
                     ),
                   ),

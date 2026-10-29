@@ -152,7 +152,8 @@ class ConnectionsPoller {
     try {
       final req = await _client.openUrl(
         'DELETE',
-        Uri.parse('http://127.0.0.1:${WayPorts.clashApi}/connections/$id'),
+        Uri.parse(
+            'http://127.0.0.1:${WayPorts.clashApi}/connections/${Uri.encodeComponent(id)}'),
       );
       final res = await req.close();
       await res.drain<void>();
