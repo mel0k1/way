@@ -1500,6 +1500,16 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Current routing decisions in the form ConfigBuilder consumes — used by
+  /// the rule-detect screen to replay the pipeline offline.
+  RoutingSettings get routingSettings => RoutingSettings(
+        mode: routingMode,
+        blockAds: blockAds,
+        splitMode: splitMode,
+        splitApps: List.unmodifiable(splitApps),
+        customRules: List.unmodifiable(customRules),
+      );
+
   void removeRule(String id) {
     customRules = customRules.where((r) => r.id != id).toList();
     _persist();

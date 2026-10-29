@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import '../widgets/update_dialog.dart';
 import 'connections_screen.dart';
 import 'route_rules_screen.dart';
+import 'rule_detect_screen.dart';
 import 'split_apps_screen.dart';
 
 class _SplitProcessesField extends StatefulWidget {
@@ -615,6 +616,17 @@ class SettingsScreen extends StatelessWidget {
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
                         builder: (_) => const ConnectionsScreen()),
+                  ),
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.travel_explore_outlined),
+                  title: Text(l10n.ruleDetect),
+                  subtitle: Text(l10n.ruleDetectSubtitle),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const RuleDetectScreen()),
                   ),
                 ),
               ],

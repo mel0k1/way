@@ -426,6 +426,57 @@ class L10n {
       ru ? 'Соединение закрыто' : 'Connection closed';
   String get allClosed => ru ? 'Все соединения закрыты' : 'All connections closed';
 
+  String get ruleDetect => ru ? 'Куда уходит домен?' : 'Where does a domain go?';
+  String get ruleDetectSubtitle => ru
+      ? 'Проверка маршрута для домена или IP'
+      : 'Check the route for a domain or IP';
+  String get ruleDetectHint => ru
+      ? 'Домен или IP без схемы и порта'
+      : 'Domain or IP, no scheme or port';
+  String get ruleDetectInput => ru ? 'Домен или IP' : 'Domain or IP';
+  String get ruleDetectEmpty => ru
+      ? 'Введите домен — например, youtube.com — и нажмите «Проверить»'
+      : 'Enter a domain — e.g. youtube.com — and tap Detect';
+  String get ruleDetectInvalid =>
+      ru ? 'Не похоже на домен или IP' : 'Does not look like a domain or IP';
+  String get detect => ru ? 'Проверить' : 'Detect';
+  String get verdictProxy => ru ? 'Через VPN' : 'Via VPN';
+  String get verdictDirect => ru ? 'Напрямую, мимо VPN' : 'Direct, outside VPN';
+  String get verdictBlock => ru ? 'Заблокировано' : 'Blocked';
+  String get verdictUnknown => ru ? 'Неизвестно' : 'Unknown';
+  String get stepAds => ru ? 'Блокировка рекламы' : 'Ad blocking';
+  String get stepAdsUnknown => ru
+      ? 'Удалённый список geosite-ads — офлайн-детект невозможен'
+      : 'Remote geosite-ads list — cannot check offline';
+  String get stepSplit => ru ? 'Раздельное туннелирование' : 'Split tunneling';
+  String get stepSplitNote => ru
+      ? 'Правило действует по процессам, к домену не применяется'
+      : 'Process-based rule, not applied to a domain probe';
+  String get stepCustom => ru ? 'Пользовательские правила' : 'Custom rules';
+  String get stepRu => ru ? 'Режим «RU напрямую»' : '“RU direct” mode';
+  String get stepRuNote => ru
+      ? 'RU-ресурсы (geosite-ru/geoip-ru) идут напрямую — офлайн-детект невозможен'
+      : 'Russian resources (geosite-ru/geoip-ru) go direct — cannot check offline';
+  String get stepFinal => ru ? 'Исходящее по умолчанию' : 'Default outbound';
+  String get byFinal => ru
+      ? 'Ни одно правило не совпало — действует исходящее по умолчанию'
+      : 'No rule matched — the default outbound applies';
+  String matchedRule(String rule) =>
+      ru ? 'Совпадение: $rule' : 'Matched: $rule';
+  String get liveCheck => ru ? 'Живая проверка' : 'Live check';
+  String get liveOffHint => ru
+      ? 'Запустите проверку, чтобы посмотреть живые соединения'
+      : 'Run a probe to look for live connections';
+  String get liveOff => ru
+      ? 'Живая проверка доступна только при включённом VPN'
+      : 'Live check requires a running VPN';
+  String liveFound(int n) => ru
+      ? 'Активных соединений с этим доменом: $n'
+      : 'Active connections to this domain: $n';
+  String get liveNone => ru
+      ? 'Нет открытых соединений с этим доменом — откройте сайт и повторите'
+      : 'No open connections to this domain — open the site and retry';
+
   String get importFromFile => ru ? 'Из файла (Clash/JSON)' : 'From file (Clash/JSON)';
   String get importFromFileHint => ru
       ? 'Clash YAML, конфиг sing-box JSON или список ссылок'
