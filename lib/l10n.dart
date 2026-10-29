@@ -116,6 +116,15 @@ class L10n {
   String get autoFastestHint =>
       ru ? 'Автовыбор сервера с наименьшей задержкой' : 'Auto-pick the lowest-latency server';
   String get fastest => ru ? 'Быстрейший' : 'Fastest';
+  String get groupAutoTooltip => ru
+      ? 'Автовыбор быстрейшего сервера этой подписки'
+      : 'Auto-pick the fastest server of this subscription';
+  String groupAutoOn(String name) => ru
+      ? 'Автовыбор внутри «$name» включён — будет выбран быстрейший сервер'
+      : 'Auto inside "$name" enabled — the fastest server will be picked';
+  String groupAutoOff(String name) => ru
+      ? 'Автовыбор внутри «$name» выключен'
+      : 'Auto inside "$name" disabled';
   String get testLatency => ru ? 'Проверить задержку' : 'Test latency';
   String get testing => ru ? 'Проверка…' : 'Testing…';
   String get ms => ru ? 'мс' : 'ms';

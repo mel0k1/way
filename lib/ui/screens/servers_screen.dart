@@ -337,6 +337,9 @@ class _ServersScreenState extends State<ServersScreen> {
             : (group.name.isEmpty
                 ? l10n.subscriptionFallback
                 : group.name);
+    final canAuto =
+        !group.favorite && group.subId.isNotEmpty && group.profiles.length > 1;
+    final autoActive = canAuto && state.groupAuto.contains(group.subId);
     return _GroupHeader(
       group: group,
       title: title,
@@ -346,6 +349,20 @@ class _ServersScreenState extends State<ServersScreen> {
         final key = _key(group);
         if (!_collapsed.remove(key)) _collapsed.add(key);
       }),
+      autoActive: autoActive,
+      onAuto: canAuto
+          ? () {
+              state.setGroupAuto(group.subId, !autoActive);
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text(!autoActive
+                    ? l10n.groupAutoOn(title)
+                    : l10n.groupAutoOff(title)),
+                behavior: SnackBarBehavior.floating,
+                width: 340,
+              ));
+            }
+          : null,
       // Favorites is a virtual view — deleting it would mean deleting every
       // favorited server across all profiles, so no bulk action here.
       onDelete: group.favorite
@@ -361,6 +378,9 @@ class _ServersScreenState extends State<ServersScreen> {
     bool searching,
   ) {
     final collapsed = _isCollapsed(group, searching);
+    // Inside a group running auto mode the effective (fastest) server gets
+    // the highlight — exactly what connect() will pick.
+    final gAuto = state.groupAuto.contains(group.subId);
     return AnimatedSize(
       duration: WayMotion.medium,
       curve: Curves.easeOutCubic,
@@ -374,11 +394,13 @@ class _ServersScreenState extends State<ServersScreen> {
                     index: j,
                     child: ProfileTile(
                       profile: group.profiles[j],
-                      // Compare with the resolved selection (which falls back
-                      // to the first profile) so the highlight always matches
-                      // what connect() will actually use.
-                      selected: group.profiles[j].id == state.selected?.id &&
-                          !state.autoSelect,
+                      // Compare with the resolved selection (auto-group best
+                      // or first-profile fallback) so the highlight always
+                      // matches what connect() will actually use.
+                      selected: group.profiles[j].id ==
+                              state.effectiveProfile?.id &&
+                          !state.autoSelect &&
+                          !gAuto,
                       latency: state.latencies[group.profiles[j].id],
                     ),
                   ),
@@ -402,14 +424,16 @@ class _Slot {
 }
 
 /// Section header of a server group: icon, the subscription's own VPN name,
-/// a server count, a collapse chevron and (for deletable groups) a bulk
-/// delete button.
+/// a server count, a collapse chevron, a per-group fast-pick toggle and (for
+/// deletable groups) a bulk delete button.
 class _GroupHeader extends StatelessWidget {
   final ServerGroup group;
   final String title;
   final int count;
   final bool collapsed;
+  final bool autoActive;
   final VoidCallback onToggle;
+  final VoidCallback? onAuto;
   final VoidCallback? onDelete;
 
   const _GroupHeader({
@@ -418,6 +442,8 @@ class _GroupHeader extends StatelessWidget {
     required this.count,
     required this.collapsed,
     required this.onToggle,
+    this.autoActive = false,
+    this.onAuto,
     this.onDelete,
   });
 
@@ -484,6 +510,19 @@ class _GroupHeader extends StatelessWidget {
             ),
           ),
           const Spacer(),
+          if (onAuto != null)
+            IconButton(
+              tooltip: l10n.groupAutoTooltip,
+              visualDensity: VisualDensity.compact,
+              iconSize: 20,
+              icon: Icon(
+                autoActive ? Icons.bolt_rounded : Icons.bolt_outlined,
+                color: autoActive
+                    ? scheme.primary
+                    : scheme.onSurfaceVariant.withValues(alpha: 0.7),
+              ),
+              onPressed: onAuto,
+            ),
           if (onDelete != null)
             IconButton(
               tooltip: l10n.delete,

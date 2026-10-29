@@ -86,6 +86,9 @@ class AppState extends ChangeNotifier {
   List<String> splitApps = [];
   String subUserAgent = 'v2rayTun/1.7.6';
   bool autoSelect = false;
+  /// Subscription ids whose group runs in "fastest of the group" mode
+  /// (per-group urltest, like Karing's custom urltest groups).
+  Set<String> groupAuto = {};
   bool autoStart = false;
   bool connectOnLaunch = false;
   bool autoReconnect = true;
@@ -202,12 +205,26 @@ class AppState extends ChangeNotifier {
     return rated.isEmpty ? null : rated.first;
   }
 
+  /// Best (lowest-latency) server inside one subscription group.
+  Profile? bestProfileIn(String subId) {
+    final rated = engineProfiles
+        .where((p) => p.subId == subId && latencies[p.id] != null)
+        .toList()
+      ..sort((a, b) => latencies[a.id]!.compareTo(latencies[b.id]!));
+    return rated.isEmpty ? null : rated.first;
+  }
+
   Profile? get effectiveProfile {
     if (autoSelect) {
       final best = bestProfile;
       if (best != null) return best;
     }
-    return selected;
+    final sel = selected;
+    if (sel != null && groupAuto.contains(sel.subId)) {
+      final best = bestProfileIn(sel.subId);
+      if (best != null) return best;
+    }
+    return sel;
   }
 
   bool get isDesktop =>
@@ -290,6 +307,8 @@ class AppState extends ChangeNotifier {
         splitApps = (s['splitapps'] as List?)?.cast<String>() ?? splitApps;
         subUserAgent = s['subua'] as String? ?? subUserAgent;
         autoSelect = s['autoselect'] as bool? ?? autoSelect;
+        groupAuto =
+            (s['groupauto'] as List?)?.cast<String>().toSet() ?? groupAuto;
         autoStart = s['autostart'] as bool? ?? autoStart;
         connectOnLaunch = s['connectlaunch'] as bool? ?? connectOnLaunch;
         autoReconnect = s['autoreconnect'] as bool? ?? autoReconnect;
@@ -447,6 +466,7 @@ class AppState extends ChangeNotifier {
           'splitapps': splitApps,
           'subua': subUserAgent,
           'autoselect': autoSelect,
+          'groupauto': groupAuto.toList(),
           'autostart': autoStart,
           'connectlaunch': connectOnLaunch,
           'autoreconnect': autoReconnect,
@@ -639,8 +659,13 @@ class AppState extends ChangeNotifier {
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
     var profile = selected;
+    var groupAutoActive = false;
     if (autoSelect) {
       final best = bestProfile;
+      if (best != null) profile = best;
+    } else if (profile != null && groupAuto.contains(profile.subId)) {
+      groupAutoActive = true;
+      final best = bestProfileIn(profile.subId);
       if (best != null) profile = best;
     }
     if (profile == null) {
@@ -662,8 +687,14 @@ class AppState extends ChangeNotifier {
         return;
       }
     }
-    final groupPool = autoSelect && engine == 'singbox'
-        ? engineProfiles.where((p) => p.protocol != 'wireguard').toList()
+    // Global auto pools every server into one urltest outbound; a group auto
+    // pools only its own subscription's servers (Karing-style group urltest).
+    final groupPool = (autoSelect || groupAutoActive) && engine == 'singbox'
+        ? engineProfiles
+            .where((p) =>
+                p.protocol != 'wireguard' &&
+                (autoSelect || p.subId == profile?.subId))
+            .toList()
         : const <Profile>[];
     final group = groupPool.length > 1 ? groupPool : const <Profile>[];
     Profile? chainProfile;
@@ -679,7 +710,7 @@ class AppState extends ChangeNotifier {
         }
       }
     }
-    log('connecting via ${profile.name} ($engine)');
+    log('connecting via ${profile.name} ($engine${groupAutoActive ? ', group urltest' : ''})');
     _userWantsConnected = true;
     _connectingSince = DateTime.now();
     vpn = const VpnStatus(phase: VpnPhase.connecting);
@@ -982,8 +1013,32 @@ class AppState extends ChangeNotifier {
   void select(String id) {
     selectedId = id;
     autoSelect = false;
+    // A manual pick inside an auto group means the user wants exactly that
+    // server — leave the group's fast-pick mode.
+    for (final p in profiles) {
+      if (p.id == id && p.subId.isNotEmpty) {
+        groupAuto.remove(p.subId);
+        break;
+      }
+    }
     _persist();
     notifyListeners();
+  }
+
+  /// Toggles "fastest inside this subscription" mode. Conflicts with the
+  /// global fastest-server auto (they fight over the same selection), so
+  /// enabling one disables the other.
+  void setGroupAuto(String subId, bool value) {
+    if (subId.isEmpty) return;
+    if (value) {
+      groupAuto.add(subId);
+      autoSelect = false;
+    } else {
+      groupAuto.remove(subId);
+    }
+    _persist();
+    notifyListeners();
+    if (value) testLatencies();
   }
 
   void setAutoSelect(bool value) {
@@ -1471,6 +1526,7 @@ class AppState extends ChangeNotifier {
         'splitapps': splitApps,
         'subua': subUserAgent,
         'autoselect': autoSelect,
+        'groupauto': groupAuto.toList(),
         'autostart': autoStart,
         'connectlaunch': connectOnLaunch,
         'autoreconnect': autoReconnect,
@@ -1527,6 +1583,8 @@ class AppState extends ChangeNotifier {
       splitApps = (settings['splitapps'] as List?)?.cast<String>() ?? splitApps;
       subUserAgent = settings['subua'] as String? ?? subUserAgent;
       autoSelect = settings['autoselect'] as bool? ?? autoSelect;
+      groupAuto =
+          (settings['groupauto'] as List?)?.cast<String>().toSet() ?? groupAuto;
       autoStart = settings['autostart'] as bool? ?? autoStart;
       connectOnLaunch = settings['connectlaunch'] as bool? ?? connectOnLaunch;
       autoReconnect = settings['autoreconnect'] as bool? ?? autoReconnect;
