@@ -1,7 +1,7 @@
 name: way
 description: "Way — cross-platform VPN client with sing-box and xray cores."
 publish_to: "none"
-version: 1.8.1+10
+version: 1.9.0+11
 
 environment:
   sdk: ">=3.5.0 <4.0.0"
