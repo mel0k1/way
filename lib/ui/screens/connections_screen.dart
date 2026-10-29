@@ -176,7 +176,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
                         )
                       : conns.isEmpty
                           ? _EmptyView(
-                              icon: Icons.media_object_outlined,
+                              icon: Icons.inbox_rounded,
                               text: q.isNotEmpty
                                   ? l10n.noAppsFound
                                   : l10n.connectionsEmpty,
@@ -229,7 +229,7 @@ class _SummaryStrip extends StatelessWidget {
                   Expanded(
                     child: Text(
                       '${count} ${l10n.connectionsPlural(count)}'
-                      ' · ${l10n.connectionsAlive}',
+                      ' · ${l10n.connectionsLive}',
                       style: Theme.of(context)
                           .textTheme
                           .bodyMedium
@@ -254,7 +254,7 @@ class _SummaryStrip extends StatelessWidget {
                   Expanded(
                     child: Text(
                       connected
-                          ? l10n.connectionsAlive
+                          ? l10n.connectionsLive
                           : l10n.connectionsNeedVpn,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
@@ -320,7 +320,7 @@ class _ConnectionTile extends StatelessWidget {
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
           subtitle: Text(
-            sub.isEmpty ? l10n.connectionsAlive : sub,
+            sub.isEmpty ? '—' : sub,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),

@@ -1006,6 +1006,7 @@ class AppState extends ChangeNotifier {
   void removeSubscription(String id) {
     removeProfilesByIds([for (final p in profiles) if (p.subId == id) p.id]);
     subs.removeWhere((s) => s.id == id);
+    groupAuto.remove(id); // no servers left to auto-pick for it
     _persist();
     notifyListeners();
   }

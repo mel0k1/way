@@ -8,8 +8,9 @@ import '../../l10n.dart';
 import '../../state/app_state.dart';
 import '../screens/connections_screen.dart';
 import 'format.dart';
-export 'format.dart' show formatBytes, formatSpeed;
 import 'package:provider/provider.dart';
+
+export 'format.dart' show formatBytes, formatSpeed;
 
 String? _flag(String? code) {
   if (code == null || code.length != 2) return null;
