@@ -477,6 +477,25 @@ class L10n {
       ? 'Нет открытых соединений с этим доменом — откройте сайт и повторите'
       : 'No open connections to this domain — open the site and retry';
 
+  String get uwpLoopback => ru
+      ? 'UWP: доступ к локальному прокси'
+      : 'UWP: loopback exemption';
+  String get uwpEntrySub => ru
+      ? 'Исключения для приложений Microsoft Store'
+      : 'Exemptions for Microsoft Store apps';
+  String get uwpHint => ru
+      ? 'Приложения из Microsoft Store по умолчанию не могут подключаться к 127.0.0.1 — в режиме прокси они не работают. Отметьте нужные и примените (нужны права администратора).'
+      : 'Microsoft Store apps cannot reach 127.0.0.1 by default — proxy mode breaks for them. Check the apps and apply (administrator rights required).';
+  String get uwpSave => ru ? 'Применить' : 'Apply';
+  String get uwpSaved =>
+      ru ? 'Исключения обновлены' : 'Exemptions updated';
+  String get uwpNeedAdmin => ru
+      ? 'Не удалось применить — запустите Way от имени администратора'
+      : 'Could not apply — run Way as administrator';
+  String get uwpEmpty =>
+      ru ? 'UWP-приложения не найдены' : 'No UWP apps found';
+  String get uwpLoading => ru ? 'Загрузка списка…' : 'Loading list…';
+
   String get importFromFile => ru ? 'Из файла (Clash/JSON)' : 'From file (Clash/JSON)';
   String get importFromFileHint => ru
       ? 'Clash YAML, конфиг sing-box JSON или список ссылок'

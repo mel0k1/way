@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -12,6 +14,17 @@ import 'connections_screen.dart';
 import 'route_rules_screen.dart';
 import 'rule_detect_screen.dart';
 import 'split_apps_screen.dart';
+import 'uwp_loopback_screen.dart';
+
+/// Windows detection that survives every platform (dart:io throws nowhere
+/// here, but the try keeps the getter total).
+bool get _isWindows {
+  try {
+    return Platform.isWindows;
+  } catch (_) {
+    return false;
+  }
+}
 
 class _SplitProcessesField extends StatefulWidget {
   final AppState state;
@@ -294,6 +307,18 @@ class SettingsScreen extends StatelessWidget {
                   onChanged: state.isDesktop ? state.setKillSwitch : null,
                   contentPadding: EdgeInsets.zero,
                 ),
+                if (state.isDesktop && _isWindows)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.store_rounded),
+                    title: Text(l10n.uwpLoopback),
+                    subtitle: Text(l10n.uwpEntrySub),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const UwpLoopbackScreen()),
+                    ),
+                  ),
                 if (!state.isDesktop)
                   ListTile(
                     contentPadding: EdgeInsets.zero,
