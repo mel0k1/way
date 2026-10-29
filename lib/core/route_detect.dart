@@ -128,7 +128,7 @@ class RouteDetect {
     }
   }
 
-  static String _valuesOf(RouteRule r) =>
+  static List<String> _valuesOf(RouteRule r) =>
       r.value.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
   /// Replays, in the exact order the sing-box config lists them, every

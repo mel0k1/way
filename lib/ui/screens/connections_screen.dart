@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/connections.dart';
+import '../../core/vpn_bridge.dart';
 import '../../l10n.dart';
 import '../../state/app_state.dart';
 import '../motion.dart';
