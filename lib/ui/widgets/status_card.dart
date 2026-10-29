@@ -6,18 +6,10 @@ import '../../core/stats.dart';
 import '../../core/vpn_bridge.dart';
 import '../../l10n.dart';
 import '../../state/app_state.dart';
+import '../screens/connections_screen.dart';
+import 'format.dart';
+export 'format.dart' show formatBytes, formatSpeed;
 import 'package:provider/provider.dart';
-
-String formatBytes(int bytes) {
-  if (bytes < 1024) return '$bytes B';
-  if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-  if (bytes < 1024 * 1024 * 1024) {
-    return '${(bytes / 1024 / 1024).toStringAsFixed(1)} MB';
-  }
-  return '${(bytes / 1024 / 1024 / 1024).toStringAsFixed(2)} GB';
-}
-
-String formatSpeed(int bytes) => '${formatBytes(bytes)}/s';
 
 String? _flag(String? code) {
   if (code == null || code.length != 2) return null;
@@ -188,12 +180,26 @@ class StatusCard extends StatelessWidget {
               _SpeedTestRow(state: state),
               const SizedBox(height: 12),
             ],
-            Text(
-              connected ? _totalsLine(l10n, state.stats) : l10n.totalIdle,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-              textAlign: TextAlign.center,
+            InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: connected
+                  ? () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const ConnectionsScreen()),
+                      )
+                  : null,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Text(
+                  connected
+                      ? _totalsLine(l10n, state.stats)
+                      : l10n.totalIdle,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ),
             if (connected) ...[
               const SizedBox(height: 12),

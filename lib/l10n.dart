@@ -394,6 +394,38 @@ class L10n {
   String get clipboardImport => ru ? 'Импортировать' : 'Import';
   String get clipboardIgnore => ru ? 'Игнорировать' : 'Ignore';
 
+  // --- monitoring ------------------------------------------------------------
+
+  String get monitoring => ru ? 'Мониторинг' : 'Monitoring';
+  String get connectionsTitle => ru ? 'Живые соединения' : 'Live connections';
+  String get connectionsSubtitle => ru
+      ? 'Что сейчас идёт через туннель'
+      : 'What is currently flowing through the tunnel';
+  String get connectionsLive => ru
+      ? 'обновляется раз в секунду'
+      : 'refreshed every second';
+  String connectionsPlural(int n) {
+    if (!ru) return n == 1 ? 'connection' : 'connections';
+    final mod100 = n % 100;
+    final mod10 = n % 10;
+    if (mod100 >= 11 && mod100 <= 14) return 'соединений';
+    if (mod10 == 1) return 'соединение';
+    if (mod10 >= 2 && mod10 <= 4) return 'соединения';
+    return 'соединений';
+  }
+  String get connectionsNeedVpn => ru
+      ? 'VPN не запущен — подключитесь, чтобы увидеть трафик'
+      : 'VPN is not running — connect to see live traffic';
+  String get connectionsEmpty =>
+      ru ? 'Соединений пока нет' : 'No connections yet';
+  String get closeConnection => ru ? 'Закрыть соединение' : 'Close connection';
+  String get closeAll => ru ? 'Закрыть все' : 'Close all';
+  String get closeAllConfirm =>
+      ru ? 'Закрыть все активные соединения?' : 'Close all active connections?';
+  String get connectionClosed =>
+      ru ? 'Соединение закрыто' : 'Connection closed';
+  String get allClosed => ru ? 'Все соединения закрыты' : 'All connections closed';
+
   String get importFromFile => ru ? 'Из файла (Clash/JSON)' : 'From file (Clash/JSON)';
   String get importFromFileHint => ru
       ? 'Clash YAML, конфиг sing-box JSON или список ссылок'

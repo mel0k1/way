@@ -8,6 +8,7 @@ import '../../l10n.dart';
 import '../../state/app_state.dart';
 import 'package:provider/provider.dart';
 import '../widgets/update_dialog.dart';
+import 'connections_screen.dart';
 import 'route_rules_screen.dart';
 import 'split_apps_screen.dart';
 
@@ -597,6 +598,24 @@ class SettingsScreen extends StatelessWidget {
                       : Text('${l10n.currentVersion}: $appVersion'),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => _onCheckUpdates(context, state),
+                ),
+              ],
+            ),
+          ),
+          _SectionCard(
+            title: l10n.monitoring,
+            child: Column(
+              children: [
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.monitor_heart_outlined),
+                  title: Text(l10n.connectionsTitle),
+                  subtitle: Text(l10n.connectionsSubtitle),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const ConnectionsScreen()),
+                  ),
                 ),
               ],
             ),
