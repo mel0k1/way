@@ -34,6 +34,9 @@ flutter:
     - assets/icon/way.ico
     - assets/icon/way_off.ico
     - assets/icon/way_wait.ico
+    - assets/icon/way_tray_on.png
+    - assets/icon/way_tray_off.png
+    - assets/icon/way_tray_wait.png
   fonts:
     - family: Inter
       fonts:

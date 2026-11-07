@@ -28,6 +28,7 @@ class UpdateChecker {
     if (kIsWeb) return '';
     if (Platform.isAndroid) return '-android.apk';
     if (Platform.isWindows) return '-setup.exe';
+    if (Platform.isLinux) return '-linux-x86_64.AppImage';
     return '';
   }
 

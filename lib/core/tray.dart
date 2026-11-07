@@ -22,7 +22,9 @@ class TrayController {
   void Function()? _onQuit;
 
   static bool get supported =>
-      !kIsWeb && !Platform.isAndroid && Platform.isWindows;
+      !kIsWeb &&
+      !Platform.isAndroid &&
+      (Platform.isWindows || Platform.isLinux);
 
   Future<void> init({
     required void Function() onOpen,
@@ -55,6 +57,18 @@ class TrayController {
   }
 
   String _iconFor(VpnPhase phase) {
+    if (Platform.isLinux) {
+      final exe = File(Platform.resolvedExecutable).parent.path;
+      switch (phase) {
+        case VpnPhase.connected:
+          return '$exe/data/flutter_assets/assets/icon/way_tray_on.png';
+        case VpnPhase.connecting:
+        case VpnPhase.disconnecting:
+          return '$exe/data/flutter_assets/assets/icon/way_tray_wait.png';
+        case VpnPhase.stopped:
+          return '$exe/data/flutter_assets/assets/icon/way_tray_off.png';
+      }
+    }
     switch (phase) {
       case VpnPhase.connected:
         return 'assets/icon/way.ico';
