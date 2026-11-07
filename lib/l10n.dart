@@ -56,6 +56,9 @@ class L10n {
   String get tunHintAndroid => ru
       ? 'TUN — полноценный VPN. Прокси — локальный socks/http 127.0.0.1:2080 без VPN-разрешения, настраивается в приложениях вручную.'
       : 'TUN is a full VPN. Proxy exposes local socks/http on 127.0.0.1:2080 without VPN permission — configure apps manually.';
+  String get tunForcedByKillswitch => ru
+      ? 'Kill Switch требует TUN — сначала отключите Kill Switch в настройках'
+      : 'Kill Switch keeps TUN on — disable Kill Switch in settings first';
   String get appearance => ru ? 'Внешний вид' : 'Appearance';
   String get themeSystem => ru ? 'Системная' : 'System';
   String get themeLight => ru ? 'Светлая' : 'Light';

@@ -1269,6 +1269,21 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<bool> toggleTunMode(bool value) async {
+    if (value == preferTun) return true;
+    if (!value && killSwitch) return false;
+    preferTun = value;
+    _persist();
+    notifyListeners();
+    final busy = vpn.phase == VpnPhase.connected ||
+        vpn.phase == VpnPhase.connecting;
+    if (!busy) return true;
+    log('switching to ${value ? 'tun' : 'system proxy'} — reconnecting');
+    await disconnect();
+    await connect();
+    return true;
+  }
+
   void setThemeMode(String value) {
     themeMode = value;
     _persist();

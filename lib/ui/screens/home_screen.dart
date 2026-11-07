@@ -28,6 +28,8 @@ class HomeScreen extends StatelessWidget {
             children: [
               const SizedBox(height: 8),
               const ConnectButton(),
+              const SizedBox(height: 14),
+              const _ModeToggle(),
               const SizedBox(height: 20),
               const StatusPlaque(),
               const WavyDivider(topGap: 22, bottomGap: 22),
@@ -80,6 +82,49 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ModeToggle extends StatelessWidget {
+  const _ModeToggle();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10nScope.of(context);
+    final state = context.watch<AppState>();
+    if (!state.isDesktop) return const SizedBox.shrink();
+    final messenger = ScaffoldMessenger.of(context);
+    return SegmentedButton<bool>(
+      segments: [
+        ButtonSegment(
+          value: false,
+          icon: const Icon(Icons.lan_rounded, size: 18),
+          label: Text(l10n.modeProxy),
+        ),
+        ButtonSegment(
+          value: true,
+          icon: const Icon(Icons.vpn_lock_rounded, size: 18),
+          label: Text(l10n.modeTun),
+        ),
+      ],
+      selected: {state.preferTun},
+      showSelectedIcon: false,
+      style: const ButtonStyle(
+        visualDensity: VisualDensity.compact,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      onSelectionChanged: (sel) async {
+        final v = sel.first;
+        final ok = await state.toggleTunMode(v);
+        if (!ok) {
+          messenger.showSnackBar(SnackBar(
+            content: Text(l10n.tunForcedByKillswitch),
+            behavior: SnackBarBehavior.floating,
+            width: 340,
+          ));
+        }
+      },
     );
   }
 }
