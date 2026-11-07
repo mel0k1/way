@@ -1,0 +1,41 @@
+# Maintainer: mel0k1 <https://github.com/mel0k1/way>
+pkgname=way-vpn
+pkgver=1.9.0
+pkgrel=1
+pkgdesc="Way — cross-platform VPN client with sing-box and xray cores"
+arch=('x86_64')
+url="https://github.com/mel0k1/way"
+license=('GPL-3.0')
+depends=('gtk3')
+makedepends=('go' 'flutter-bin' 'ninja' 'cmake' 'clang' 'pkgconf')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+options=('!strip')
+
+build() {
+  cd "way-$pkgver/core"
+  go build -trimpath \
+    -tags "with_gvisor,with_quic,with_utls,with_clash_api,with_wireguard,badlinkname,tfogo_checklinkname0" \
+    -o "$srcdir/way-$pkgver/waycore" ./cmd/waycore
+
+  cd "$srcdir/way-$pkgver"
+  flutter config --no-enable-android --no-enable-ios --no-enable-web \
+    --no-enable-windows-desktop --no-enable-macos-desktop --enable-linux-desktop
+  flutter pub get
+  flutter build linux --release
+}
+
+package() {
+  cd "way-$pkgver"
+  install -dm755 "$pkgdir/opt/way"
+  cp -r build/linux/x64/release/bundle/way "$pkgdir/opt/way/"
+  cp -r build/linux/x64/release/bundle/lib "$pkgdir/opt/way/"
+  cp -r build/linux/x64/release/bundle/data "$pkgdir/opt/way/"
+  install -Dm755 waycore "$pkgdir/opt/way/waycore"
+  install -dm755 "$pkgdir/usr/bin"
+  ln -s /opt/way/way "$pkgdir/usr/bin/way"
+  install -Dm644 packaging/linux/way.desktop \
+    "$pkgdir/usr/share/applications/way.desktop"
+  install -Dm644 assets/icon/way.png \
+    "$pkgdir/usr/share/icons/hicolor/256x256/apps/way.png"
+}

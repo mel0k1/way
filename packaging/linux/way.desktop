@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Way
+GenericName=VPN Client
+Comment=Cross-platform VPN client (sing-box + xray cores)
+Exec=way
+Icon=way
+Terminal=false
+Categories=Network;
+Keywords=vpn;proxy;sing-box;xray;tun;
+StartupNotify=true

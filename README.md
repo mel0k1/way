@@ -117,6 +117,37 @@ cd core
 go build -tags "with_gvisor,with_quic,with_utls,with_clash_api" -o waycore.exe ./cmd/waycore
 ```
 
+## Linux (Arch / EndeavourOS)
+
+Linux support is in preparation — the groundwork is already in the codebase:
+
+- `core/sysproxy_linux.go` — system proxy via `gsettings` (GNOME) or `kwriteconfig` (KDE Plasma); on other desktops Way still serves a local mixed proxy on `127.0.0.1:2080`
+- `packaging/linux/PKGBUILD` + `way.desktop` — Arch package skeleton (installs to `/opt/way`, launcher in `/usr/bin`)
+- Backup import/export and `xdg-open` links already work on Linux
+- The bundled `waycore` binary contains both sing-box and xray — no separate core installation needed
+
+Build locally on Arch:
+
+```bash
+sudo pacman -S --needed go ninja cmake clang gtk3 pkgconf
+# flutter: `flutter-bin` from AUR, or the official tarball from flutter.dev
+git clone https://github.com/mel0k1/way.git
+cd way/core
+go build -tags "with_gvisor,with_quic,with_utls,with_clash_api,with_wireguard" -o ../waycore ./cmd/waycore
+cd ..
+flutter pub get
+flutter build linux --release
+./build/linux/x64/release/bundle/way
+```
+
+For TUN mode without root, grant the core the network capability:
+
+```bash
+sudo setcap cap_net_admin,cap_net_bind_service+ep waycore
+```
+
+Known limits: no tray icon yet (appindicator is planned), Kill Switch is Windows-only, auto-update checks are Android/Windows for now.
+
 ## Disclaimer
 
 This project is a client shell around open-source cores. It ships no servers, no keys and no default configurations. Use it in accordance with the laws of your jurisdiction.
@@ -208,6 +239,37 @@ Go-ядро собирается автоматически в CI; вручну�
 cd core
 go build -tags "with_gvisor,with_quic,with_utls,with_clash_api" -o waycore.exe ./cmd/waycore
 ```
+
+### Linux (Arch / EndeavourOS)
+
+Поддержка Linux в подготовке — фундамент уже в коде:
+
+- `core/sysproxy_linux.go` — системный прокси через `gsettings` (GNOME) или `kwriteconfig` (KDE Plasma); на остальных окружениях Way всё равно держит локальный mixed-прокси на `127.0.0.1:2080`
+- `packaging/linux/PKGBUILD` + `way.desktop` — скелет Arch-пакета (установка в `/opt/way`, запуск из `/usr/bin`)
+- Импорт/экспорт бэкапов и открытие ссылок через `xdg-open` уже работают
+- В комплектном бинарнике `waycore` уже линкованы sing-box и xray — ставить ядра отдельно не нужно
+
+Сборка на Arch:
+
+```bash
+sudo pacman -S --needed go ninja cmake clang gtk3 pkgconf
+# flutter: пакет `flutter-bin` из AUR или официальный tarball с flutter.dev
+git clone https://github.com/mel0k1/way.git
+cd way/core
+go build -tags "with_gvisor,with_quic,with_utls,with_clash_api,with_wireguard" -o ../waycore ./cmd/waycore
+cd ..
+flutter pub get
+flutter build linux --release
+./build/linux/x64/release/bundle/way
+```
+
+Для режима TUN без root выдайте ядру сетевые capability:
+
+```bash
+sudo setcap cap_net_admin,cap_net_bind_service+ep waycore
+```
+
+Ограничения: иконка трея пока отсутствует (appindicator в планах), Kill Switch — только Windows, проверка обновлений — Android/Windows.
 
 ### Лицензия
 
