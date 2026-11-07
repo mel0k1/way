@@ -119,17 +119,20 @@ go build -tags "with_gvisor,with_quic,with_utls,with_clash_api" -o waycore.exe .
 
 ## Linux (Arch / EndeavourOS)
 
-Linux support is in preparation — the groundwork is already in the codebase:
+Linux build ships the same Flutter app on GTK3 with a libayatana-appindicator tray:
 
 - `core/sysproxy_linux.go` — system proxy via `gsettings` (GNOME) or `kwriteconfig` (KDE Plasma); on other desktops Way still serves a local mixed proxy on `127.0.0.1:2080`
-- `packaging/linux/PKGBUILD` + `way.desktop` — Arch package skeleton (installs to `/opt/way`, launcher in `/usr/bin`)
-- Backup import/export and `xdg-open` links already work on Linux
+- `linux/` — Flutter GTK runner with close-to-tray support and the `way/window` channel (hide/show/quit)
+- Tray menu (open/connect/disconnect/quit) works on GNOME and KDE Plasma via appindicator
+- `packaging/linux/PKGBUILD` + `way.desktop` — Arch package (installs to `/opt/way`, launcher in `/usr/bin`, `cap_net_admin` granted to the core for TUN)
+- CI produces `Way-<tag>-linux-x86_64.tar.gz` and `Way-<tag>-linux-x86_64.AppImage` on every release
+- Backup import/export, `xdg-open` links and in-app update checks (AppImage asset) work on Linux
 - The bundled `waycore` binary contains both sing-box and xray — no separate core installation needed
 
 Build locally on Arch:
 
 ```bash
-sudo pacman -S --needed go ninja cmake clang gtk3 pkgconf
+sudo pacman -S --needed go ninja cmake clang gtk3 libayatana-appindicator pkgconf
 # flutter: `flutter-bin` from AUR, or the official tarball from flutter.dev
 git clone https://github.com/mel0k1/way.git
 cd way/core
@@ -146,7 +149,7 @@ For TUN mode without root, grant the core the network capability:
 sudo setcap cap_net_admin,cap_net_bind_service+ep waycore
 ```
 
-Known limits: no tray icon yet (appindicator is planned), Kill Switch is Windows-only, auto-update checks are Android/Windows for now.
+Known limit: Kill Switch is Windows-only.
 
 ## Disclaimer
 
@@ -242,17 +245,20 @@ go build -tags "with_gvisor,with_quic,with_utls,with_clash_api" -o waycore.exe .
 
 ### Linux (Arch / EndeavourOS)
 
-Поддержка Linux в подготовке — фундамент уже в коде:
+Linux-сборка — то же приложение на GTK3 с треем через libayatana-appindicator:
 
 - `core/sysproxy_linux.go` — системный прокси через `gsettings` (GNOME) или `kwriteconfig` (KDE Plasma); на остальных окружениях Way всё равно держит локальный mixed-прокси на `127.0.0.1:2080`
-- `packaging/linux/PKGBUILD` + `way.desktop` — скелет Arch-пакета (установка в `/opt/way`, запуск из `/usr/bin`)
-- Импорт/экспорт бэкапов и открытие ссылок через `xdg-open` уже работают
+- `linux/` — Flutter GTK-раннер со сворачиванием в трей и каналом `way/window` (hide/show/quit)
+- Меню трея (открыть/подключить/отключить/выйти) работает в GNOME и KDE Plasma через appindicator
+- `packaging/linux/PKGBUILD` + `way.desktop` — Arch-пакет (установка в `/opt/way`, запуск из `/usr/bin`, ядро получает `cap_net_admin` для TUN)
+- CI на каждый релиз собирает `Way-<tag>-linux-x86_64.tar.gz` и `Way-<tag>-linux-x86_64.AppImage`
+- Импорт/экспорт бэкапов, открытие ссылок через `xdg-open` и проверка обновлений (AppImage-ассет) работают
 - В комплектном бинарнике `waycore` уже линкованы sing-box и xray — ставить ядра отдельно не нужно
 
 Сборка на Arch:
 
 ```bash
-sudo pacman -S --needed go ninja cmake clang gtk3 pkgconf
+sudo pacman -S --needed go ninja cmake clang gtk3 libayatana-appindicator pkgconf
 # flutter: пакет `flutter-bin` из AUR или официальный tarball с flutter.dev
 git clone https://github.com/mel0k1/way.git
 cd way/core
@@ -269,7 +275,7 @@ flutter build linux --release
 sudo setcap cap_net_admin,cap_net_bind_service+ep waycore
 ```
 
-Ограничения: иконка трея пока отсутствует (appindicator в планах), Kill Switch — только Windows, проверка обновлений — Android/Windows.
+Ограничение: Kill Switch — только Windows.
 
 ### Лицензия
 

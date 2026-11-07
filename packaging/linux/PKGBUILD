@@ -6,8 +6,8 @@ pkgdesc="Way — cross-platform VPN client with sing-box and xray cores"
 arch=('x86_64')
 url="https://github.com/mel0k1/way"
 license=('GPL-3.0')
-depends=('gtk3')
-makedepends=('go' 'flutter-bin' 'ninja' 'cmake' 'clang' 'pkgconf')
+depends=('gtk3' 'libayatana-appindicator')
+makedepends=('go' 'flutter-bin' 'ninja' 'cmake' 'clang' 'pkgconf' 'gtk3' 'libayatana-appindicator' 'libcap')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('SKIP')
 options=('!strip')
@@ -32,6 +32,7 @@ package() {
   cp -r build/linux/x64/release/bundle/lib "$pkgdir/opt/way/"
   cp -r build/linux/x64/release/bundle/data "$pkgdir/opt/way/"
   install -Dm755 waycore "$pkgdir/opt/way/waycore"
+  setcap cap_net_admin+eip "$pkgdir/opt/way/waycore"
   install -dm755 "$pkgdir/usr/bin"
   ln -s /opt/way/way "$pkgdir/usr/bin/way"
   install -Dm644 packaging/linux/way.desktop \
