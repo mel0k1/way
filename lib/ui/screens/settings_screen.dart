@@ -16,8 +16,6 @@ import 'rule_detect_screen.dart';
 import 'split_apps_screen.dart';
 import 'uwp_loopback_screen.dart';
 
-/// Windows detection that survives every platform (dart:io throws nowhere
-/// here, but the try keeps the getter total).
 bool get _isWindows {
   try {
     return Platform.isWindows;

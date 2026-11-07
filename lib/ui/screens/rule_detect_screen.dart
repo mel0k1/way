@@ -7,9 +7,6 @@ import '../../core/vpn_bridge.dart';
 import '../../l10n.dart';
 import '../../state/app_state.dart';
 
-/// "Where does a domain go?" (Karing's diversion_rule_detect_screen): replays
-/// Way's routing pipeline client-side and, when the VPN is up, adds live
-/// evidence from actual connections.
 class RuleDetectScreen extends StatefulWidget {
   const RuleDetectScreen({super.key});
 
@@ -54,8 +51,6 @@ class _RuleDetectScreenState extends State<RuleDetectScreen> {
       _live = null;
       _liveOff = false;
     });
-    // Live evidence: real connections carrying this domain prove where the
-    // core actually sends it (covers the remote geosite/geoip steps too).
     if (state.vpn.phase == VpnPhase.connected) {
       final found = await _poller.findForDomain(domain);
       if (!mounted) return;

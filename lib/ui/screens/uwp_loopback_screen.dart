@@ -3,9 +3,6 @@ import 'package:flutter/material.dart';
 import '../../core/uwp.dart';
 import '../../l10n.dart';
 
-/// Windows-only: exempt Microsoft Store apps from loopback isolation so they
-/// can use Way's local proxy inbound (Karing's
-/// uwp_loopback_exemption_windows_screen).
 class UwpLoopbackScreen extends StatefulWidget {
   const UwpLoopbackScreen({super.key});
 

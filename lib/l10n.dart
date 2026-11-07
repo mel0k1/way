@@ -395,8 +395,6 @@ class L10n {
   String get clipboardImport => ru ? 'Импортировать' : 'Import';
   String get clipboardIgnore => ru ? 'Игнорировать' : 'Ignore';
 
-  // --- monitoring ------------------------------------------------------------
-
   String get monitoring => ru ? 'Мониторинг' : 'Monitoring';
   String get connectionsTitle => ru ? 'Живые соединения' : 'Live connections';
   String get connectionsSubtitle => ru

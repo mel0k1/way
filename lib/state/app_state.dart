@@ -83,8 +83,6 @@ class AppState extends ChangeNotifier {
   List<String> splitApps = [];
   String subUserAgent = 'v2rayTun/1.7.6';
   bool autoSelect = false;
-  /// Subscription ids whose group runs in "fastest of the group" mode
-  /// (per-group urltest, like Karing's custom urltest groups).
   Set<String> groupAuto = {};
   bool autoStart = false;
   bool connectOnLaunch = false;
@@ -195,7 +193,6 @@ class AppState extends ChangeNotifier {
     return rated.isEmpty ? null : rated.first;
   }
 
-  /// Best (lowest-latency) server inside one subscription group.
   Profile? bestProfileIn(String subId) {
     final rated = engineProfiles
         .where((p) => p.subId == subId && latencies[p.id] != null)
@@ -661,8 +658,6 @@ class AppState extends ChangeNotifier {
         return;
       }
     }
-    // Global auto pools every server into one urltest outbound; a group auto
-    // pools only its own subscription's servers (Karing-style group urltest).
     final groupPool = (autoSelect || groupAutoActive) && engine == 'singbox'
         ? engineProfiles
             .where((p) =>
@@ -965,7 +960,7 @@ class AppState extends ChangeNotifier {
   void removeSubscription(String id) {
     removeProfilesByIds([for (final p in profiles) if (p.subId == id) p.id]);
     subs.removeWhere((s) => s.id == id);
-    groupAuto.remove(id); // no servers left to auto-pick for it
+    groupAuto.remove(id);
     _persist();
     notifyListeners();
   }
@@ -973,8 +968,6 @@ class AppState extends ChangeNotifier {
   void select(String id) {
     selectedId = id;
     autoSelect = false;
-    // A manual pick inside an auto group means the user wants exactly that
-    // server — leave the group's fast-pick mode.
     for (final p in profiles) {
       if (p.id == id && p.subId.isNotEmpty) {
         groupAuto.remove(p.subId);
@@ -985,9 +978,6 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Toggles "fastest inside this subscription" mode. Conflicts with the
-  /// global fastest-server auto (they fight over the same selection), so
-  /// enabling one disables the other.
   void setGroupAuto(String subId, bool value) {
     if (subId.isEmpty) return;
     if (value) {
@@ -1458,8 +1448,6 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Current routing decisions in the form ConfigBuilder consumes — used by
-  /// the rule-detect screen to replay the pipeline offline.
   RoutingSettings get routingSettings => RoutingSettings(
         mode: routingMode,
         blockAds: blockAds,

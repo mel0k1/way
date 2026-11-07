@@ -4,8 +4,6 @@ import 'dart:io';
 
 import 'config_builder.dart';
 
-/// One live connection as reported by the sing-box Clash API
-/// (GET http://127.0.0.1:<clashApi>/connections).
 class LiveConnection {
   final String id;
   final String host;
@@ -44,7 +42,6 @@ class ConnectionsSnapshot {
   final List<LiveConnection> connections;
   final int totalUp;
   final int totalDown;
-  /// False when the Clash API is unreachable (the VPN is not running).
   final bool ok;
 
   const ConnectionsSnapshot({
@@ -63,13 +60,11 @@ class ConnectionsSnapshot {
       connections.fold(0, (n, c) => n + c.downSpeed);
 }
 
-/// Polls the sing-box Clash API for live connections and derives
-/// per-connection speeds from byte deltas between consecutive samples.
 class ConnectionsPoller {
   final HttpClient _client = HttpClient()
     ..connectionTimeout = const Duration(seconds: 2);
 
-  final Map<String, List<int>> _prev = {}; // id -> [upload, download]
+  final Map<String, List<int>> _prev = {};
   DateTime _prevTime = DateTime.now();
 
   Future<ConnectionsSnapshot> fetch() async {
@@ -125,8 +120,6 @@ class ConnectionsPoller {
           start: DateTime.tryParse('${item['start'] ?? ''}') ?? now,
         ));
       }
-      // Drop counters for connections that have already been closed, so a
-      // reconnecting host starts with a clean speed baseline.
       _prev.removeWhere((k, _) => !seen.contains(k));
       _prevTime = now;
       conns.sort((a, b) {
@@ -147,7 +140,6 @@ class ConnectionsPoller {
     }
   }
 
-  /// Kills one connection (Clash API: DELETE /connections/{id}).
   Future<bool> close(String id) async {
     try {
       final req = await _client.openUrl(
@@ -163,7 +155,6 @@ class ConnectionsPoller {
     }
   }
 
-  /// Kills every connection (Clash API: DELETE /connections).
   Future<bool> closeAll() async {
     try {
       final req = await _client.openUrl(
@@ -178,8 +169,6 @@ class ConnectionsPoller {
     }
   }
 
-  /// One-shot fetch used by the rule-detect screen to find live evidence for
-  /// a specific domain.
   Future<List<LiveConnection>> findForDomain(String domain) async {
     final snap = await fetch();
     if (!snap.ok || domain.isEmpty) return const [];

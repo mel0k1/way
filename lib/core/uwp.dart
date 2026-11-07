@@ -1,19 +1,12 @@
 import 'dart:io';
 
 class UwpApp {
-  /// PackageFamilyName, e.g. `Microsoft.WindowsCalculator_8wekyb3d8bbwe` —
-  /// the token CheckNetIsolation accepts in -n= / -d.
   final String family;
-  /// Package Name (non-localized), e.g. `Microsoft.WindowsCalculator`.
   final String name;
 
   const UwpApp(this.family, this.name);
 }
 
-/// Windows UWP (Microsoft Store) apps are blocked from reaching loopback
-/// endpoints by default — which breaks them in proxy mode (the system proxy
-/// lives on 127.0.0.1). Exempting a package via CheckNetIsolation lets it use
-/// the local inbound. Same mechanism Karing exposes on Windows.
 class UwpLoopback {
   static bool get supported {
     try {
@@ -23,8 +16,6 @@ class UwpLoopback {
     }
   }
 
-  /// All installed UWP packages with their display-ish name.
-  /// Uses PowerShell (Get-AppxPackage); the first run can take a few seconds.
   static Future<List<UwpApp>> installed() async {
     try {
       final res = await Process.run(
@@ -56,9 +47,6 @@ class UwpLoopback {
     }
   }
 
-  /// Package family names currently exempted from loopback isolation
-  /// (`CheckNetIsolation LoopbackExempt -s`). Output is localized, but SIDs
-  /// and package names are ASCII — parse name-like tokens instead of labels.
   static Future<Set<String>> exempted() async {
     try {
       final res = await Process.run(
@@ -80,12 +68,9 @@ class UwpLoopback {
     }
   }
 
-  /// Adds a loopback exemption. Requires administrator rights; returns false
-  /// when the command failed (typically access denied).
   static Future<bool> exempt(String family) =>
       _runAddRemove(['LoopbackExempt', '-a', '-n=$family']);
 
-  /// Removes a loopback exemption.
   static Future<bool> unexempt(String family) =>
       _runAddRemove(['LoopbackExempt', '-d', '-n=$family']);
 
@@ -103,7 +88,6 @@ class UwpLoopback {
   }
 
   static bool _looksLikeFamily(String s) {
-    // family = PackageName_PublisherHash, e.g. foo.bar_bazqux1
     final i = s.lastIndexOf('_');
     if (i <= 0 || i == s.length - 1) return false;
     final pkg = s.substring(0, i);

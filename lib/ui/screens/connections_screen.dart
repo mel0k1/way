@@ -10,8 +10,6 @@ import '../../state/app_state.dart';
 import '../motion.dart';
 import '../widgets/format.dart' show formatBytes, formatSpeed;
 
-/// Live connections viewer (Karing's net_connections_screen): what is flowing
-/// through the tunnel right now, with per-connection speeds and kill actions.
 class ConnectionsScreen extends StatefulWidget {
   const ConnectionsScreen({super.key});
 

@@ -1,25 +1,18 @@
 import 'config_builder.dart';
 
 enum DetectKind {
-  /// Rule matched — traffic leaves via the VPN.
   proxy,
 
-  /// Rule matched — traffic bypasses the tunnel.
   direct,
 
-  /// Rule matched — traffic is rejected.
   block,
 
-  /// Remote rule set (geosite/geoip) — cannot be evaluated offline.
   unknown,
 
-  /// Informational step that does not apply to a domain probe.
   skip,
 }
 
-/// One step of the routing pipeline walkthrough.
 class DetectStep {
-  /// Machine code: 'ads' | 'split' | 'custom' | 'ru' | 'final'.
   final String code;
   final String detail;
   final DetectKind kind;
@@ -32,10 +25,8 @@ class DetectResult {
   final bool isIp;
   final List<DetectStep> steps;
 
-  /// The outbound the traffic would leave through: 'proxy' | 'direct' | 'block'.
   final DetectKind verdict;
 
-  /// Which rule decided: e.g. 'domain_suffix: example.com' or 'final'.
   final String reason;
 
   const DetectResult({
@@ -47,12 +38,7 @@ class DetectResult {
   });
 }
 
-/// Client-side replay of the exact rule pipeline ConfigBuilder._singboxShell
-/// emits, so a domain probe answers "where does it go?" without the core
-/// running (Karing's diversion_rule_detect_screen, offline edition).
 class RouteDetect {
-  /// Strips scheme, userinfo, path, query, fragment and port; keeps the bare
-  /// domain or IP literal (IPv6 brackets removed).
   static String normalize(String raw) {
     var v = raw.trim();
     if (v.isEmpty) return '';
@@ -83,7 +69,6 @@ class RouteDetect {
       }
       return true;
     }
-    // Rough IPv6: hex groups separated by colons.
     return v.contains(':') && RegExp(r'^[0-9a-f:]+$').hasMatch(v);
   }
 
@@ -123,7 +108,7 @@ class RouteDetect {
         return false;
       case 'port':
         return false;
-      default: // suffix
+      default:
         return domain == pattern || domain.endsWith('.$pattern');
     }
   }
@@ -131,8 +116,6 @@ class RouteDetect {
   static List<String> _valuesOf(RouteRule r) =>
       r.value.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
-  /// Replays, in the exact order the sing-box config lists them, every
-  /// decision the core will make for [input].
   static DetectResult run(String input, RoutingSettings r) {
     final domain = normalize(input);
     final isIp = _isIp(domain);
@@ -142,7 +125,6 @@ class RouteDetect {
           domain: '', isIp: false, steps: const [], verdict: DetectKind.unknown, reason: '');
     }
 
-    // 1. Ad blocking — a remote geosite list, not checkable offline.
     if (r.blockAds) {
       steps.add(const DetectStep(
         'ads',
@@ -151,7 +133,6 @@ class RouteDetect {
       ));
     }
 
-    // 2. Process-based split tunneling — not applicable to a domain probe.
     final splitApps = r.splitMode == 'off' || r.splitApps.isEmpty
         ? const <String>[]
         : r.splitApps;
@@ -165,7 +146,6 @@ class RouteDetect {
       ));
     }
 
-    // 3. Custom rules — first match wins (sing-box route.rules order).
     for (final rule in r.customRules) {
       final values = _valuesOf(rule);
       if (values.isEmpty) continue;
@@ -175,7 +155,6 @@ class RouteDetect {
           hit = values.any((v) => _cidrContains(v, domain));
         }
       } else if (rule.type == 'port') {
-        // No port in a domain probe — nothing to match.
       } else {
         hit = values.any((v) => _matchDomain(v, domain, rule.type));
       }
@@ -202,7 +181,6 @@ class RouteDetect {
       ));
     }
 
-    // 4. "RU direct" mode — remote geosite/geoip lists, not checkable offline.
     if (r.mode == 'ru') {
       steps.add(const DetectStep(
         'ru',
@@ -211,7 +189,6 @@ class RouteDetect {
       ));
     }
 
-    // 5. Default outbound (final).
     final finalOutbound =
         splitApps.isNotEmpty && r.splitMode == 'include' ? 'direct' : 'proxy';
     steps.add(DetectStep('final', 'final → $finalOutbound', _kindOf(finalOutbound)));
