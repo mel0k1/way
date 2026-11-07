@@ -1,13 +1,13 @@
-//go:build !windows
+//go:build !windows && !linux
 
 package waycore
 
 import "os"
 
 func IsAdmin() bool {
-	return os.Geteuid() == 0
+        return os.Geteuid() == 0
 }
 
 func setSystemProxy(enable bool, addr string) error {
-	return nil
+        return nil
 }

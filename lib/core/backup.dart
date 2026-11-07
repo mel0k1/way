@@ -79,7 +79,7 @@ class BackupService {
         return false;
       }
     }
-    if (Platform.isWindows) {
+    if (Platform.isWindows || Platform.isLinux) {
       try {
         final location = await getSaveLocation(
           suggestedName: name,
@@ -106,7 +106,7 @@ class BackupService {
         return null;
       }
     }
-    if (Platform.isWindows) {
+    if (Platform.isWindows || Platform.isLinux) {
       try {
         final file = await openFile(acceptedTypeGroups: const [
           XTypeGroup(label: 'JSON', extensions: ['json']),
