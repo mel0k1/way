@@ -24,10 +24,8 @@ void main() {
       ),
     ));
     await tester.pump();
-    // ignore: avoid_print
     print('SLOT CONSTRAINTS: $captured');
     final mq = MediaQuery.of(slotContext!);
-    // ignore: avoid_print
     print('SLOT MediaQuery padding: ${mq.padding} viewPadding: ${mq.viewPadding}');
     expect(captured, isNotNull);
   });
@@ -47,10 +45,8 @@ void main() {
     final size = tester.getSize(find.byWidgetPredicate(
       (w) => w is Container && w.color == Colors.amber,
     ));
-    // ignore: avoid_print
     print('CENTER-WRAPPED CONTAINER SIZE: $size');
     final centerSize = tester.getSize(find.byType(Center));
-    // ignore: avoid_print
     print('CENTER SIZE: $centerSize');
   });
 }

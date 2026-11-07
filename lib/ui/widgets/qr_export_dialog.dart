@@ -28,8 +28,6 @@ Future<void> showQrExport(BuildContext context, Profile profile) async {
   );
 }
 
-/// QR transfer code: `way://import/<base64url of newline-joined links>`.
-/// Carries every profile plus subscription URLs to the phone in one scan.
 Future<void> showQrTransfer(BuildContext context, AppState state) async {
   final l10n = L10nScope.of(context);
   final lines = <String>[];

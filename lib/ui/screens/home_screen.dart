@@ -84,8 +84,6 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-/// Press feedback with a slight squish — an expressive touch for tappable
-/// cards on the home screen.
 class _Squish extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;

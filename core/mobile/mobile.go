@@ -186,9 +186,6 @@ func (s *CommandServer) startLocked(configContent string) error {
         return nil
 }
 
-// startWatchdogLocked keeps the Android tunnel healthy: it restarts the
-// sing-box instance when it dies and probes it through the local mixed
-// inbound to recover from silent tunnel death (network switch, sleep).
 func (s *CommandServer) startWatchdogLocked() {
         if s.watchStop != nil {
                 return
@@ -245,9 +242,6 @@ func (s *CommandServer) restart(reason string) {
         s.restartLocked(reason)
 }
 
-// restartLocked rebuilds the instance from the last known-good config.
-// Retries are damped by core.RestartBackoff driven by failStreak, which is only
-// reset once a tunnel probe succeeds. Caller must hold s.mu.
 func (s *CommandServer) restartLocked(reason string) {
         if time.Since(s.lastAttempt) < core.RestartBackoff(s.failStreak) {
                 return

@@ -70,12 +70,6 @@ class LinkParser {
   static final Random _rng = Random.secure();
   static int _seq = 0;
 
-  /// Collision-proof profile id: timestamp + monotonic sequence + crypto salt.
-  ///
-  /// The previous timestamp-only scheme produced identical ids when a
-  /// subscription was parsed in a tight loop (system clock granularity is
-  /// coarser than one parse iteration, notably on Windows), which made
-  /// several servers share one id and highlight together.
   static String genId() {
     final stamp = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
     final seq = (_seq++ & 0xFFF).toRadixString(36).padLeft(2, '0');
@@ -258,13 +252,9 @@ class LinkParser {
   static String _genId() => genId();
 }
 
-/// Id hygiene helpers shared by import, subscription updates and load-time
-/// repair of data written by older builds.
 class ProfileIds {
   ProfileIds._();
 
-  /// Reassigns empty/duplicate ids so every profile stays uniquely
-  /// addressable. Returns the number of ids that were changed.
   static int repair(List<Profile> profiles) {
     final seen = <String>{};
     var changed = 0;
@@ -278,8 +268,6 @@ class ProfileIds {
     return changed;
   }
 
-  /// Ensures [incoming] profiles carry ids that are unique among themselves
-  /// and among [existingIds] (ids of profiles that will stay in the list).
   static void ensureUnique(
     List<Profile> incoming, {
     Set<String> existingIds = const {},

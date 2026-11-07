@@ -1,4 +1,3 @@
-// ignore_for_file: avoid_print
 import 'dart:convert';
 import 'dart:io';
 import 'package:way/core/config_builder.dart';
@@ -12,7 +11,6 @@ void main() {
     if (!ok) failed = true;
   }
 
-  // 1. URI parsing
   final p = LinkParser.parse(
       'anytls://p%40ss@1.2.3.4:8443?sni=example.com&insecure=1&fp=chrome&alpn=h2,h3#MyNode');
   check(p != null, 'anytls uri parsed');
@@ -27,7 +25,6 @@ void main() {
     check(p.supportedOn('singbox'), 'supported on singbox');
     check(!p.supportedOn('xray'), 'not supported on xray');
 
-    // 2. sing-box config building
     final cfg = ConfigBuilder.singBoxConfig(
       p,
       tun: true,
@@ -41,7 +38,6 @@ void main() {
     check(s.contains('example.com'), 'tls server_name');
   }
 
-  // 3. link roundtrip (QR export)
   if (p != null) {
     final link = LinkBuilder.build(p);
     check(link != null && link.startsWith('anytls://'), 'link built');
@@ -53,7 +49,6 @@ void main() {
     }
   }
 
-  // 4. sing-box JSON import
   final fromJson = SubFormats.singboxOutboundToProfile({
     'type': 'anytls',
     'tag': 'node',
@@ -73,7 +68,6 @@ void main() {
     check(fromJson.sni == 'cdn.example.net', 'json sni');
   }
 
-  // 5. no default sni when absent
   final p3 = LinkParser.parse('anytls://secret@5.6.7.8:443#NoSni');
   check(p3 != null && p3.sni == '5.6.7.8', 'sni fallback to host');
 

@@ -2,10 +2,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-/// Material 3 Expressive wavy section divider: a thin sine line that drifts
-/// slowly, flanked by an optional label chip (e.g. "Favorites").
-///
-/// Respects the platform "remove animations" accessibility setting.
 class WavyDivider extends StatefulWidget {
   final String? label;
   final Color? color;

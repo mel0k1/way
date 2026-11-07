@@ -71,7 +71,6 @@ class _ConnectButtonState extends State<ConnectButton>
       _spin.stop();
     }
 
-    // Live speedometer: download bytes/s normalized to a 100 Mbps full scale.
     final gaugeValue =
         ((state.stats.downSpeed * 8 / 1e6) / 100).clamp(0.0, 1.0).toDouble();
 
@@ -95,8 +94,6 @@ class _ConnectButtonState extends State<ConnectButton>
                 _PulseRing(
                     controller: _pulse, delay: 0.5, color: scheme.primary),
               ],
-              // Plain decorative ring while idle; replaced by the live
-              // speedometer gauge once connected.
               if (!connected && !busy)
                 Container(
                   width: 204,
@@ -109,7 +106,6 @@ class _ConnectButtonState extends State<ConnectButton>
                     ),
                   ),
                 ),
-              // Expressive loading halo: a rotating gradient arc while busy.
               if (busy)
                 AnimatedBuilder(
                   animation: _spin,
@@ -121,7 +117,6 @@ class _ConnectButtonState extends State<ConnectButton>
                     ),
                   ),
                 ),
-              // Live speedometer arc around the shield while connected.
               if (connected)
                 TweenAnimationBuilder<double>(
                   tween: Tween(begin: 0, end: gaugeValue),
@@ -137,7 +132,6 @@ class _ConnectButtonState extends State<ConnectButton>
                     ),
                   ),
                 ),
-              // Springy bounce whenever the connection state flips.
               TweenAnimationBuilder<double>(
                 key: ValueKey(connected),
                 tween: Tween(begin: 0.9, end: 1.0),
@@ -160,7 +154,6 @@ class _ConnectButtonState extends State<ConnectButton>
   }
 }
 
-/// The morphing button body: a circle when idle, a shield once connected.
 class _MorphBody extends StatelessWidget {
   final bool connected;
   final bool busy;
@@ -228,8 +221,6 @@ class _MorphBody extends StatelessWidget {
   }
 }
 
-/// Material 3 Expressive-style wavy circular progress: a ring whose radius
-/// ripples with a travelling sine wave while the connection is busy.
 class _WavyRingPainter extends CustomPainter {
   final double phase;
   final Color color;
@@ -275,8 +266,6 @@ class _WavyRingPainter extends CustomPainter {
       oldDelegate.phase != phase || oldDelegate.color != color;
 }
 
-/// Rotating gradient halo around the outer ring while connecting — the
-/// classic expressive "working" indicator.
 class _SpinHaloPainter extends CustomPainter {
   final double rotation;
   final Color color;
@@ -348,8 +337,6 @@ class _PulseRing extends StatelessWidget {
   }
 }
 
-/// Live download-speed gauge wrapping the connected button: a 270° arc with
-/// a gradient sweep and a soft track.
 class _SpeedGaugePainter extends CustomPainter {
   final double value;
   final Color track;
@@ -410,9 +397,6 @@ class _SpeedGaugePainter extends CustomPainter {
       oldDelegate.colorHigh != colorHigh;
 }
 
-/// Interpolates between a circle contour (t = 0) and a shield contour
-/// (t = 1). Both contours share the same anchor (top center) and winding
-/// direction, so the morph stays clean without path-ops libraries.
 class _ShapeMorphPainter extends CustomPainter {
   final double t;
   final Color fill;

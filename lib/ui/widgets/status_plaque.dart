@@ -8,9 +8,6 @@ import '../../state/app_state.dart';
 import '../motion.dart';
 import 'package:provider/provider.dart';
 
-/// Status plaque under the connect button: a pill that morphs with the VPN
-/// phase and runs a travelling wave across itself while connecting — the
-/// expressive version of a plain "Connecting…" label.
 class StatusPlaque extends StatefulWidget {
   const StatusPlaque({super.key});
 
@@ -89,7 +86,6 @@ class _StatusPlaqueState extends State<StatusPlaque>
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Travelling wave across the plaque while busy.
             if (busy)
               Positioned.fill(
                 child: AnimatedBuilder(
@@ -189,8 +185,6 @@ class _PlaqueIcon extends StatelessWidget {
   }
 }
 
-/// Two layered sine flows running across the plaque — read as motion, not
-/// noise, thanks to low amplitude and translucent strokes.
 class _WavyFlowPainter extends CustomPainter {
   final double phase;
   final Color color;

@@ -331,7 +331,6 @@ class L10n {
   String get addFavorite => ru ? 'В избранное' : 'Add to favorites';
   String get removeFavorite => ru ? 'Из избранного' : 'Remove from favorites';
 
-  // Subscription profile groups in the servers list.
   String get manualGroup => ru ? 'Добавленные вручную' : 'Added manually';
   String get subscriptionFallback => ru ? 'Подписка' : 'Subscription';
   String serversPlural(int n) {
@@ -358,7 +357,6 @@ class L10n {
       ? 'Слишком много серверов для одного QR — используйте резервную копию'
       : 'Too many servers for one QR — use a backup file instead';
 
-  // Domain split — "send this site around the VPN".
   String get bypassSite => ru ? 'Сайт мимо VPN' : 'Site bypass';
   String get bypassSiteLabel => ru ? 'Домен или суффикс' : 'Domain or suffix';
   String get bypassSiteHint => ru ? 'example.com' : 'example.com';

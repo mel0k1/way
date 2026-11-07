@@ -92,7 +92,6 @@ class _WayShellState extends State<WayShell>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // Clipboard reads are only reliable on Android while resumed.
       context.read<AppState>().sniffClipboard();
     }
   }
@@ -117,7 +116,6 @@ class _WayShellState extends State<WayShell>
           ),
         ),
       );
-      // The banner vanished without importing — stop suggesting this text.
       controller.closed.then((reason) {
         if (state.pendingClipboard != null &&
             state.pendingClipboard == text) {

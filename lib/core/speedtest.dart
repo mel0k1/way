@@ -1,17 +1,11 @@
 import 'dart:io';
 
-/// Download speed test through the current route.
-///
-/// When the tunnel is up all traffic goes through the VPN, so a plain HTTPS
-/// download measures the tunnel; when it is down it measures the direct link.
 class SpeedTester {
   static const _endpoints = [
     'https://speed.cloudflare.com/__down?bytes=52428800',
     'https://proof.ovh.net/files/10Mb.dat',
   ];
 
-  /// Streams a random payload for at most [limit] and returns Mbps.
-  /// Returns null when nothing could be downloaded.
   static Future<double?> measure({Duration limit = const Duration(seconds: 8)}) async {
     for (final url in _endpoints) {
       final result = await _download(url, limit);
@@ -36,7 +30,6 @@ class SpeedTester {
           if (watch.elapsed >= limit) break;
         }
       } catch (_) {
-        // Truncated on purpose or by the proxy — the sample still counts.
       }
       watch.stop();
       final seconds = watch.elapsedMilliseconds / 1000.0;

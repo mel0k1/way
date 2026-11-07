@@ -2,12 +2,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-/// Material 3 Expressive ambient background.
-///
-/// Four soft radial colour washes on the surface colour. The two strongest
-/// washes slowly drift on independent sine oscillators so the backdrop feels
-/// alive; the movement is isolated behind a [RepaintBoundary] and respects
-/// the system "remove animations" accessibility setting.
 class AppBackground extends StatefulWidget {
   const AppBackground({super.key});
 
@@ -48,7 +42,6 @@ class _AppBackgroundState extends State<AppBackground>
           animation: _drift,
           builder: (context, _) {
             final t = animate ? _drift.value : 0.0;
-            // Two independent oscillators (phase-shifted sines).
             final o1 = math.sin(t * 2 * math.pi);
             final o2 = math.sin((t + 0.38) * 2 * math.pi);
 

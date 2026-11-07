@@ -33,8 +33,6 @@ type StartRequest struct {
         SystemProxy     bool            `json:"system_proxy,omitempty"`
         SystemProxyPort int             `json:"system_proxy_port,omitempty"`
         KillSwitch      bool            `json:"kill_switch,omitempty"`
-        // ProbePort is the local proxy inbound the watchdog probes for tunnel
-        // liveness. 0 disables the probe (the engine-down watchdog stays active).
         ProbePort int `json:"probe_port,omitempty"`
 }
 
@@ -88,8 +86,6 @@ func buildContext() (context.Context, context.CancelFunc) {
 func (m *Manager) Start(req StartRequest) error {
         m.mu.Lock()
         defer m.mu.Unlock()
-        // Idempotent start: while the watchdog holds a desired connection the
-        // engine may be mid-restart; re-issuing /start must not conflict.
         if m.desired && (m.instance != nil || m.xray.Running()) {
                 return nil
         }
@@ -227,9 +223,6 @@ func (m *Manager) startWatchdogLocked() {
                                         continue
                                 }
                                 m.mu.Unlock()
-                                // Engine objects are alive; verify the tunnel
-                                // actually passes traffic. Skip the first 15s
-                                // so a fresh start can settle.
                                 if probePort <= 0 || time.Since(started) < 15*time.Second {
                                         continue
                                 }
@@ -252,10 +245,6 @@ func (m *Manager) startWatchdogLocked() {
         }()
 }
 
-// restartLocked tears the engines down and starts them again from the last
-// known-good request. Retries are damped by an exponential backoff driven by
-// failStreak, which is only reset once a tunnel probe succeeds.
-// Caller must hold m.mu.
 func (m *Manager) restartLocked(reason string) {
         if time.Since(m.lastAttempt) < RestartBackoff(m.failStreak) {
                 return

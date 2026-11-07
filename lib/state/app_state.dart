@@ -38,9 +38,6 @@ class SubEntry extends Subscription {
   });
 }
 
-/// One collapsible section of the servers list: the virtual "Favorites"
-/// bucket on top, one group per subscription (keeping the subscription's
-/// own VPN name), or the bucket of manually added servers.
 class ServerGroup {
   final String subId;
   final String name;
@@ -97,15 +94,11 @@ class AppState extends ChangeNotifier {
   bool closeToTray = true;
   bool onboardingDone = true;
   List<RouteRule> customRules = [];
-  // Server list controls (search / sort) shared with the servers screen.
   String serverQuery = '';
-  String serverSort = 'default'; // default | latency | name
-  // Speed test of the current route.
+  String serverSort = 'default';
   bool speedTesting = false;
   double? speedtestMbps;
-  // Clipboard sniffer suggestion ("found vless:// — import?").
   String? pendingClipboard;
-  // Loopback HTTP API for external control.
   bool localApi = false;
   int localApiPort = 20718;
   String? apiToken;
@@ -170,9 +163,6 @@ class AppState extends ChangeNotifier {
   );
   SharedPreferences? _prefs;
 
-  // --- auto-reconnect watchdog state ---
-  /// True while the user wants the VPN up (set by connect(), cleared by
-  /// disconnect() or a fatal error). Drives automatic reconnection.
   bool _userWantsConnected = false;
   int _reconnectAttempt = 0;
   Timer? _reconnectTimer;
@@ -230,14 +220,11 @@ class AppState extends ChangeNotifier {
   bool get isDesktop =>
       !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
-  /// True while the watchdog holds a pending reconnect for a dropped session
-  /// (the UI shows a "reconnecting · attempt N" hint).
   bool get isReconnecting =>
       _userWantsConnected &&
       vpn.phase == VpnPhase.stopped &&
       _reconnectTimer != null;
 
-  /// Current watchdog attempt number (1-based) when [isReconnecting].
   int get reconnectAttempt => _reconnectAttempt;
 
   String get effectiveLocale {
@@ -333,8 +320,6 @@ class AppState extends ChangeNotifier {
     if (localApi) {
       unawaited(startLocalApi());
     }
-    // Desktop-only clipboard sniffing loop — Android reads the clipboard on
-    // app resume instead (background reads are restricted since Android 10).
     if (isDesktop) {
       _clipboardTimer = Timer.periodic(const Duration(seconds: 9), (_) {
         unawaited(sniffClipboard());
@@ -397,9 +382,6 @@ class AppState extends ChangeNotifier {
           profiles = list
               .map((e) => Profile.fromJson(e as Map<String, dynamic>))
               .toList();
-          // Older builds could store several profiles under one id (timestamp
-          // collisions while parsing a subscription) — repairing keeps each
-          // server individually selectable.
           final repaired = ProfileIds.repair(profiles);
           if (repaired > 0) {
             await _secure.write(
@@ -508,11 +490,6 @@ class AppState extends ChangeNotifier {
       } catch (_) {}
     }
     final s = await bridge.status();
-    // In-flight guards: while connect()/disconnect() is awaiting the bridge,
-    // the core can transiently report the opposite phase (e.g. desktop /start
-    // takes seconds to arm TUN + kill switch, so /status still says stopped).
-    // Do not let the UI regress and do not trigger the watchdog in that
-    // window — connect() itself reports the outcome when it returns.
     var phase = s.phase;
     if (phase == VpnPhase.stopped &&
         s.error == null &&
@@ -541,7 +518,6 @@ class AppState extends ChangeNotifier {
       vpn = observed;
       notifyListeners();
     }
-    // --- auto-reconnect watchdog bookkeeping ---
     if (phase == VpnPhase.connected) {
       _connectingSince = null;
       _reconnectAttempt = 0;
@@ -578,8 +554,6 @@ class AppState extends ChangeNotifier {
     ));
   }
 
-  /// Tears the core down without clearing the reconnect intent, so the
-  /// watchdog can rebuild the session afterwards.
   Future<void> _forceCycle() async {
     try {
       await bridge.disconnect();
@@ -787,8 +761,6 @@ class AppState extends ChangeNotifier {
   }
 
   void handleDeepLink(String raw, {int depth = 0}) {
-    // Wrapper schemes (clash://…?url=…) unwrap recursively; a crafted QR can
-    // nest them in a loop — cap the depth instead of overflowing the stack.
     if (depth > 5) {
       log('deep link ignored: too deeply nested');
       return;
@@ -809,7 +781,6 @@ class AppState extends ChangeNotifier {
       log('deep link ignored: empty payload');
       return;
     }
-    // QR transfer payload: way://import/<base64url of newline-joined links>
     if (fromWay && !url.contains('://')) {
       final before = profiles.length;
       addFromLink(url);
@@ -908,8 +879,6 @@ class AppState extends ChangeNotifier {
 
   void addSubscription(String url, String name) {
     final sub = Subscription(
-      // Collision-proof id: two subscriptions added in the same millisecond
-      // (QR transfer with several subs) must not share one id.
       id: 'sub${LinkParser.genId()}',
       name: name.isEmpty ? 'Subscription' : name,
       url: url,
@@ -919,9 +888,6 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> updateSubscription(Subscription sub) async {
-    // Guard against overlapping refreshes of the same subscription (manual
-    // tap + auto-update timer) — two interleaved fetches would duplicate the
-    // profile list.
     if (_updatingSubs.contains(sub.id)) return;
     _updatingSubs.add(sub.id);
     try {
@@ -930,8 +896,6 @@ class AppState extends ChangeNotifier {
         userAgent: subUserAgent,
         hwid: hwid,
       );
-      // Keep ids stable for servers that survived the refresh: selection,
-      // latency cache and chain links stay attached to the same server.
       String fingerprint(Profile p) =>
           '${p.protocol}|${p.server}|${p.port}|${p.uuid ?? ''}|${p.password ?? ''}';
       final oldIdsByFp = {
@@ -945,8 +909,6 @@ class AppState extends ChangeNotifier {
         final stable = oldIdsByFp[fingerprint(p)];
         if (stable == null) continue;
         p.id = stable;
-        // Favorite pins and chain links live on the old objects — carry them
-        // over, otherwise every subscription refresh silently resets them.
         final old = oldById[stable];
         if (old != null) {
           p.favorite = old.favorite;
@@ -985,9 +947,6 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// Bulk removal for the servers screen: drops whole groups of profiles at
-  /// once, repairs the selection, unlinks chain references pointing at the
-  /// removed servers and clears their latency cache entries in one pass.
   void removeProfilesByIds(Iterable<String> ids) {
     final doomed = ids.toSet();
     if (doomed.isEmpty) return;
@@ -1072,8 +1031,6 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- server list: favorites / search / sort -------------------------------
-
   void toggleFavorite(String id) {
     for (final p in profiles) {
       if (p.id == id) p.favorite = !p.favorite;
@@ -1093,11 +1050,6 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Servers grouped for the list UI: the virtual favorites bucket on top,
-  /// then one group per subscription in first-appearance order (the group
-  /// carries the subscription's own VPN name), then manually added servers.
-  /// Honors [serverQuery] and [serverSort] inside every bucket; buckets that
-  /// match nothing are dropped, so search never shows empty groups.
   List<ServerGroup> get serverGroups {
     final q = serverQuery.toLowerCase();
     bool match(Profile p) =>
@@ -1161,8 +1113,6 @@ class AppState extends ChangeNotifier {
     return result;
   }
 
-  // --- speed test ------------------------------------------------------------
-
   Future<void> runSpeedTest() async {
     if (speedTesting) return;
     speedTesting = true;
@@ -1181,8 +1131,6 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     }
   }
-
-  // --- clipboard sniffer -----------------------------------------------------
 
   static const _clipSchemes = [
     'vless://',
@@ -1211,8 +1159,6 @@ class AppState extends ChangeNotifier {
       }
       final lower = text.toLowerCase();
       if (!_clipSchemes.any(lower.startsWith)) return;
-      // Subscriptions and plain config links both qualify; anything already
-      // sitting in the profiles list is ignored.
       if (profiles.any((p) => LinkBuilder.build(p) == text)) return;
       _lastClipboardSeen = text;
       pendingClipboard = text;
@@ -1241,8 +1187,6 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- file import (Clash YAML / sing-box JSON / link lists) ------------------
-
   Future<void> importFromFile() async {
     final raw = await FileFormats.pickText();
     if (raw == null) return;
@@ -1254,8 +1198,6 @@ class AppState extends ChangeNotifier {
     log('file import: $lastImportCount profile(s)');
     notifyListeners();
   }
-
-  // --- local HTTP API ---------------------------------------------------------
 
   Future<void> startLocalApi() async {
     try {
@@ -1566,8 +1508,6 @@ class AppState extends ChangeNotifier {
           .map((e) => Profile.fromJson(e as Map<String, dynamic>))
           .where((p) => p.protocol.isNotEmpty && p.server.isNotEmpty)
           .toList();
-      // A backup may carry duplicate ids (legacy exports, hand-edited files);
-      // without this the "several servers highlight at once" bug returns.
       ProfileIds.ensureUnique(importedProfiles);
       final importedSubs = ((data['subscriptions'] as List?) ?? const [])
           .map((e) => Subscription.fromJson(e as Map<String, dynamic>))
@@ -1661,8 +1601,6 @@ class AppState extends ChangeNotifier {
     try {
       final file = File(path);
       if (!file.existsSync()) return const [];
-      // Read at most the last 256 KB — the screen refreshes every second and
-      // a long session can grow the log to many megabytes.
       const maxBytes = 256 * 1024;
       RandomAccessFile? raf;
       try {

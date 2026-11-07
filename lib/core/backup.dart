@@ -5,7 +5,6 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-/// Generic text/config file picker used by the Clash/sing-box import.
 class FileFormats {
   static Future<String?> pickText() async {
     if (kIsWeb) return null;

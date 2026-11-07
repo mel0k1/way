@@ -28,8 +28,6 @@ class ProfileTile extends StatefulWidget {
 }
 
 class _ProfileTileState extends State<ProfileTile> {
-  /// Whether the stretched details card is open. Follows [ProfileTile.selected]
-  /// automatically, but the user can collapse it with a second tap.
   bool _expanded = false;
 
   Color _latencyColor(ColorScheme scheme) {
@@ -180,8 +178,6 @@ class _ProfileTileState extends State<ProfileTile> {
               ),
             ),
           ),
-          // Container transform: the tile stretches into a details card once
-          // selected; a second tap folds it back.
           AnimatedSize(
             duration: WayMotion.medium,
             curve: Curves.easeOutCubic,
@@ -202,8 +198,6 @@ class _ProfileTileState extends State<ProfileTile> {
     );
   }
 
-  /// Classic long-press menu — the same actions as the expanded card, for
-  /// power users on big subscription lists.
   Future<void> _showContextMenu(
     BuildContext context,
     AppState state,
@@ -355,7 +349,6 @@ class _ProfileTileState extends State<ProfileTile> {
     final raw = controller.text.trim().toLowerCase();
     controller.dispose();
     if (ok != true) return;
-    // Accept full URLs too: https://example.com/page → example.com.
     final domain = raw
         .replaceFirst(RegExp(r'^[a-z0-9]+://'), '')
         .split('/')
@@ -462,8 +455,6 @@ class _ProfileTileState extends State<ProfileTile> {
   }
 }
 
-/// Protocol badge wrapped in a mini latency gauge: a 270° arc whose fill
-/// reflects ping quality and whose color encodes the latency bucket.
 class _LatencyBadge extends StatelessWidget {
   final String label;
   final int? latency;
@@ -481,7 +472,6 @@ class _LatencyBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Quality 0..1 — 1200ms+ reads as an empty gauge.
     final value =
         latency == null ? 0.0 : 1.0 - (latency! / 1200).clamp(0.0, 1.0);
     return SizedBox(
@@ -534,8 +524,6 @@ class _LatencyBadge extends StatelessWidget {
   }
 }
 
-/// 270° mini gauge used by [_LatencyBadge]. Starts top-left, sweeps clockwise,
-/// leaves a breathing gap at the top.
 class _GaugeArcPainter extends CustomPainter {
   final double value;
   final Color color;
@@ -588,8 +576,6 @@ class _GaugeArcPainter extends CustomPainter {
       oldDelegate.trackOnly != trackOnly;
 }
 
-/// Expanded body of the container transform: raw connection details plus the
-/// quick actions that used to live only in the popup menu.
 class _DetailsBody extends StatelessWidget {
   final Profile profile;
   final Profile? chain;

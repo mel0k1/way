@@ -213,7 +213,6 @@ class StatusCard extends StatelessWidget {
   }
 }
 
-/// Springy pill shown while the watchdog is scheduling a reconnect.
 class _WatchdogChip extends StatelessWidget {
   final int attempt;
 
@@ -254,7 +253,6 @@ class _WatchdogChip extends StatelessWidget {
   }
 }
 
-/// Slow, calm wave underline — a quiet "alive" signal while connected.
 class _WaveLine extends StatefulWidget {
   const _WaveLine();
 
@@ -272,7 +270,6 @@ class _WaveLineState extends State<_WaveLine>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Respect the platform "remove animations" accessibility setting.
     final disabled = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     if (disabled && _c.isAnimating) {
       _c.stop();
@@ -340,8 +337,6 @@ class _WaveLinePainter extends CustomPainter {
       oldDelegate.phase != phase || oldDelegate.color != color;
 }
 
-/// Speed test chip: measures download through the current route and shows
-/// the result inline.
 class _SpeedTestRow extends StatelessWidget {
   final AppState state;
 

@@ -2,10 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-/// Loopback-only HTTP API so external tools (scripts, hotkeys, widgets) can
-/// drive Way: status, servers, select, connect, disconnect.
-///
-/// Every request except /ping must carry `Authorization: Bearer <token>`.
 class LocalApiServer {
   final Future<Map<String, dynamic>> Function() status;
   final Future<List<Map<String, dynamic>>> Function() servers;

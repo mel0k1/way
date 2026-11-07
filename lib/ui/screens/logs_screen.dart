@@ -22,8 +22,6 @@ class _LogsScreenState extends State<LogsScreen> {
     super.dispose();
   }
 
-  /// Keeps the newest line visible, but never fights the reader: only snaps
-  /// to the bottom when the view was already there (or on the first fill).
   void _follow(int count) {
     if (count == _lastCount) return;
     final nearBottom = !_scroll.hasClients ||

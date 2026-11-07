@@ -7,9 +7,6 @@ import 'package:system_tray/system_tray.dart';
 import '../l10n.dart';
 import 'vpn_bridge.dart';
 
-/// Windows tray controller with a live "gauge": the icon reflects the VPN
-/// phase (off / connecting amber / connected green) and the tooltip streams
-/// the active server plus live throughput.
 class TrayController {
   final SystemTray _tray = SystemTray();
   static const _window = MethodChannel('way/window');
@@ -98,9 +95,6 @@ class TrayController {
   String _fmt(double? mbps) =>
       (mbps ?? 0).toStringAsFixed(mbps != null && mbps >= 10 ? 0 : 1);
 
-  /// Called from the app tick every ~2s. Cheap when nothing changed: the
-  /// icon/menu only update on phase or locale flips, the tooltip only when
-  /// its composed text differs.
   Future<void> update({
     required VpnPhase phase,
     required L10n l10n,

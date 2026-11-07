@@ -5,7 +5,6 @@ import 'package:flutter/physics.dart';
 
 import '../motion.dart';
 
-/// One destination for [ExpressiveNavBar].
 class ExpressiveNavDestination {
   final IconData icon;
   final IconData activeIcon;
@@ -18,13 +17,6 @@ class ExpressiveNavDestination {
   });
 }
 
-/// Material 3 Expressive navigation bar.
-///
-/// A floating stadium bar with a pill indicator that glides between
-/// destinations using real spring physics (interruptible, velocity-carrying —
-/// the Flutter counterpart of MotionScheme.expressive() spatial springs),
-/// squishes while moving fast, and pops the active icon with an overshoot
-/// bounce. Icons crossfade outlined → filled.
 class ExpressiveNavBar extends StatefulWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -46,7 +38,6 @@ class _ExpressiveNavBarState extends State<ExpressiveNavBar>
   late final AnimationController _mover =
       AnimationController.unbounded(vsync: this);
 
-  /// Expressive spatial spring from the shared motion tokens.
   static final SpringDescription _spring = WayMotion.springDesc;
 
   double _lastWidth = 0;
@@ -92,10 +83,6 @@ class _ExpressiveNavBarState extends State<ExpressiveNavBar>
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-        // Fixed-height wrapper: the bar always reports exactly 74 + 16 dp to
-        // its parent slot, whatever constraints the slot provides. An
-        // expanding Center here would fill any bounded slot (e.g. if a host
-        // scaffold ever hands it body-like constraints) and swallow the body.
         child: SizedBox(
           height: 74,
           child: Center(
@@ -125,7 +112,6 @@ class _ExpressiveNavBarState extends State<ExpressiveNavBar>
                   builder: (context, constraints) {
                     final w = constraints.maxWidth;
                     if (!_snapped || w != _lastWidth) {
-                      // First layout or window resize: snap without animation.
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         if (mounted) setState(() => _snapTo(w));
                       });
@@ -133,7 +119,6 @@ class _ExpressiveNavBarState extends State<ExpressiveNavBar>
                     return Stack(
                       alignment: Alignment.centerLeft,
                       children: [
-                        // Sliding, squishing pill indicator.
                         if (_snapped)
                           AnimatedBuilder(
                             animation: _mover,

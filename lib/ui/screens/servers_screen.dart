@@ -18,7 +18,6 @@ class ServersScreen extends StatefulWidget {
 }
 
 class _ServersScreenState extends State<ServersScreen> {
-  /// Collapsed group keys: 'fav', 'manual' or the subscription id.
   final Set<String> _collapsed = {};
 
   String _key(ServerGroup g) {
@@ -28,7 +27,6 @@ class _ServersScreenState extends State<ServersScreen> {
   }
 
   bool _isCollapsed(ServerGroup g, bool searching) {
-    // While searching every group expands so no hit can hide behind a fold.
     if (searching) return false;
     return _collapsed.contains(_key(g));
   }
@@ -59,11 +57,8 @@ class _ServersScreenState extends State<ServersScreen> {
     );
     if (ok != true) return;
     if (group.subId.isEmpty) {
-      // Manually added servers — drop the whole bucket by ids.
       state.removeProfilesByIds([for (final p in group.profiles) p.id]);
     } else {
-      // Subscription profile: its servers would be refetched on the next
-      // update, so remove the subscription itself along with the servers.
       state.removeSubscription(group.subId);
     }
     if (!mounted) return;
@@ -85,8 +80,6 @@ class _ServersScreenState extends State<ServersScreen> {
     final visibleCount =
         groups.fold<int>(0, (n, g) => n + g.profiles.length);
 
-    // Slot plan: index 0 is the auto tile, then per group a header slot and
-    // a tile-block slot (the block itself collapses via AnimatedSize).
     final slots = <_Slot>[];
     slots.add(const _Slot.auto());
     for (var gi = 0; gi < groups.length; gi++) {
@@ -349,22 +342,6 @@ class _ServersScreenState extends State<ServersScreen> {
         final key = _key(group);
         if (!_collapsed.remove(key)) _collapsed.add(key);
       }),
-      autoActive: autoActive,
-      onAuto: canAuto
-          ? () {
-              state.setGroupAuto(group.subId, !autoActive);
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(!autoActive
-                    ? l10n.groupAutoOn(title)
-                    : l10n.groupAutoOff(title)),
-                behavior: SnackBarBehavior.floating,
-                width: 340,
-              ));
-            }
-          : null,
-      // Favorites is a virtual view — deleting it would mean deleting every
-      // favorited server across all profiles, so no bulk action here.
       onDelete: group.favorite
           ? null
           : () => _confirmDeleteGroup(context, state, group, title),
@@ -391,12 +368,7 @@ class _ServersScreenState extends State<ServersScreen> {
                     index: j,
                     child: ProfileTile(
                       profile: group.profiles[j],
-                      // Compare with the resolved selection (auto-group best
-                      // or first-profile fallback) so the highlight always
-                      // matches what connect() will actually use — including
-                      // a group running fast-pick mode.
-                      selected: group.profiles[j].id ==
-                              state.effectiveProfile?.id &&
+                      selected: group.profiles[j].id == state.selected?.id &&
                           !state.autoSelect,
                       latency: state.latencies[group.profiles[j].id],
                     ),
@@ -407,8 +379,6 @@ class _ServersScreenState extends State<ServersScreen> {
   }
 }
 
-/// Lightweight slot descriptor for the grouped list:
-/// 0 = auto tile, 1 = group header, 2 = group tile block.
 class _Slot {
   final int kind;
   final int group;
@@ -420,9 +390,6 @@ class _Slot {
   const _Slot.block(this.group) : kind = 2;
 }
 
-/// Section header of a server group: icon, the subscription's own VPN name,
-/// a server count, a collapse chevron, a per-group fast-pick toggle and (for
-/// deletable groups) a bulk delete button.
 class _GroupHeader extends StatelessWidget {
   final ServerGroup group;
   final String title;
@@ -614,8 +581,6 @@ class _Entrance extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Staggered expressive entrance: slide + fade with a slight spring
-    // overshoot, capped so long lists don't wait forever.
     final delay = (index.clamp(0, 10) * 45) / 600.0;
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),

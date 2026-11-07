@@ -5,9 +5,6 @@ import 'package:way/core/profile.dart';
 void main() {
   group('LinkParser.genId', () {
     test('never collides in a tight loop (subscription import regression)', () {
-      // The old timestamp-only id collided when many lines were parsed faster
-      // than the system clock ticked (notably on Windows), which made several
-      // servers share one id and highlight together.
       final ids = List.generate(20000, (_) => LinkParser.genId());
       expect(ids.toSet().length, ids.length, reason: 'all ids must be unique');
     });

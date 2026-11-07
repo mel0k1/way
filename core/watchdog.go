@@ -11,9 +11,6 @@ import (
 	"time"
 )
 
-// probeTarget is a captive-portal style endpoint: any HTTP response (even 204,
-// 302 or 4xx) proves the tunnel passes traffic, while a transport error means
-// it does not.
 const probeTarget = "http://www.gstatic.com/generate_204"
 
 const (
@@ -24,10 +21,6 @@ const (
 	defaultMixedPort = 2080
 )
 
-// ProbeProxyPort checks that the tunnel actually passes traffic by making an
-// HTTP request through the local proxy inbound (sing-box mixed or xray http).
-// Loopback traffic never enters the TUN device, so the probe works in both
-// tun and proxy modes.
 func ProbeProxyPort(port int) bool {
 	if port <= 0 {
 		return true
@@ -57,8 +50,6 @@ func ProbeProxyPort(port int) bool {
 	return true
 }
 
-// RestartBackoff grows exponentially with the failure streak:
-// 5s, 10s, 20s, 40s, capped at 60s.
 func RestartBackoff(failStreak int) time.Duration {
 	d := restartBaseDelay
 	for i := 0; i < failStreak && d < restartMaxDelay; i++ {
@@ -70,9 +61,6 @@ func RestartBackoff(failStreak int) time.Duration {
 	return d
 }
 
-// ProbePortFromConfig extracts the local mixed inbound port from a sing-box
-// JSON config so the watchdog can probe it. Falls back to the default mixed
-// port (2080) used by Way's config builder.
 func ProbePortFromConfig(configJSON []byte) int {
 	var parsed struct {
 		Inbounds []struct {
