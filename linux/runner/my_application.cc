@@ -93,7 +93,7 @@ static void my_application_activate(GApplication* application) {
 
   g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
   self->window_channel = fl_method_channel_new(
-      fl_engine_get_messenger(fl_view_get_engine(view)), "way/window",
+      fl_engine_get_binary_messenger(fl_view_get_engine(view)), "way/window",
       FL_METHOD_CODEC(codec));
   fl_method_channel_set_method_call_handler(self->window_channel,
                                             window_channel_cb, self, nullptr);
