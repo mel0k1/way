@@ -1,6 +1,6 @@
 # Maintainer: mel0k1 <https://github.com/mel0k1/way>
 pkgname=way-vpn
-pkgver=1.9.0
+pkgver=1.10.0
 pkgrel=1
 pkgdesc="Way — cross-platform VPN client with sing-box and xray cores"
 arch=('x86_64')
