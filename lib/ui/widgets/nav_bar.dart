@@ -92,11 +92,7 @@ class _Pill extends StatelessWidget {
     return Container(
       height: 64,
       decoration: BoxDecoration(
-        color: scheme.surfaceContainer.withValues(alpha: dark ? 0.96 : 0.98),
         borderRadius: BorderRadius.circular(32),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.45),
-        ),
         boxShadow: [
           BoxShadow(
             color: scheme.shadow.withValues(alpha: dark ? 0.36 : 0.12),
@@ -105,7 +101,23 @@ class _Pill extends StatelessWidget {
           ),
         ],
       ),
-      child: child,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(32),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainer
+                  .withValues(alpha: dark ? 0.86 : 0.80),
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(
+                color: scheme.outlineVariant.withValues(alpha: 0.45),
+              ),
+            ),
+            child: child,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -213,21 +225,11 @@ class _CircleButton extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         customBorder: const CircleBorder(),
-        child: AnimatedContainer(
-          duration: WayMotion.medium,
-          curve: Curves.easeOutCubic,
+        child: Container(
           width: 64,
           height: 64,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: selected
-                ? scheme.secondaryContainer
-                : scheme.surfaceContainer.withValues(
-                    alpha: dark ? 0.96 : 0.98,
-                  ),
-            border: Border.all(
-              color: scheme.outlineVariant.withValues(alpha: 0.45),
-            ),
             boxShadow: [
               BoxShadow(
                 color: scheme.shadow.withValues(alpha: dark ? 0.36 : 0.12),
@@ -236,12 +238,34 @@ class _CircleButton extends StatelessWidget {
               ),
             ],
           ),
-          child: Icon(
-            icon,
-            size: 24,
-            color: selected
-                ? scheme.onSecondaryContainer
-                : scheme.onSurfaceVariant,
+          child: ClipOval(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: AnimatedContainer(
+                duration: WayMotion.medium,
+                curve: Curves.easeOutCubic,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: selected
+                      ? scheme.secondaryContainer.withValues(
+                          alpha: dark ? 0.88 : 0.84,
+                        )
+                      : scheme.surfaceContainer.withValues(
+                          alpha: dark ? 0.86 : 0.80,
+                        ),
+                  border: Border.all(
+                    color: scheme.outlineVariant.withValues(alpha: 0.45),
+                  ),
+                ),
+                child: Icon(
+                  icon,
+                  size: 24,
+                  color: selected
+                      ? scheme.onSecondaryContainer
+                      : scheme.onSurfaceVariant,
+                ),
+              ),
+            ),
           ),
         ),
       ),

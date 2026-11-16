@@ -206,7 +206,12 @@ class SettingsScreen extends StatelessWidget {
 
     return SafeArea(
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          32 + MediaQuery.paddingOf(context).bottom,
+        ),
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(4, 0, 0, 12),
@@ -539,6 +544,8 @@ class SettingsScreen extends StatelessWidget {
                 _AccentPicker(state: state),
                 const SizedBox(height: 4),
                 _WallpaperRow(state: state),
+                const SizedBox(height: 12),
+                _ArrangementSection(state: state),
                 const SizedBox(height: 12),
                 SegmentedButton<String>(
                   segments: [
@@ -879,7 +886,15 @@ class _AccentPicker extends StatelessWidget {
                       child: _AccentDot(
                         id: id,
                         selected: state.accent == id,
-                        onTap: () => state.setAccent(id),
+                        colorOverride:
+                            id == 'custom' ? state.accentCustomColor : null,
+                        onTap: () {
+                          if (id == 'custom') {
+                            _showCustomColorPicker(context, state);
+                          } else {
+                            state.setAccent(id);
+                          }
+                        },
                       ),
                     ),
                 ],
@@ -892,15 +907,243 @@ class _AccentPicker extends StatelessWidget {
   }
 }
 
+Future<void> _showCustomColorPicker(
+  BuildContext context,
+  AppState state,
+) {
+  return showDialog<void>(
+    context: context,
+    builder: (context) => _CustomColorDialog(state: state),
+  );
+}
+
+class _CustomColorDialog extends StatefulWidget {
+  final AppState state;
+
+  const _CustomColorDialog({required this.state});
+
+  @override
+  State<_CustomColorDialog> createState() => _CustomColorDialogState();
+}
+
+class _CustomColorDialogState extends State<_CustomColorDialog> {
+  late HSVColor _hsv = HSVColor.fromColor(widget.state.accentCustomColor);
+
+  void _apply() {
+    widget.state.setAccentCustom(
+      _hsv.toColor().toARGB32().toRadixString(16).substring(2),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10nScope.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final color = _hsv.toColor();
+    return AlertDialog(
+      title: Text(l10n.customColorTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.customColorHint,
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color,
+                  border: Border.all(
+                    color: scheme.outlineVariant.withValues(alpha: 0.6),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '#${color.toARGB32().toRadixString(16).substring(2).toUpperCase()}',
+                style: Theme.of(context)
+                    .textTheme
+                    .labelLarge
+                    ?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          LayoutBuilder(
+            builder: (context, box) {
+              final padWidth = box.maxWidth;
+              return GestureDetector(
+                onPanStart: (d) => _padTo(d.localPosition, padWidth),
+                onPanUpdate: (d) => _padTo(d.localPosition, padWidth),
+                onTapDown: (d) => _padTo(d.localPosition, padWidth),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: SizedBox(
+                    height: 170,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Positioned.fill(
+                          child: ColoredBox(
+                            color:
+                                HSVColor.fromAHSV(1, _hsv.hue, 1, 1).toColor(),
+                          ),
+                        ),
+                        Positioned.fill(
+                          child: DecoratedBox(
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                                colors: [Colors.white, Colors.transparent],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned.fill(
+                          child: DecoratedBox(
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [Colors.transparent, Colors.black],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          left: _hsv.saturation * padWidth - 11,
+                          top: (1 - _hsv.value) * 170 - 11,
+                          child: Container(
+                            width: 22,
+                            height: 22,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _hsv.toColor(),
+                              border:
+                                  Border.all(color: Colors.white, width: 3),
+                              boxShadow: const [
+                                BoxShadow(
+                                    color: Colors.black38, blurRadius: 4),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          LayoutBuilder(
+            builder: (context, box) {
+              return GestureDetector(
+                onPanStart: (d) => _onHue(d.localPosition, box.maxWidth),
+                onPanUpdate: (d) => _onHue(d.localPosition, box.maxWidth),
+                onTapDown: (d) => _onHue(d.localPosition, box.maxWidth),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: Stack(
+                    children: [
+                      Container(
+                        height: 26,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              for (var h = 0.0; h <= 360; h += 30)
+                                HSVColor.fromAHSV(1, h, 1, 1).toColor(),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        left: (_hsv.hue / 360).clamp(0.0, 1.0) *
+                                box.maxWidth -
+                            10,
+                        top: 3,
+                        child: Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: color,
+                            border:
+                                Border.all(color: Colors.white, width: 3),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.cancel),
+        ),
+        FilledButton(
+          onPressed: () {
+            _apply();
+            widget.state.setAccent('custom');
+            Navigator.pop(context);
+          },
+          child: Text(l10n.save),
+        ),
+      ],
+    );
+  }
+
+  void _padTo(Offset local, double width) {
+    setState(() {
+      _hsv = HSVColor.fromAHSV(
+        1,
+        _hsv.hue,
+        (local.dx / width).clamp(0.0, 1.0),
+        1 - (local.dy / 170).clamp(0.0, 1.0),
+      );
+    });
+    _apply();
+  }
+
+  void _onHue(Offset local, double width) {
+    setState(() {
+      _hsv = HSVColor.fromAHSV(
+        1,
+        ((local.dx / width).clamp(0.0, 0.999) * 360),
+        _hsv.saturation,
+        _hsv.value,
+      );
+    });
+    _apply();
+  }
+}
+
 class _AccentDot extends StatelessWidget {
   final String id;
   final bool selected;
+  final Color? colorOverride;
   final VoidCallback onTap;
 
   const _AccentDot({
     required this.id,
     required this.selected,
     required this.onTap,
+    this.colorOverride,
   });
 
   @override
@@ -908,11 +1151,13 @@ class _AccentDot extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final isAdaptive = id == 'adaptive';
     final isMono = id == 'mono';
-    final color = isAdaptive || isMono ? null : WayAccents.swatch(id);
+    final color = colorOverride ??
+        (isAdaptive || isMono ? null : WayAccents.swatch(id));
     return Tooltip(
       message: switch (id) {
         'adaptive' => L10nScope.of(context).accentAdaptive,
         'mono' => L10nScope.of(context).accentMono,
+        'custom' => L10nScope.of(context).accentCustom,
         _ => id,
       },
       child: InkWell(
@@ -1023,6 +1268,94 @@ class _WallpaperRow extends StatelessWidget {
           tooltip: l10n.wallpaperPick,
           icon: const Icon(Icons.photo_library_outlined, size: 20),
           onPressed: () => _pick(context),
+        ),
+      ],
+    );
+  }
+}
+
+class _ArrangementSection extends StatelessWidget {
+  final AppState state;
+
+  const _ArrangementSection({required this.state});
+
+  static const _meta = <String, (IconData, String Function(L10n))>{
+    'server': (Icons.dns_rounded, _serverLabel),
+    'stats': (Icons.monitoring_rounded, _statsLabel),
+    'connect': (Icons.power_rounded, _connectLabel),
+  };
+
+  static String _serverLabel(L10n l10n) => l10n.blockServer;
+  static String _statsLabel(L10n l10n) => l10n.blockStats;
+  static String _connectLabel(L10n l10n) => l10n.blockConnect;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10nScope.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.low_priority_rounded,
+                size: 22, color: scheme.onSurfaceVariant),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l10n.arrangement,
+                      style: Theme.of(context).textTheme.bodyLarge),
+                  Text(
+                    l10n.arrangementHint,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: scheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ReorderableListView(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          buildDefaultDragHandles: true,
+          onReorder: (oldIndex, newIndex) {
+            final order = [...state.homeOrder];
+            if (newIndex > oldIndex) newIndex -= 1;
+            final item = order.removeAt(oldIndex);
+            order.insert(newIndex.clamp(0, order.length), item);
+            state.setHomeOrder(order);
+          },
+          proxyDecorator: (child, index, animation) => AnimatedBuilder(
+            animation: animation,
+            builder: (context, _) => Material(
+              elevation: animation.value > 0.5 ? 3 : 0,
+              borderRadius: BorderRadius.circular(22),
+              child: child,
+            ),
+          ),
+          children: [
+            for (final id in state.homeOrder)
+              ListTile(
+                key: ValueKey(id),
+                leading: Icon(
+                  _meta[id]?.$1 ?? Icons.widgets_rounded,
+                  size: 22,
+                  color: scheme.onSurfaceVariant,
+                ),
+                title: Text(
+                  _meta[id]?.$2(l10n) ?? id,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 4),
+              ),
+          ],
         ),
       ],
     );

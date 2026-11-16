@@ -38,6 +38,7 @@ class WayApp extends StatelessWidget {
                     state.accent,
                     Brightness.light,
                     useDynamic ? lightDynamic : null,
+                    state.accentCustomColor,
                   ),
                 ),
                 darkTheme: WayTheme.dark(
@@ -45,6 +46,7 @@ class WayApp extends StatelessWidget {
                     state.accent,
                     Brightness.dark,
                     useDynamic ? darkDynamic : null,
+                    state.accentCustomColor,
                   ),
                   state.themeMode == 'amoled',
                 ),
@@ -210,6 +212,7 @@ class _WayShellState extends State<WayShell>
       const SettingsScreen(),
     ];
     return Scaffold(
+      extendBody: true,
       body: Stack(
         children: [
           Positioned.fill(

@@ -36,112 +36,193 @@ class HomeScreen extends StatelessWidget {
                 : l10n.greetingNight;
 
     return SafeArea(
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
-          child: LayoutBuilder(
-            builder: (context, viewport) => SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
-              child: ConstrainedBox(
-                constraints:
-                    BoxConstraints(minHeight: viewport.maxHeight - 28),
-                child: IntrinsicHeight(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const Spacer(),
-                      Text(
-                        l10n.appName,
-                        style: text.titleMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        greeting,
-                        style: text.displayMedium?.copyWith(
-                          letterSpacing: -1,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          _StatusChip(
-                            label: switch (phase) {
-                              VpnPhase.connected => l10n.connected,
-                              VpnPhase.connecting => l10n.connecting,
-                              VpnPhase.disconnecting => l10n.disconnecting,
-                              VpnPhase.stopped => l10n.stopped,
-                            },
-                            active: connected,
-                            error: error,
-                          ),
-                          if (connected) const _UptimeChip(),
-                          if (state.isDesktop) const _ModeChip(),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      _Squish(
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const ServersScreen(fullPage: true),
-                          ),
-                        ),
-                        child: Card.filled(
-                          margin: EdgeInsets.zero,
-                          child: ListTile(
-                            leading: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                color: scheme.secondaryContainer,
-                              ),
-                              alignment: Alignment.center,
-                              child: Icon(
-                                state.autoSelect
-                                    ? Icons.bolt_rounded
-                                    : Icons.dns_rounded,
-                                size: 22,
-                                color: scheme.onSecondaryContainer,
+      child: LayoutBuilder(
+        builder: (context, viewport) {
+          final wide = viewport.maxWidth >= 880;
+          final serverCard = _Squish(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const ServersScreen(fullPage: true),
+              ),
+            ),
+            child: Card.filled(
+              margin: EdgeInsets.zero,
+              child: ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: scheme.secondaryContainer,
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    state.autoSelect
+                        ? Icons.bolt_rounded
+                        : Icons.dns_rounded,
+                    size: 22,
+                    color: scheme.onSecondaryContainer,
+                  ),
+                ),
+                title: Text(
+                  state.autoSelect
+                      ? l10n.autoFastest
+                      : (profile?.name ?? l10n.navServers),
+                  overflow: TextOverflow.ellipsis,
+                  style: text.titleMedium,
+                ),
+                subtitle: profile != null
+                    ? Text(
+                        '${profile.server}:${profile.port}',
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    : Text(l10n.noServers),
+                trailing: const Icon(Icons.chevron_right_rounded),
+              ),
+            ),
+          );
+
+          final chipsWrap = Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _StatusChip(
+                label: switch (phase) {
+                  VpnPhase.connected => l10n.connected,
+                  VpnPhase.connecting => l10n.connecting,
+                  VpnPhase.disconnecting => l10n.disconnecting,
+                  VpnPhase.stopped => l10n.stopped,
+                },
+                active: connected,
+                error: error,
+              ),
+              if (connected) const _UptimeChip(),
+              if (state.isDesktop) const _ModeChip(),
+            ],
+          );
+
+          final greetingBlock = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.appName,
+                style: text.titleMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                greeting,
+                style: text.displayMedium?.copyWith(
+                  letterSpacing: -1,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          );
+
+          final plaque =
+              (error || state.isReconnecting) ? const StatusPlaque() : null;
+
+          if (wide) {
+            return Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(36, 12, 36, 20),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: viewport.maxHeight - 32,
+                  ),
+                  child: IntrinsicHeight(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1080),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              flex: 5,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  greetingBlock,
+                                  const SizedBox(height: 14),
+                                  chipsWrap,
+                                  const SizedBox(height: 16),
+                                  serverCard,
+                                  if (plaque != null) ...[
+                                    const SizedBox(height: 14),
+                                    plaque,
+                                  ],
+                                  const SizedBox(height: 16),
+                                  const WavyConnectBar(),
+                                ],
                               ),
                             ),
-                            title: Text(
-                              state.autoSelect
-                                  ? l10n.autoFastest
-                                  : (profile?.name ?? l10n.navServers),
-                              overflow: TextOverflow.ellipsis,
-                              style: text.titleMedium,
+                            const SizedBox(width: 28),
+                            Expanded(
+                              flex: 4,
+                              child: const StatusCard(),
                             ),
-                            subtitle: profile != null
-                                ? Text(
-                                    '${profile.server}:${profile.port}',
-                                    overflow: TextOverflow.ellipsis,
-                                  )
-                                : Text(l10n.noServers),
-                            trailing: const Icon(Icons.chevron_right_rounded),
-                          ),
+                          ],
                         ),
                       ),
-                      if (error || state.isReconnecting) ...[
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }
+
+          final ordered = <Widget>[];
+          for (final id in state.homeOrder) {
+            switch (id) {
+              case 'server':
+                ordered.add(serverCard);
+                break;
+              case 'stats':
+                ordered.add(const StatusCard());
+                break;
+              case 'connect':
+                ordered.add(const WavyConnectBar());
+                break;
+            }
+          }
+
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: viewport.maxHeight - 28,
+                  ),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Spacer(),
+                        greetingBlock,
                         const SizedBox(height: 14),
-                        const StatusPlaque(),
+                        chipsWrap,
+                        if (plaque != null) ...[
+                          const SizedBox(height: 14),
+                          plaque,
+                        ],
+                        for (final block in ordered) ...[
+                          const SizedBox(height: 14),
+                          block,
+                        ],
                       ],
-                      const SizedBox(height: 16),
-                      const StatusCard(),
-                      const SizedBox(height: 16),
-                      const WavyConnectBar(),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

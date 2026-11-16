@@ -26,6 +26,7 @@ abstract final class WayAccents {
     'orange',
     'yellow',
     'mono',
+    'custom',
   ];
 
   static Color swatch(String id) {
@@ -33,12 +34,17 @@ abstract final class WayAccents {
     return HSLColor.fromAHSL(1, hue, 0.62, 0.52).toColor();
   }
 
-  static Color _seedFor(String accent, Brightness brightness) {
+  static Color _seedFor(
+    String accent,
+    Brightness brightness, [
+    Color? customColor,
+  ]) {
     if (accent == 'mono') {
       return brightness == Brightness.light
           ? const Color(0xFF5B5B5B)
           : const Color(0xFFC4C4C4);
     }
+    if (accent == 'custom' && customColor != null) return customColor;
     final hue = presets[accent] ?? presets['green']!;
     return brightness == Brightness.light
         ? HSLColor.fromAHSL(1, hue, 0.62, 0.45).toColor()
@@ -49,10 +55,11 @@ abstract final class WayAccents {
     String accent,
     Brightness brightness, [
     ColorScheme? dynamicScheme,
+    Color? customColor,
   ]) {
     if (dynamicScheme != null && accent == 'adaptive') return dynamicScheme;
     return ColorScheme.fromSeed(
-      seedColor: _seedFor(accent, brightness),
+      seedColor: _seedFor(accent, brightness, customColor),
       brightness: brightness,
     );
   }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:ui' show Color;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -69,6 +70,8 @@ class AppState extends ChangeNotifier {
   bool preferTun = true;
   String themeMode = 'system';
   String accent = 'green';
+  String accentCustom = '6FACED';
+  List<String> homeOrder = ['server', 'stats', 'connect'];
   String wallpaperPath = '';
   DateTime? connectedSince;
   String localeCode = '';
@@ -76,6 +79,12 @@ class AppState extends ChangeNotifier {
   Duration get uptime => connectedSince == null
       ? Duration.zero
       : DateTime.now().difference(connectedSince!);
+
+  Color get accentCustomColor {
+    final hex = accentCustom.replaceAll('#', '');
+    final argb = int.tryParse('FF$hex', radix: 16) ?? 0xFF6FACED;
+    return Color(argb & 0xFFFFFF | 0xFF000000);
+  }
   bool autoUpdate = true;
   int autoUpdateMin = 60;
   String dnsHost = '1.1.1.1';
@@ -283,6 +292,10 @@ class AppState extends ChangeNotifier {
         themeMode = s['theme'] as String? ?? themeMode;
         final dyn = s['dyn'] as bool?;
         accent = s['accent'] as String? ?? (dyn == true ? 'adaptive' : accent);
+        accentCustom = s['accentcustom'] as String? ?? accentCustom;
+        homeOrder =
+            _homeOrderFrom((s['homeorder'] as List?)?.cast<String>() ??
+                homeOrder);
         wallpaperPath = s['wallpaper'] as String? ?? wallpaperPath;
         localeCode = s['locale'] as String? ?? localeCode;
         autoUpdate = s['autoupdate'] as bool? ?? autoUpdate;
@@ -438,6 +451,8 @@ class AppState extends ChangeNotifier {
           'tun': preferTun,
           'theme': themeMode,
           'accent': accent,
+          'accentcustom': accentCustom,
+          'homeorder': homeOrder,
           'wallpaper': wallpaperPath,
           'locale': localeCode,
           'autoupdate': autoUpdate,
@@ -1302,6 +1317,29 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setAccentCustom(String hex) {
+    final clean = hex.replaceAll('#', '').toUpperCase();
+    if (clean.length != 6 || int.tryParse(clean, radix: 16) == null) return;
+    accentCustom = clean;
+    _persist();
+    notifyListeners();
+  }
+
+  void setHomeOrder(List<String> order) {
+    homeOrder = _homeOrderFrom(order);
+    _persist();
+    notifyListeners();
+  }
+
+  List<String> _homeOrderFrom(List<String> raw) {
+    const known = ['server', 'stats', 'connect'];
+    final next = raw.where(known.contains).toList();
+    for (final k in known.reversed) {
+      if (!next.contains(k)) next.insert(0, k);
+    }
+    return next;
+  }
+
   Future<void> setWallpaperFrom(String sourcePath) async {
     try {
       final docs = await getApplicationSupportDirectory();
@@ -1500,6 +1538,8 @@ class AppState extends ChangeNotifier {
         'tun': preferTun,
         'theme': themeMode,
         'accent': accent,
+        'accentcustom': accentCustom,
+        'homeorder': homeOrder,
         'wallpaper': wallpaperPath,
         'locale': localeCode,
         'autoupdate': autoUpdate,
@@ -1557,6 +1597,10 @@ class AppState extends ChangeNotifier {
       preferTun = settings['tun'] as bool? ?? preferTun;
       themeMode = settings['theme'] as String? ?? themeMode;
       accent = settings['accent'] as String? ?? accent;
+      accentCustom = settings['accentcustom'] as String? ?? accentCustom;
+      homeOrder =
+          _homeOrderFrom((settings['homeorder'] as List?)?.cast<String>() ??
+              homeOrder);
       wallpaperPath = settings['wallpaper'] as String? ?? wallpaperPath;
       localeCode = settings['locale'] as String? ?? localeCode;
       autoUpdate = settings['autoupdate'] as bool? ?? autoUpdate;

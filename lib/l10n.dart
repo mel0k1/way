@@ -71,6 +71,17 @@ class L10n {
   String get accentLabel => ru ? 'Акцент' : 'Accent';
   String get accentAdaptive => ru ? 'Как в системе' : 'System';
   String get accentMono => ru ? 'Моно' : 'Mono';
+  String get accentCustom => ru ? 'Свой цвет' : 'Custom';
+  String get customColorTitle => ru ? 'Свой цвет' : 'Custom color';
+  String get customColorHint => ru
+      ? 'Крути оттенок и точку по квадрату'
+      : 'Spin the hue and drag the dot around';
+  String get arrangement => ru ? 'Расстановка' : 'Arrangement';
+  String get arrangementHint =>
+      ru ? 'Порядок блоков на главном экране' : 'Home screen block order';
+  String get blockServer => ru ? 'Сервер' : 'Server';
+  String get blockStats => ru ? 'Статистика' : 'Stats';
+  String get blockConnect => ru ? 'Кнопка подключения' : 'Connect button';
   String get wallpaper => ru ? 'Обои' : 'Wallpaper';
   String get wallpaperHint => ru ? 'Фон главного экрана' : 'Home screen backdrop';
   String get wallpaperPick => ru ? 'Выбрать' : 'Choose';

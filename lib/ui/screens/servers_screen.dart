@@ -279,7 +279,12 @@ class _ServersScreenState extends State<ServersScreen> {
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                      padding: EdgeInsets.fromLTRB(
+                        16,
+                        0,
+                        16,
+                        24 + MediaQuery.paddingOf(context).bottom,
+                      ),
                       itemCount: slots.length,
                       itemBuilder: (context, i) {
                         final slot = slots[i];

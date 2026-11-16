@@ -79,7 +79,12 @@ class _LogsScreenState extends State<LogsScreen> {
             child: lines.isEmpty
                 ? Center(child: Text(l10n.emptyLogs))
                 : Container(
-                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    margin: EdgeInsets.fromLTRB(
+                      16,
+                      0,
+                      16,
+                      16 + MediaQuery.paddingOf(context).bottom,
+                    ),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.surfaceContainerLow,
                       borderRadius: BorderRadius.circular(28),
