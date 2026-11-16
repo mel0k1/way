@@ -69,7 +69,7 @@ class _WavyConnectBarState extends State<WavyConnectBar>
       onTap: () => _tap(connected, busy),
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) => setState(() => _pressed = false),
-      onTapCancel: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedScale(
         scale: _pressed ? 0.98 : 1.0,
         duration: WayMotion.fast,

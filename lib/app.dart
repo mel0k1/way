@@ -46,7 +46,7 @@ class WayApp extends StatelessWidget {
                     Brightness.dark,
                     useDynamic ? darkDynamic : null,
                   ),
-                  amoled: state.themeMode == 'amoled',
+                  state.themeMode == 'amoled',
                 ),
                 builder: (context, child) => Stack(
                   children: [

@@ -258,7 +258,7 @@ class _UptimeChipState extends State<_UptimeChip> {
 
   @override
   void dispose() {
-    _timer.dispose();
+    _timer.cancel();
     super.dispose();
   }
 
