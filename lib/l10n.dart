@@ -88,6 +88,49 @@ class L10n {
       ru ? 'Нажми, чтобы перемерить пинг' : 'Tap to re-measure ping';
   String get exitIpTip => ru ? 'Нажми, чтобы скрыть IP' : 'Tap to hide IP';
   String pingMs(int ms) => ru ? '$ms мс' : '$ms ms';
+  String get maskAddrs => ru ? 'Маскировать адреса' : 'Mask addresses';
+  String get maskAddrsHint => ru
+      ? 'Серверы показываются как ••••• в списках и на главном'
+      : 'Servers appear as ••••• in lists and on home';
+  String get fontRow => ru ? 'Шрифт' : 'Font';
+  String get fontSystem => ru ? 'Inter — по умолчанию' : 'Inter — default';
+  String get fontImport => ru ? 'Импортировать шрифт' : 'Import font';
+  String get fontNotFont => ru
+      ? 'Файл не похож на шрифт (нужен ttf или otf)'
+      : 'Not a font file (ttf or otf expected)';
+  String get fontTooLarge => ru ? 'Файл больше 20 МБ' : 'File is over 20 MB';
+  String fontDeleteConfirm(String family) =>
+      ru ? 'Удалить шрифт «$family»?' : 'Delete font "$family"?';
+  String get happSpoof => ru ? 'Спуф Happ' : 'Spoof as Happ';
+  String get happSpoofHint => ru
+      ? 'Запросы подписок выглядят как запросы клиента Happ'
+      : 'Subscription fetches look like the Happ client';
+  String get happVersion => ru ? 'Версия Happ' : 'Happ version';
+  String get happOs => ru ? 'ОС' : 'OS';
+  String get happOsVersion => ru ? 'Версия ОС' : 'OS version';
+  String get happModel => ru ? 'Модель устройства' : 'Device model';
+  String get happLocale => ru ? 'Локаль' : 'Locale';
+  String get happUserId => 'User ID';
+  String get happHwid => 'HWID';
+  String get happRegen =>
+      ru ? 'Перегенерировать личность' : 'Regenerate identity';
+  String get happRegenConfirm => ru
+      ? 'Сгенерировать новые User ID и HWID? Панель увидит новое устройство.'
+      : 'Generate a new User ID and HWID? The panel will see a new device.';
+  String get phoneImport => ru ? 'Импорт с телефона' : 'Import from phone';
+  String get phoneImportHint => ru
+      ? 'Отсканируй QR камерой телефона, открой страницу, вставь ссылку или конфиг и отправь. Работает по общей Wi-Fi/локальной сети.'
+      : 'Scan the QR with your phone, open the page, paste a link or config and send. Works over a shared Wi-Fi/LAN.';
+  String get phonePin => ru ? 'Код подтверждения' : 'Confirmation code';
+  String get phoneWaiting =>
+      ru ? 'Жду отправку с телефона…' : 'Waiting for the phone…';
+  String get phoneSent =>
+      ru ? 'Конфиг получен и добавлен' : 'Config received and added';
+  String get phoneExpired => ru ? 'Сессия истекла' : 'Session expired';
+  String get phoneFailed => ru
+      ? 'Не удалось запустить приём — нет локальной сети?'
+      : 'Could not start the receiver — no local network?';
+  String get phoneClose => ru ? 'Закрыть приём' : 'Close receiver';
   String get customColorTitle => ru ? 'Свой цвет' : 'Custom color';
   String get customColorHint => ru
       ? 'Крути оттенок и точку по квадрату'
@@ -366,9 +409,9 @@ class L10n {
   String get sortDefault => ru ? 'По добавлению' : 'Default order';
   String get sortLatency => ru ? 'По задержке' : 'By latency';
   String get sortName => ru ? 'По имени' : 'By name';
-  String get favorites => ru ? 'Избранное' : 'Favorites';
-  String get addFavorite => ru ? 'В избранное' : 'Add to favorites';
-  String get removeFavorite => ru ? 'Из избранного' : 'Remove from favorites';
+  String get favorites => ru ? 'Закреплённые' : 'Pinned';
+  String get addFavorite => ru ? 'Закрепить' : 'Pin';
+  String get removeFavorite => ru ? 'Открепить' : 'Unpin';
 
   String get manualGroup => ru ? 'Добавленные вручную' : 'Added manually';
   String get subscriptionFallback => ru ? 'Подписка' : 'Subscription';

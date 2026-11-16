@@ -64,6 +64,7 @@ class SubscriptionService {
     String subId = '',
     String? userAgent,
     String? hwid,
+    Map<String, String> extraHeaders = const {},
   }) async {
     final req = http.Request('GET', Uri.parse(sub.url));
     if (userAgent != null && userAgent.isNotEmpty) {
@@ -72,6 +73,8 @@ class SubscriptionService {
     if (hwid != null && hwid.isNotEmpty) {
       req.headers['x-hwid'] = hwid;
     }
+    // Extra headers (the Happ spoof) go last so they can override UA/hwid.
+    req.headers.addAll(extraHeaders);
     final res = await req.send().timeout(const Duration(seconds: 20));
     if (res.statusCode != 200) {
       throw Exception('HTTP ${res.statusCode}');

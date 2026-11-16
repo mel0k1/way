@@ -5,6 +5,7 @@ import '../../l10n.dart';
 import '../../state/app_state.dart';
 import '../motion.dart';
 import '../widgets/add_profile_sheet.dart';
+import '../widgets/phone_import_sheet.dart';
 import '../widgets/profile_tile.dart';
 import '../widgets/qr_export_dialog.dart';
 
@@ -136,6 +137,8 @@ class _ServersScreenState extends State<ServersScreen> {
                       behavior: SnackBarBehavior.floating,
                       width: 320,
                     ));
+                  } else if (value == 'phone') {
+                    showPhoneImport(context);
                   } else {
                     showAddSheet(context, value);
                   }
@@ -158,6 +161,16 @@ class _ServersScreenState extends State<ServersScreen> {
                         const Icon(Icons.rss_feed_rounded),
                         const SizedBox(width: 12),
                         Text(l10n.addSubscription),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'phone',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.smartphone_rounded),
+                        const SizedBox(width: 12),
+                        Text(l10n.phoneImport),
                       ],
                     ),
                   ),
@@ -422,7 +435,7 @@ class _GroupHeader extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final color = group.favorite ? scheme.primary : scheme.onSurfaceVariant;
     final icon = group.favorite
-        ? Icons.star_rounded
+        ? Icons.push_pin_rounded
         : group.subId.isEmpty
             ? Icons.link_rounded
             : Icons.rss_feed_rounded;

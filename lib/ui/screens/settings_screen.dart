@@ -527,6 +527,67 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           _SectionCard(
+            title: l10n.happSpoof,
+            hint: l10n.happSpoofHint,
+            child: Column(
+              children: [
+                SwitchListTile(
+                  title: Text(l10n.happSpoof),
+                  value: state.happSpoof,
+                  onChanged: state.setHappSpoof,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                if (state.happSpoof) ...[
+                  _HappField(
+                      state: state,
+                      field: 'version',
+                      label: l10n.happVersion),
+                  _HappField(
+                      state: state, field: 'os', label: l10n.happOs),
+                  _HappField(
+                      state: state,
+                      field: 'osVersion',
+                      label: l10n.happOsVersion),
+                  _HappField(
+                      state: state, field: 'model', label: l10n.happModel),
+                  _HappField(
+                      state: state,
+                      field: 'locale',
+                      label: l10n.happLocale),
+                  _HappField(
+                      state: state, field: 'userId', label: l10n.happUserId),
+                  _HappField(
+                      state: state, field: 'hwid', label: l10n.happHwid),
+                  const SizedBox(height: 4),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.autorenew_rounded, size: 18),
+                    label: Text(l10n.happRegen),
+                    onPressed: () async {
+                      final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text(l10n.happRegen),
+                          content: Text(l10n.happRegenConfirm),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: Text(l10n.cancel),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: Text(l10n.save),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (ok == true) state.regenerateHappIdentity();
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+          _SectionCard(
             title: l10n.appearance,
             child: Column(
               children: [
@@ -544,6 +605,8 @@ class SettingsScreen extends StatelessWidget {
                 _AccentPicker(state: state),
                 const SizedBox(height: 4),
                 _WallpaperRow(state: state),
+                const SizedBox(height: 12),
+                _FontRow(state: state),
                 const SizedBox(height: 12),
                 _ArrangementSection(state: state),
                 const SizedBox(height: 12),
@@ -585,6 +648,13 @@ class SettingsScreen extends StatelessWidget {
                   subtitle: Text(l10n.autoReconnectHint),
                   value: state.autoReconnect,
                   onChanged: state.setAutoReconnect,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                SwitchListTile(
+                  title: Text(l10n.maskAddrs),
+                  subtitle: Text(l10n.maskAddrsHint),
+                  value: state.maskAddrs,
+                  onChanged: state.setMaskAddrs,
                   contentPadding: EdgeInsets.zero,
                 ),
                 if (state.isDesktop)
@@ -1395,6 +1465,191 @@ class _ArrangementSection extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 4),
               ),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+class _HappField extends StatelessWidget {
+  final AppState state;
+  final String field;
+  final String label;
+
+  const _HappField({
+    required this.state,
+    required this.field,
+    required this.label,
+  });
+
+  String _initial() => switch (field) {
+    'version' => state.happVersion,
+    'os' => state.happOs,
+    'osVersion' => state.happOsVersion,
+    'model' => state.happModel,
+    'locale' => state.happLocale,
+    'userId' => state.happUserId,
+    _ => state.happHwid,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: TextFormField(
+        initialValue: _initial(),
+        onFieldSubmitted: (v) => state.setHappField(field, v),
+        decoration: InputDecoration(labelText: label, isDense: true),
+      ),
+    );
+  }
+}
+
+Future<void> _importFontFile(BuildContext context, AppState state) async {
+  final l10n = L10nScope.of(context);
+  const group = XTypeGroup(label: 'Fonts', extensions: ['ttf', 'otf']);
+  final file = await openFile(acceptedTypeGroups: [group]);
+  if (file == null) return;
+  await state.importFont(file.path);
+  if (!context.mounted) return;
+  final error = state.lastFontError;
+  final message = error == 'too_large'
+      ? l10n.fontTooLarge
+      : error == 'not_font'
+          ? l10n.fontNotFont
+          : state.fontFamily;
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+    content: Text(message),
+    behavior: SnackBarBehavior.floating,
+    width: 320,
+  ));
+}
+
+class _FontRow extends StatelessWidget {
+  final AppState state;
+
+  const _FontRow({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10nScope.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final current = state.fontFamily.isEmpty ? 'Inter' : state.fontFamily;
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => showDialog<void>(
+        context: context,
+        builder: (context) => const _FontDialog(),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Icon(Icons.font_download_rounded,
+                size: 22, color: scheme.onSurfaceVariant),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l10n.fontRow,
+                      style: Theme.of(context).textTheme.bodyLarge),
+                  Text(
+                    current,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: scheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+            IconButton.filledTonal(
+              tooltip: l10n.fontImport,
+              icon: const Icon(Icons.add_rounded, size: 20),
+              onPressed: () => _importFontFile(context, state),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FontDialog extends StatelessWidget {
+  const _FontDialog();
+
+  Future<void> _delete(
+      BuildContext context, AppState state, String family) async {
+    final l10n = L10nScope.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l10n.delete),
+        content: Text(l10n.fontDeleteConfirm(family)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) await state.deleteFont(family);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10nScope.of(context);
+    final state = context.watch<AppState>();
+    return AlertDialog(
+      title: Text(l10n.fontRow),
+      content: SizedBox(
+        width: 300,
+        child: RadioGroup<String>(
+          groupValue: state.fontFamily,
+          onChanged: (v) {
+            state.setFontFamily(v ?? '');
+            Navigator.pop(context);
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RadioListTile<String>(
+                value: '',
+                title: Text(l10n.fontSystem),
+              ),
+              for (final family in state.customFonts)
+                RadioListTile<String>(
+                  value: family,
+                  title:
+                      Text(family, overflow: TextOverflow.ellipsis),
+                  secondary: IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded,
+                        size: 20),
+                    onPressed: () => _delete(context, state, family),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton.icon(
+          icon: const Icon(Icons.add_rounded, size: 18),
+          label: Text(l10n.fontImport),
+          onPressed: () {
+            Navigator.pop(context);
+            _importFontFile(context, state);
+          },
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.cancel),
         ),
       ],
     );

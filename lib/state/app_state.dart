@@ -7,6 +7,9 @@ import 'dart:ui' show Color;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../core/font_registry.dart';
+import '../core/happ_spoof.dart';
+import '../core/phone_import.dart';
 import '../core/wallpaper_palette.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
@@ -111,6 +114,21 @@ class AppState extends ChangeNotifier {
   String splitMode = 'off';
   List<String> splitApps = [];
   String subUserAgent = 'v2rayTun/1.7.6';
+  bool maskAddrs = false;
+  String fontFamily = '';
+  List<String> customFonts = const [];
+  bool happSpoof = false;
+  String happVersion = '3.21.1';
+  String happOs = 'Android';
+  String happOsVersion = '';
+  String happModel = '';
+  String happLocale = '';
+  String happUserId = '';
+  String happHwid = '';
+  String? lastFontError;
+  PhoneImportServer? phoneServer;
+  PhoneImportState phoneImportState =
+      const PhoneImportState(PhoneImportPhase.idle);
   bool autoSelect = false;
   Set<String> groupAuto = {};
   bool autoStart = false;
@@ -328,6 +346,18 @@ class AppState extends ChangeNotifier {
         splitMode = s['splitmode'] as String? ?? splitMode;
         splitApps = (s['splitapps'] as List?)?.cast<String>() ?? splitApps;
         subUserAgent = s['subua'] as String? ?? subUserAgent;
+        maskAddrs = s['maskaddrs'] as bool? ?? maskAddrs;
+        fontFamily = s['fontfamily'] as String? ?? fontFamily;
+        customFonts =
+            (s['customfonts'] as List?)?.cast<String>() ?? customFonts;
+        happSpoof = s['happspoof'] as bool? ?? happSpoof;
+        happVersion = s['happversion'] as String? ?? happVersion;
+        happOs = s['happos'] as String? ?? happOs;
+        happOsVersion = s['happosversion'] as String? ?? happOsVersion;
+        happModel = s['happmodel'] as String? ?? happModel;
+        happLocale = s['happlocale'] as String? ?? happLocale;
+        happUserId = s['happuserid'] as String? ?? happUserId;
+        happHwid = s['happhwid'] as String? ?? happHwid;
         autoSelect = s['autoselect'] as bool? ?? autoSelect;
         groupAuto =
             (s['groupauto'] as List?)?.cast<String>().toSet() ?? groupAuto;
@@ -349,6 +379,7 @@ class AppState extends ChangeNotifier {
     if (wallpaperPath.isNotEmpty && wallpaperSeeds.isEmpty) {
       unawaited(refreshWallpaperPalette());
     }
+    unawaited(_loadFonts());
     final docs = await getApplicationSupportDirectory();
     singBoxLogPath = '${docs.path}/waybox.log';
     xrayLogPath = '${docs.path}/wayxray.log';
@@ -490,6 +521,17 @@ class AppState extends ChangeNotifier {
           'splitmode': splitMode,
           'splitapps': splitApps,
           'subua': subUserAgent,
+          'maskaddrs': maskAddrs,
+          'fontfamily': fontFamily,
+          'customfonts': customFonts,
+          'happspoof': happSpoof,
+          'happversion': happVersion,
+          'happos': happOs,
+          'happosversion': happOsVersion,
+          'happmodel': happModel,
+          'happlocale': happLocale,
+          'happuserid': happUserId,
+          'happhwid': happHwid,
           'autoselect': autoSelect,
           'groupauto': groupAuto.toList(),
           'autostart': autoStart,
@@ -939,10 +981,12 @@ class AppState extends ChangeNotifier {
     if (_updatingSubs.contains(sub.id)) return;
     _updatingSubs.add(sub.id);
     try {
+      final happ = happHeaders;
       final fetched = await subsService.fetch(
         sub,
-        userAgent: subUserAgent,
+        userAgent: happ != null ? null : subUserAgent,
         hwid: hwid,
+        extraHeaders: happ ?? const {},
       );
       String fingerprint(Profile p) =>
           '${p.protocol}|${p.server}|${p.port}|${p.uuid ?? ''}|${p.password ?? ''}';
@@ -1072,6 +1116,133 @@ class AppState extends ChangeNotifier {
     subUserAgent = value.trim().isEmpty ? 'v2rayTun/1.7.6' : value.trim();
     _persist();
     notifyListeners();
+  }
+
+  /// Happ fingerprint headers for subscription fetches, null when off.
+  Map<String, String>? get happHeaders {
+    if (!happSpoof) return null;
+    return HappFingerprint(
+      appVersion: happVersion.isEmpty ? HappSpoof.defaultVersion : happVersion,
+      os: happOs.isEmpty ? 'Android' : happOs,
+      osVersion: happOsVersion.isEmpty ? '16' : happOsVersion,
+      deviceModel: happModel.isEmpty ? 'Pixel 7 Pro' : happModel,
+      locale: happLocale.isEmpty ? 'en' : happLocale,
+      userId: happUserId.isEmpty ? HappSpoof.randomUserId() : happUserId,
+      hwid: happHwid.isEmpty ? HappSpoof.randomHwid() : happHwid,
+    ).headers();
+  }
+
+  void setHappSpoof(bool value) {
+    happSpoof = value;
+    if (value) {
+      // The identity is generated once and kept, so the panel keeps seeing
+      // the same "device" across fetches and restarts.
+      if (happUserId.isEmpty) happUserId = HappSpoof.randomUserId();
+      if (happHwid.isEmpty) happHwid = HappSpoof.randomHwid();
+    }
+    _persist();
+    notifyListeners();
+  }
+
+  void setHappField(String key, String value) {
+    switch (key) {
+      case 'version':
+        happVersion = value.trim();
+      case 'os':
+        happOs = value.trim();
+      case 'osVersion':
+        happOsVersion = value.trim();
+      case 'model':
+        happModel = value.trim();
+      case 'locale':
+        happLocale = value.trim();
+      case 'userId':
+        happUserId = value.trim();
+      case 'hwid':
+        happHwid = value.trim();
+    }
+    _persist();
+    notifyListeners();
+  }
+
+  void regenerateHappIdentity() {
+    happUserId = HappSpoof.randomUserId();
+    happHwid = HappSpoof.randomHwid();
+    _persist();
+    notifyListeners();
+  }
+
+  Future<void> importFont(String path) async {
+    try {
+      final family = await FontRegistry.importFrom(path);
+      if (!customFonts.contains(family)) {
+        customFonts = [...customFonts, family];
+      }
+      fontFamily = family;
+      lastFontError = null;
+      _persist();
+    } on StateError catch (e) {
+      lastFontError = e.message;
+    } catch (_) {
+      lastFontError = 'not_font';
+    }
+    notifyListeners();
+  }
+
+  Future<void> deleteFont(String family) async {
+    await FontRegistry.delete(family);
+    customFonts = customFonts.where((f) => f != family).toList();
+    if (fontFamily == family) fontFamily = '';
+    _persist();
+    notifyListeners();
+  }
+
+  void setFontFamily(String family) {
+    fontFamily = family;
+    _persist();
+    notifyListeners();
+  }
+
+  Future<void> _loadFonts() async {
+    final onDisk = await FontRegistry.imported();
+    if (onDisk.isNotEmpty) {
+      await FontRegistry.loadAll(onDisk);
+    }
+    customFonts = onDisk;
+    if (fontFamily.isNotEmpty && !onDisk.contains(fontFamily)) {
+      fontFamily = '';
+      _persist();
+    }
+    notifyListeners();
+  }
+
+  Future<void> startPhoneImport() async {
+    await stopPhoneImport();
+    final server = PhoneImportServer();
+    server.state.addListener(() {
+      final s = server.state.value;
+      phoneImportState = s;
+      if (s.phase == PhoneImportPhase.received && s.payload != null) {
+        final before = profiles.length;
+        addFromLink(s.payload!);
+        lastImportCount = profiles.length - before;
+        lastImportWasSub = false;
+      }
+      notifyListeners();
+    });
+    try {
+      await server.start();
+      phoneServer = server;
+      phoneImportState = server.state.value;
+    } catch (_) {
+      phoneImportState = const PhoneImportState(PhoneImportPhase.failed);
+    }
+    notifyListeners();
+  }
+
+  Future<void> stopPhoneImport() async {
+    await phoneServer?.stop();
+    phoneServer = null;
   }
 
   void toggleFavorite(String id) {
@@ -1394,6 +1565,12 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setMaskAddrs(bool value) {
+    maskAddrs = value;
+    _persist();
+    notifyListeners();
+  }
+
   Future<void> remeasureProfile(String id) async {
     if (latencyTesting || engineProfiles.isEmpty) return;
     final profile = engineProfiles.firstWhere(
@@ -1613,6 +1790,17 @@ class AppState extends ChangeNotifier {
         'splitmode': splitMode,
         'splitapps': splitApps,
         'subua': subUserAgent,
+        'maskaddrs': maskAddrs,
+        'fontfamily': fontFamily,
+        'customfonts': customFonts,
+        'happspoof': happSpoof,
+        'happversion': happVersion,
+        'happos': happOs,
+        'happosversion': happOsVersion,
+        'happmodel': happModel,
+        'happlocale': happLocale,
+        'happuserid': happUserId,
+        'happhwid': happHwid,
         'autoselect': autoSelect,
         'groupauto': groupAuto.toList(),
         'autostart': autoStart,
@@ -1676,6 +1864,18 @@ class AppState extends ChangeNotifier {
       splitMode = settings['splitmode'] as String? ?? splitMode;
       splitApps = (settings['splitapps'] as List?)?.cast<String>() ?? splitApps;
       subUserAgent = settings['subua'] as String? ?? subUserAgent;
+      maskAddrs = settings['maskaddrs'] as bool? ?? maskAddrs;
+      fontFamily = settings['fontfamily'] as String? ?? fontFamily;
+      customFonts =
+          (settings['customfonts'] as List?)?.cast<String>() ?? customFonts;
+      happSpoof = settings['happspoof'] as bool? ?? happSpoof;
+      happVersion = settings['happversion'] as String? ?? happVersion;
+      happOs = settings['happos'] as String? ?? happOs;
+      happOsVersion = settings['happosversion'] as String? ?? happOsVersion;
+      happModel = settings['happmodel'] as String? ?? happModel;
+      happLocale = settings['happlocale'] as String? ?? happLocale;
+      happUserId = settings['happuserid'] as String? ?? happUserId;
+      happHwid = settings['happhwid'] as String? ?? happHwid;
       autoSelect = settings['autoselect'] as bool? ?? autoSelect;
       groupAuto =
           (settings['groupauto'] as List?)?.cast<String>().toSet() ?? groupAuto;

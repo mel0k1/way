@@ -90,20 +90,28 @@ abstract final class WayAccents {
 class WayTheme {
   WayTheme._();
 
-  static ThemeData light([ColorScheme? scheme]) =>
-      _build(scheme ?? WayAccents.schemeFor('green', Brightness.light));
+  static ThemeData light([ColorScheme? scheme, String fontFamily = '']) =>
+      _build(scheme ?? WayAccents.schemeFor('green', Brightness.light),
+          fontFamily);
 
-  static ThemeData dark([ColorScheme? scheme, bool amoled = false]) => _build(
-      _applyAmoled(
-          scheme ?? WayAccents.schemeFor('green', Brightness.dark), amoled));
+  static ThemeData dark(
+    ColorScheme? scheme, [
+    bool amoled = false,
+    String fontFamily = '',
+  ]) =>
+      _build(
+        _applyAmoled(
+            scheme ?? WayAccents.schemeFor('green', Brightness.dark), amoled),
+        fontFamily,
+      );
 
   static ColorScheme _applyAmoled(ColorScheme scheme, bool amoled) =>
       amoled ? WayAccents.amolized(scheme) : scheme;
 
-  static ThemeData _build(ColorScheme scheme) {
+  static ThemeData _build(ColorScheme scheme, String fontFamily) {
     final base = ThemeData(
       useMaterial3: true,
-      fontFamily: 'Inter',
+      fontFamily: fontFamily.isEmpty ? 'Inter' : fontFamily,
       colorScheme: scheme,
       splashFactory: InkSparkle.splashFactory,
       pageTransitionsTheme: const PageTransitionsTheme(builders: {

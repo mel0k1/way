@@ -40,6 +40,7 @@ class WayApp extends StatelessWidget {
                     useDynamic ? lightDynamic : null,
                     state.seedColorFor(state.accent),
                   ),
+                  state.fontFamily,
                 ),
                 darkTheme: WayTheme.dark(
                   WayAccents.schemeFor(
@@ -49,6 +50,7 @@ class WayApp extends StatelessWidget {
                     state.seedColorFor(state.accent),
                   ),
                   state.themeMode == 'amoled',
+                  state.fontFamily,
                 ),
                 builder: (context, child) => Stack(
                   children: [

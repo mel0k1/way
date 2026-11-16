@@ -27,6 +27,11 @@ class ProfileTile extends StatefulWidget {
   State<ProfileTile> createState() => _ProfileTileState();
 }
 
+/// The pin is "thrown" once per row: a stable pseudo-random angle between
+/// 15 and 45 degrees, Chumpy-style, so the pinned card looks pierced.
+double _pinAngle(String id) =>
+    ((id.hashCode.abs() % 31) + 15) * math.pi / 180;
+
 class _ProfileTileState extends State<ProfileTile> {
   bool _expanded = false;
 
@@ -120,7 +125,9 @@ class _ProfileTileState extends State<ProfileTile> {
                       ],
                     ),
                   Text(
-                    '${profile.server}:${profile.port}',
+                    state.maskAddrs
+                        ? '•••••'
+                        : '${profile.server}:${profile.port}',
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -131,10 +138,13 @@ class _ProfileTileState extends State<ProfileTile> {
                   if (profile.favorite)
                     Padding(
                       padding: const EdgeInsets.only(right: 6),
-                      child: Icon(
-                        Icons.star_rounded,
-                        size: 18,
-                        color: scheme.primary,
+                      child: Transform.rotate(
+                        angle: _pinAngle(profile.id),
+                        child: Icon(
+                          Icons.push_pin_rounded,
+                          size: 18,
+                          color: scheme.primary,
+                        ),
                       ),
                     ),
                   if (widget.latency != null)
@@ -219,8 +229,8 @@ class _ProfileTileState extends State<ProfileTile> {
           value: 'fav',
           child: Row(children: [
             Icon(profile.favorite
-                ? Icons.star_outline_rounded
-                : Icons.star_rounded),
+                ? Icons.push_pin_outline_rounded
+                : Icons.push_pin_rounded),
             const SizedBox(width: 12),
             Text(profile.favorite ? l10n.removeFavorite : l10n.addFavorite),
           ]),
@@ -426,7 +436,9 @@ class _ProfileTileState extends State<ProfileTile> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           subtitle: Text(
-                            '${c.server}:${c.port}',
+                            state.maskAddrs
+                                ? '•••••'
+                                : '${c.server}:${c.port}',
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -627,7 +639,9 @@ class _DetailsBody extends StatelessWidget {
             ),
             _DetailRow(
               icon: Icons.dns_rounded,
-              text: '${profile.server}:${profile.port}',
+              text: state.maskAddrs
+                  ? '•••••'
+                  : '${profile.server}:${profile.port}',
               scheme: scheme,
               mono: true,
             ),
@@ -647,8 +661,8 @@ class _DetailsBody extends StatelessWidget {
                   tooltip:
                       profile.favorite ? l10n.removeFavorite : l10n.addFavorite,
                   icon: profile.favorite
-                      ? Icons.star_rounded
-                      : Icons.star_outline_rounded,
+                      ? Icons.push_pin_rounded
+                      : Icons.push_pin_outline_rounded,
                   scheme: scheme,
                   onTap: () => onMenu('fav'),
                 ),
