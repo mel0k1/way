@@ -1281,7 +1281,7 @@ class _ArrangementSection extends StatelessWidget {
 
   static const _meta = <String, (IconData, String Function(L10n))>{
     'server': (Icons.dns_rounded, _serverLabel),
-    'stats': (Icons.monitoring_rounded, _statsLabel),
+    'stats': (Icons.bar_chart_rounded, _statsLabel),
     'connect': (Icons.power_rounded, _connectLabel),
   };
 
