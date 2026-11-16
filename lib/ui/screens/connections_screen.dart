@@ -223,7 +223,7 @@ class _WeekTrafficCard extends StatelessWidget {
     });
     final total = week.fold<int>(0, (n, d) => n + d.rx + d.tx);
     final maxTotal =
-        days.fold<int>(0, (n, d) => math.max(n, d.rx + d.tx)).coerceAtLeast(1);
+        math.max(1, days.fold<int>(0, (n, d) => math.max(n, d.rx + d.tx)));
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Card.filled(
