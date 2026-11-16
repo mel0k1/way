@@ -26,7 +26,7 @@ class WallpaperBackdrop extends StatelessWidget {
         if (path.isEmpty || !File(path).existsSync()) {
           return const SizedBox.shrink();
         }
-        var image = Image.file(
+        Widget image = Image.file(
           File(path),
           fit: BoxFit.cover,
           alignment: Alignment.center,
