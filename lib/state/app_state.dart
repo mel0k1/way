@@ -6,6 +6,8 @@ import 'dart:ui' show Color;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+
+import '../core/wallpaper_palette.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -72,6 +74,8 @@ class AppState extends ChangeNotifier {
   String accent = 'green';
   String accentCustom = '6FACED';
   List<String> homeOrder = ['server', 'stats', 'connect'];
+  List<String> wallpaperSeeds = const [];
+  bool grayWhenOff = false;
   String wallpaperPath = '';
   DateTime? connectedSince;
   String localeCode = '';
@@ -84,6 +88,16 @@ class AppState extends ChangeNotifier {
     final hex = accentCustom.replaceAll('#', '');
     final argb = int.tryParse('FF$hex', radix: 16) ?? 0xFF6FACED;
     return Color(argb & 0xFFFFFF | 0xFF000000);
+  }
+
+  /// Seed color for `custom` and `wall1..3` accents, null when unavailable.
+  Color? seedColorFor(String accent) {
+    if (accent == 'custom') return accentCustomColor;
+    if (!accent.startsWith('wall')) return null;
+    final i = (int.tryParse(accent.substring(4)) ?? 1) - 1;
+    if (i < 0 || i >= wallpaperSeeds.length) return null;
+    final argb = int.tryParse('FF${wallpaperSeeds[i]}', radix: 16);
+    return argb == null ? null : Color(argb & 0xFFFFFF | 0xFF000000);
   }
   bool autoUpdate = true;
   int autoUpdateMin = 60;
@@ -296,6 +310,9 @@ class AppState extends ChangeNotifier {
         homeOrder =
             _homeOrderFrom((s['homeorder'] as List?)?.cast<String>() ??
                 homeOrder);
+        wallpaperSeeds =
+            (s['wallseeds'] as List?)?.cast<String>() ?? wallpaperSeeds;
+        grayWhenOff = s['graywhenoff'] as bool? ?? grayWhenOff;
         wallpaperPath = s['wallpaper'] as String? ?? wallpaperPath;
         localeCode = s['locale'] as String? ?? localeCode;
         autoUpdate = s['autoupdate'] as bool? ?? autoUpdate;
@@ -329,6 +346,9 @@ class AppState extends ChangeNotifier {
       } catch (_) {}
     }
     onboardingDone = prefs.getBool('way.intro_done') ?? false;
+    if (wallpaperPath.isNotEmpty && wallpaperSeeds.isEmpty) {
+      unawaited(refreshWallpaperPalette());
+    }
     final docs = await getApplicationSupportDirectory();
     singBoxLogPath = '${docs.path}/waybox.log';
     xrayLogPath = '${docs.path}/wayxray.log';
@@ -453,6 +473,8 @@ class AppState extends ChangeNotifier {
           'accent': accent,
           'accentcustom': accentCustom,
           'homeorder': homeOrder,
+          'wallseeds': wallpaperSeeds,
+          'graywhenoff': grayWhenOff,
           'wallpaper': wallpaperPath,
           'locale': localeCode,
           'autoupdate': autoUpdate,
@@ -1348,7 +1370,41 @@ class AppState extends ChangeNotifier {
       wallpaperPath = target.path;
       _persist();
       notifyListeners();
+      await refreshWallpaperPalette();
     } catch (_) {}
+  }
+
+  /// Extracts Wallpaper 1/2/3 seeds and applies the first one, Chumpy-style.
+  Future<void> refreshWallpaperPalette() async {
+    if (wallpaperPath.isEmpty) return;
+    final colors = await WallpaperPalette.extract(wallpaperPath);
+    if (colors.isEmpty) return;
+    wallpaperSeeds = [
+      for (final c in colors)
+        (c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0'),
+    ];
+    if (!accent.startsWith('wall')) accent = 'wall1';
+    _persist();
+    notifyListeners();
+  }
+
+  void setGrayWhenOff(bool value) {
+    grayWhenOff = value;
+    _persist();
+    notifyListeners();
+  }
+
+  Future<void> remeasureProfile(String id) async {
+    if (latencyTesting || engineProfiles.isEmpty) return;
+    final profile = engineProfiles.firstWhere(
+      (p) => p.id == id,
+      orElse: () => engineProfiles.first,
+    );
+    final ms = await LatencyTester.measure(profile, bridge);
+    if (ms != null) {
+      latencies[id] = ms;
+      notifyListeners();
+    }
   }
 
   void clearWallpaper() {
@@ -1540,6 +1596,8 @@ class AppState extends ChangeNotifier {
         'accent': accent,
         'accentcustom': accentCustom,
         'homeorder': homeOrder,
+        'wallseeds': wallpaperSeeds,
+        'graywhenoff': grayWhenOff,
         'wallpaper': wallpaperPath,
         'locale': localeCode,
         'autoupdate': autoUpdate,
@@ -1601,6 +1659,9 @@ class AppState extends ChangeNotifier {
       homeOrder =
           _homeOrderFrom((settings['homeorder'] as List?)?.cast<String>() ??
               homeOrder);
+      wallpaperSeeds =
+          (settings['wallseeds'] as List?)?.cast<String>() ?? wallpaperSeeds;
+      grayWhenOff = settings['graywhenoff'] as bool? ?? grayWhenOff;
       wallpaperPath = settings['wallpaper'] as String? ?? wallpaperPath;
       localeCode = settings['locale'] as String? ?? localeCode;
       autoUpdate = settings['autoupdate'] as bool? ?? autoUpdate;

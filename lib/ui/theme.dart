@@ -17,6 +17,9 @@ abstract final class WayAccents {
 
   static const order = [
     'adaptive',
+    'wall1',
+    'wall2',
+    'wall3',
     'green',
     'sky',
     'blue',
@@ -44,7 +47,10 @@ abstract final class WayAccents {
           ? const Color(0xFF5B5B5B)
           : const Color(0xFFC4C4C4);
     }
-    if (accent == 'custom' && customColor != null) return customColor;
+    if ((accent == 'custom' || accent.startsWith('wall')) &&
+        customColor != null) {
+      return customColor;
+    }
     final hue = presets[accent] ?? presets['green']!;
     return brightness == Brightness.light
         ? HSLColor.fromAHSL(1, hue, 0.62, 0.45).toColor()

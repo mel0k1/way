@@ -100,6 +100,10 @@ class HomeScreen extends StatelessWidget {
               ),
               if (connected) const _UptimeChip(),
               if (state.isDesktop) const _ModeChip(),
+              if (connected && profile != null)
+                _PingChip(profileId: profile.id),
+              if (connected && (state.connIp?.isNotEmpty ?? false))
+                _ExitIpChip(ip: state.connIp!),
             ],
           );
 
@@ -424,6 +428,56 @@ class _SquishState extends State<_Squish> {
         duration: WayMotion.fast,
         curve: _pressed ? Curves.easeOutCubic : WayMotion.springy,
         child: widget.child,
+      ),
+    );
+  }
+}
+
+class _PingChip extends StatelessWidget {
+  final String profileId;
+
+  const _PingChip({required this.profileId});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10nScope.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final state = context.watch<AppState>();
+    final ms = state.latencies[profileId];
+    final bad = ms != null && ms >= 200;
+    return Tooltip(
+      message: l10n.pingChipTip,
+      child: _InfoChip(
+        icon: Icons.speed_rounded,
+        label: ms == null ? '…' : l10n.pingMs(ms),
+        foreground: bad ? scheme.error : null,
+        onTap: () => state.remeasureProfile(profileId),
+      ),
+    );
+  }
+}
+
+class _ExitIpChip extends StatefulWidget {
+  final String ip;
+
+  const _ExitIpChip({required this.ip});
+
+  @override
+  State<_ExitIpChip> createState() => _ExitIpChipState();
+}
+
+class _ExitIpChipState extends State<_ExitIpChip> {
+  bool _hidden = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10nScope.of(context);
+    return Tooltip(
+      message: l10n.exitIpTip,
+      child: _InfoChip(
+        icon: Icons.public_rounded,
+        label: _hidden ? '•••' : widget.ip,
+        onTap: () => setState(() => _hidden = !_hidden),
       ),
     );
   }

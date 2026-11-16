@@ -75,7 +75,19 @@ class L10n {
   String get accentLabel => ru ? 'Акцент' : 'Accent';
   String get accentAdaptive => ru ? 'Как в системе' : 'System';
   String get accentMono => ru ? 'Моно' : 'Mono';
+  String get accentWallpaper1 => ru ? 'Обои 1' : 'Wallpaper 1';
+  String get accentWallpaper2 => ru ? 'Обои 2' : 'Wallpaper 2';
+  String get accentWallpaper3 => ru ? 'Обои 3' : 'Wallpaper 3';
   String get accentCustom => ru ? 'Свой цвет' : 'Custom';
+  String get grayWhenOff =>
+      ru ? 'Серые обои без VPN' : 'Grayscale wallpaper when off';
+  String get grayWhenOffHint => ru
+      ? 'Обои обесцвечиваются, пока туннель опущен'
+      : 'Wallpaper desaturates while the tunnel is down';
+  String get pingChipTip =>
+      ru ? 'Нажми, чтобы перемерить пинг' : 'Tap to re-measure ping';
+  String get exitIpTip => ru ? 'Нажми, чтобы скрыть IP' : 'Tap to hide IP';
+  String pingMs(int ms) => ru ? '$ms мс' : '$ms ms';
   String get customColorTitle => ru ? 'Свой цвет' : 'Custom color';
   String get customColorHint => ru
       ? 'Крути оттенок и точку по квадрату'

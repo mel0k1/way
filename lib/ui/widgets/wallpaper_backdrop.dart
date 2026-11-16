@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/vpn_bridge.dart';
 import '../../state/app_state.dart';
 
 class WallpaperBackdrop extends StatelessWidget {
@@ -25,7 +26,7 @@ class WallpaperBackdrop extends StatelessWidget {
         if (path.isEmpty || !File(path).existsSync()) {
           return const SizedBox.shrink();
         }
-        final image = Image.file(
+        var image = Image.file(
           File(path),
           fit: BoxFit.cover,
           alignment: Alignment.center,
@@ -33,6 +34,19 @@ class WallpaperBackdrop extends StatelessWidget {
           cacheWidth: 1440,
           gaplessPlayback: true,
         );
+        final gray = state.grayWhenOff &&
+            state.vpn.phase != VpnPhase.connected;
+        if (gray) {
+          image = ColorFiltered(
+            colorFilter: const ColorFilter.matrix(<double>[
+              0.2126, 0.7152, 0.0722, 0, 0, //
+              0.2126, 0.7152, 0.0722, 0, 0, //
+              0.2126, 0.7152, 0.0722, 0, 0, //
+              0, 0, 0, 1, 0,
+            ]),
+            child: image,
+          );
+        }
         return Stack(
           fit: StackFit.expand,
           children: [

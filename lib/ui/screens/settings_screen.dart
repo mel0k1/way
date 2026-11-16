@@ -887,7 +887,9 @@ class _AccentPicker extends StatelessWidget {
                         id: id,
                         selected: state.accent == id,
                         colorOverride:
-                            id == 'custom' ? state.accentCustomColor : null,
+                            id == 'custom' || id.startsWith('wall')
+                                ? state.seedColorFor(id)
+                                : null,
                         onTap: () {
                           if (id == 'custom') {
                             _showCustomColorPicker(context, state);
@@ -1156,6 +1158,9 @@ class _AccentDot extends StatelessWidget {
     return Tooltip(
       message: switch (id) {
         'adaptive' => L10nScope.of(context).accentAdaptive,
+        'wall1' => L10nScope.of(context).accentWallpaper1,
+        'wall2' => L10nScope.of(context).accentWallpaper2,
+        'wall3' => L10nScope.of(context).accentWallpaper3,
         'mono' => L10nScope.of(context).accentMono,
         'custom' => L10nScope.of(context).accentCustom,
         _ => id,
@@ -1227,48 +1232,82 @@ class _WallpaperRow extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final hasWallpaper =
         state.wallpaperPath.isNotEmpty && File(state.wallpaperPath).existsSync();
-    return Row(
+    return Column(
       children: [
-        Icon(Icons.wallpaper_rounded, size: 22, color: scheme.onSurfaceVariant),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(l10n.wallpaper, style: Theme.of(context).textTheme.bodyLarge),
-              Text(
-                l10n.wallpaperHint,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: scheme.onSurfaceVariant),
+        Row(
+          children: [
+            Icon(Icons.wallpaper_rounded,
+                size: 22, color: scheme.onSurfaceVariant),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l10n.wallpaper,
+                      style: Theme.of(context).textTheme.bodyLarge),
+                  Text(
+                    l10n.wallpaperHint,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: scheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+            if (hasWallpaper) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.file(
+                  File(state.wallpaperPath),
+                  width: 56,
+                  height: 36,
+                  fit: BoxFit.cover,
+                  cacheWidth: 112,
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: l10n.wallpaperReset,
+                icon: const Icon(Icons.delete_outline_rounded, size: 20),
+                onPressed: state.clearWallpaper,
               ),
             ],
-          ),
+            IconButton.filledTonal(
+              tooltip: l10n.wallpaperPick,
+              icon: const Icon(Icons.photo_library_outlined, size: 20),
+              onPressed: () => _pick(context),
+            ),
+          ],
         ),
-        if (hasWallpaper) ...[
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Image.file(
-              File(state.wallpaperPath),
-              width: 56,
-              height: 36,
-              fit: BoxFit.cover,
-              cacheWidth: 112,
+        if (hasWallpaper)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              children: [
+                Icon(Icons.image_not_supported_rounded,
+                    size: 22, color: scheme.onSurfaceVariant),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l10n.grayWhenOff,
+                          style: Theme.of(context).textTheme.bodyLarge),
+                      Text(
+                        l10n.grayWhenOffHint,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: scheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(value: state.grayWhenOff, onChanged: state.setGrayWhenOff),
+              ],
             ),
           ),
-          const SizedBox(width: 8),
-          IconButton(
-            tooltip: l10n.wallpaperReset,
-            icon: const Icon(Icons.delete_outline_rounded, size: 20),
-            onPressed: state.clearWallpaper,
-          ),
-        ],
-        IconButton.filledTonal(
-          tooltip: l10n.wallpaperPick,
-          icon: const Icon(Icons.photo_library_outlined, size: 20),
-          onPressed: () => _pick(context),
-        ),
       ],
     );
   }

@@ -38,7 +38,7 @@ class WayApp extends StatelessWidget {
                     state.accent,
                     Brightness.light,
                     useDynamic ? lightDynamic : null,
-                    state.accentCustomColor,
+                    state.seedColorFor(state.accent),
                   ),
                 ),
                 darkTheme: WayTheme.dark(
@@ -46,7 +46,7 @@ class WayApp extends StatelessWidget {
                     state.accent,
                     Brightness.dark,
                     useDynamic ? darkDynamic : null,
-                    state.accentCustomColor,
+                    state.seedColorFor(state.accent),
                   ),
                   state.themeMode == 'amoled',
                 ),
