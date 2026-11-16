@@ -229,7 +229,7 @@ class _ProfileTileState extends State<ProfileTile> {
           value: 'fav',
           child: Row(children: [
             Icon(profile.favorite
-                ? Icons.push_pin_outline_rounded
+                ? Icons.push_pin_outlined
                 : Icons.push_pin_rounded),
             const SizedBox(width: 12),
             Text(profile.favorite ? l10n.removeFavorite : l10n.addFavorite),
@@ -662,7 +662,7 @@ class _DetailsBody extends StatelessWidget {
                       profile.favorite ? l10n.removeFavorite : l10n.addFavorite,
                   icon: profile.favorite
                       ? Icons.push_pin_rounded
-                      : Icons.push_pin_outline_rounded,
+                      : Icons.push_pin_outlined,
                   scheme: scheme,
                   onTap: () => onMenu('fav'),
                 ),

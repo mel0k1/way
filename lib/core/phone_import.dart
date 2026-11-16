@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-import 'dart:ui';
+
+import 'package:flutter/foundation.dart';
 
 enum PhoneImportPhase { idle, waiting, received, expired, locked, failed }
 
