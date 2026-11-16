@@ -27,13 +27,15 @@ class HomeScreen extends StatelessWidget {
     final connected = phase == VpnPhase.connected;
     final error = state.vpn.error != null;
     final hour = DateTime.now().hour;
+    final dayIndex = DateTime.now().day;
+    String pick(String a, String b) => dayIndex.isEven ? a : b;
     final greeting = hour >= 5 && hour < 12
-        ? l10n.greetingMorning
+        ? pick(l10n.greetingMorning, l10n.greetingMorningAlt)
         : hour >= 12 && hour < 17
-            ? l10n.greetingAfternoon
+            ? pick(l10n.greetingAfternoon, l10n.greetingAfternoonAlt)
             : hour >= 17 && hour < 23
-                ? l10n.greetingEvening
-                : l10n.greetingNight;
+                ? pick(l10n.greetingEvening, l10n.greetingEveningAlt)
+                : pick(l10n.greetingNight, l10n.greetingNightAlt);
 
     return SafeArea(
       child: LayoutBuilder(

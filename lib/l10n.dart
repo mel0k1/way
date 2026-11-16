@@ -67,6 +67,10 @@ class L10n {
   String get greetingAfternoon => ru ? 'Добрый день' : 'Good afternoon';
   String get greetingEvening => ru ? 'Добрый вечер' : 'Good evening';
   String get greetingNight => ru ? 'Доброй ночи' : 'Good night';
+  String get greetingMorningAlt => ru ? 'Доброго утра' : 'Good morning';
+  String get greetingAfternoonAlt => ru ? 'Доброго дня' : 'Good afternoon';
+  String get greetingEveningAlt => ru ? 'Доброго вечера' : 'Good evening';
+  String get greetingNightAlt => ru ? 'Спокойной ночи' : 'Good night';
   String get themeAmoled => 'AMOLED';
   String get accentLabel => ru ? 'Акцент' : 'Accent';
   String get accentAdaptive => ru ? 'Как в системе' : 'System';

@@ -2,6 +2,7 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 
+import '../../l10n.dart';
 import '../motion.dart';
 
 class FloatingNavTab {
@@ -32,10 +33,18 @@ class FloatingNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final dark = scheme.brightness == Brightness.dark;
     final settingsIndex = tabs.length;
     final settingsSelected = currentIndex == settingsIndex;
+    final wide = MediaQuery.widthOf(context) >= 640;
+
+    final allTabs = [
+      ...tabs,
+      FloatingNavTab(
+        icon: Icons.settings_outlined,
+        activeIcon: Icons.settings_rounded,
+        label: L10nScope.of(context).navSettings,
+      ),
+    ];
 
     return SafeArea(
       top: false,
@@ -45,18 +54,20 @@ class FloatingNavBar extends StatelessWidget {
           height: _barHeight,
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 560),
+              constraints:
+                  BoxConstraints(maxWidth: wide ? 720 : 560),
               child: Row(
                 children: [
                   Expanded(
                     child: _Pill(
                       child: Row(
                         children: [
-                          for (var i = 0; i < tabs.length; i++)
+                          for (var i = 0; i < allTabs.length; i++)
                             Expanded(
                               child: _PillItem(
-                                tab: tabs[i],
+                                tab: allTabs[i],
                                 selected: i == currentIndex,
+                                alwaysLabel: wide,
                                 onTap: () => onTap(i),
                               ),
                             ),
@@ -64,14 +75,16 @@ class FloatingNavBar extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  _CircleButton(
-                    selected: settingsSelected,
-                    icon: settingsSelected
-                        ? Icons.settings_rounded
-                        : Icons.settings_outlined,
-                    onTap: () => onTap(settingsIndex),
-                  ),
+                  if (!wide) ...[
+                    const SizedBox(width: 12),
+                    _CircleButton(
+                      selected: settingsSelected,
+                      icon: settingsSelected
+                          ? Icons.settings_rounded
+                          : Icons.settings_outlined,
+                      onTap: () => onTap(settingsIndex),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -127,18 +140,21 @@ class _Pill extends StatelessWidget {
 class _PillItem extends StatelessWidget {
   final FloatingNavTab tab;
   final bool selected;
+  final bool alwaysLabel;
   final VoidCallback onTap;
 
   const _PillItem({
     required this.tab,
     required this.selected,
     required this.onTap,
+    this.alwaysLabel = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final showLabels = MediaQuery.widthOf(context) >= 420;
+    final labeled = (selected || alwaysLabel) && showLabels;
     return InkWell(
       onTap: onTap,
       customBorder: const StadiumBorder(),
@@ -146,12 +162,10 @@ class _PillItem extends StatelessWidget {
         duration: WayMotion.medium,
         curve: WayMotion.emphasized,
         margin: const EdgeInsets.all(8),
-        padding: EdgeInsets.symmetric(
-          horizontal: selected && showLabels ? 12 : 0,
-        ),
+        padding: EdgeInsets.symmetric(horizontal: labeled ? 10 : 0),
         decoration: BoxDecoration(
           color: selected ? scheme.secondaryContainer : Colors.transparent,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(22),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -180,7 +194,7 @@ class _PillItem extends StatelessWidget {
               duration: WayMotion.medium,
               curve: WayMotion.emphasized,
               alignment: Alignment.centerLeft,
-              child: selected && showLabels
+              child: labeled
                   ? Padding(
                       padding: const EdgeInsets.only(left: 7),
                       child: Text(
@@ -190,7 +204,14 @@ class _PillItem extends StatelessWidget {
                         style: Theme.of(context)
                             .textTheme
                             .labelLarge
-                            ?.copyWith(color: scheme.onSecondaryContainer),
+                            ?.copyWith(
+                              color: selected
+                                  ? scheme.onSecondaryContainer
+                                  : scheme.onSurfaceVariant,
+                              fontWeight: selected
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                            ),
                       ),
                     )
                   : const SizedBox.shrink(),
