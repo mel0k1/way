@@ -63,9 +63,18 @@ class L10n {
   String get themeSystem => ru ? 'Системная' : 'System';
   String get themeLight => ru ? 'Светлая' : 'Light';
   String get themeDark => ru ? 'Тёмная' : 'Dark';
-  String get materialYou => ru ? 'Цвета Material You' : 'Material You colors';
-  String get materialYouHint =>
-      ru ? 'Окрашивать интерфейс в цвета системы (Android 12+)' : 'Tint the UI with system colors (Android 12+)';
+  String get greetingMorning => ru ? 'Доброе утро' : 'Good morning';
+  String get greetingAfternoon => ru ? 'Добрый день' : 'Good afternoon';
+  String get greetingEvening => ru ? 'Добрый вечер' : 'Good evening';
+  String get greetingNight => ru ? 'Доброй ночи' : 'Good night';
+  String get themeAmoled => 'AMOLED';
+  String get accentLabel => ru ? 'Акцент' : 'Accent';
+  String get accentAdaptive => ru ? 'Как в системе' : 'System';
+  String get accentMono => ru ? 'Моно' : 'Mono';
+  String get wallpaper => ru ? 'Обои' : 'Wallpaper';
+  String get wallpaperHint => ru ? 'Фон главного экрана' : 'Home screen backdrop';
+  String get wallpaperPick => ru ? 'Выбрать' : 'Choose';
+  String get wallpaperReset => ru ? 'Сбросить' : 'Reset';
   String get language => ru ? 'Язык' : 'Language';
   String get langSystem => ru ? 'Системный' : 'System';
   String get updates => ru ? 'Подписки' : 'Subscriptions';

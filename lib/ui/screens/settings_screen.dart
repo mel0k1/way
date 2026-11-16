@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -9,6 +10,7 @@ import '../../core/version.dart';
 import '../../l10n.dart';
 import '../../state/app_state.dart';
 import 'package:provider/provider.dart';
+import '../theme.dart';
 import '../widgets/update_dialog.dart';
 import 'connections_screen.dart';
 import 'route_rules_screen.dart';
@@ -528,19 +530,15 @@ class SettingsScreen extends StatelessWidget {
                     ButtonSegment(value: 'system', label: Text(l10n.themeSystem)),
                     ButtonSegment(value: 'light', label: Text(l10n.themeLight)),
                     ButtonSegment(value: 'dark', label: Text(l10n.themeDark)),
+                    const ButtonSegment(value: 'amoled', label: Text('AMOLED')),
                   ],
                   selected: {state.themeMode},
                   onSelectionChanged: (s) => state.setThemeMode(s.first),
                 ),
-                if (!state.isDesktop) ...[
-                  SwitchListTile(
-                    title: Text(l10n.materialYou),
-                    subtitle: Text(l10n.materialYouHint),
-                    value: state.dynamicColors,
-                    onChanged: state.setDynamicColors,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ],
+                const SizedBox(height: 16),
+                _AccentPicker(state: state),
+                const SizedBox(height: 4),
+                _WallpaperRow(state: state),
                 const SizedBox(height: 12),
                 SegmentedButton<String>(
                   segments: [
@@ -843,6 +841,190 @@ class _SectionCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _AccentPicker extends StatelessWidget {
+  final AppState state;
+
+  const _AccentPicker({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 52,
+      child: Row(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Text(
+              L10nScope.of(context).accentLabel,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none,
+              child: Row(
+                children: [
+                  for (final id in WayAccents.order)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 10),
+                      child: _AccentDot(
+                        id: id,
+                        selected: state.accent == id,
+                        onTap: () => state.setAccent(id),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccentDot extends StatelessWidget {
+  final String id;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _AccentDot({
+    required this.id,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isAdaptive = id == 'adaptive';
+    final isMono = id == 'mono';
+    final color = isAdaptive || isMono ? null : WayAccents.swatch(id);
+    return Tooltip(
+      message: switch (id) {
+        'adaptive' => L10nScope.of(context).accentAdaptive,
+        'mono' => L10nScope.of(context).accentMono,
+        _ => id,
+      },
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutBack,
+          width: 44,
+          height: 44,
+          padding: EdgeInsets.all(selected ? 4 : 0),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: selected ? scheme.primary : Colors.transparent,
+              width: 3,
+            ),
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color ?? scheme.surfaceContainerHighest,
+              border: Border.all(
+                color: scheme.outlineVariant.withValues(alpha: 0.6),
+              ),
+            ),
+            alignment: Alignment.center,
+            child: isAdaptive
+                ? Icon(Icons.brightness_auto_rounded,
+                    size: 20, color: scheme.onSurfaceVariant)
+                : isMono
+                    ? Icon(Icons.contrast_rounded,
+                        size: 20, color: scheme.onSurfaceVariant)
+                    : null,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WallpaperRow extends StatelessWidget {
+  final AppState state;
+
+  const _WallpaperRow({required this.state});
+
+  Future<void> _pick(BuildContext context) async {
+    const group = XTypeGroup(
+      label: 'Images',
+      mimeTypes: ['image/*'],
+      extensions: ['jpg', 'jpeg', 'png', 'webp', 'bmp'],
+    );
+    final file = await openFile(acceptedTypeGroups: [group]);
+    if (file == null) return;
+    await state.setWallpaperFrom(file.path);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(L10nScope.of(context).wallpaper),
+      behavior: SnackBarBehavior.floating,
+      width: 320,
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10nScope.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final hasWallpaper =
+        state.wallpaperPath.isNotEmpty && File(state.wallpaperPath).existsSync();
+    return Row(
+      children: [
+        Icon(Icons.wallpaper_rounded, size: 22, color: scheme.onSurfaceVariant),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.wallpaper, style: Theme.of(context).textTheme.bodyLarge),
+              Text(
+                l10n.wallpaperHint,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+        if (hasWallpaper) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.file(
+              File(state.wallpaperPath),
+              width: 56,
+              height: 36,
+              fit: BoxFit.cover,
+              cacheWidth: 112,
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            tooltip: l10n.wallpaperReset,
+            icon: const Icon(Icons.delete_outline_rounded, size: 20),
+            onPressed: state.clearWallpaper,
+          ),
+        ],
+        IconButton.filledTonal(
+          tooltip: l10n.wallpaperPick,
+          icon: const Icon(Icons.photo_library_outlined, size: 20),
+          onPressed: () => _pick(context),
+        ),
+      ],
     );
   }
 }

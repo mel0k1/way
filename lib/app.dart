@@ -14,6 +14,7 @@ import 'ui/widgets/app_background.dart';
 import 'ui/widgets/nav_bar.dart';
 import 'ui/widgets/onboarding.dart';
 import 'ui/widgets/update_dialog.dart';
+import 'ui/widgets/wallpaper_backdrop.dart';
 
 class WayApp extends StatelessWidget {
   const WayApp({super.key});
@@ -27,13 +28,26 @@ class WayApp extends StatelessWidget {
           data: l10n,
           child: DynamicColorBuilder(
             builder: (lightDynamic, darkDynamic) {
-              final useDynamic = state.dynamicColors;
+              final useDynamic = state.accent == 'adaptive';
               return MaterialApp(
                 title: 'Way',
                 debugShowCheckedModeBanner: false,
                 themeMode: _mode(state.themeMode),
-                theme: WayTheme.light(useDynamic ? lightDynamic : null),
-                darkTheme: WayTheme.dark(useDynamic ? darkDynamic : null),
+                theme: WayTheme.light(
+                  WayAccents.schemeFor(
+                    state.accent,
+                    Brightness.light,
+                    useDynamic ? lightDynamic : null,
+                  ),
+                ),
+                darkTheme: WayTheme.dark(
+                  WayAccents.schemeFor(
+                    state.accent,
+                    Brightness.dark,
+                    useDynamic ? darkDynamic : null,
+                  ),
+                  amoled: state.themeMode == 'amoled',
+                ),
                 builder: (context, child) => Stack(
                   children: [
                     const Positioned.fill(child: AppBackground()),
@@ -56,6 +70,7 @@ class WayApp extends StatelessWidget {
       case 'light':
         return ThemeMode.light;
       case 'dark':
+      case 'amoled':
         return ThemeMode.dark;
       default:
         return ThemeMode.system;
@@ -195,48 +210,53 @@ class _WayShellState extends State<WayShell>
       const SettingsScreen(),
     ];
     return Scaffold(
-      body: AnimatedSwitcher(
-        duration: WayMotion.medium,
-        switchInCurve: WayMotion.emphasized,
-        switchOutCurve: WayMotion.emphasizedIn,
-        transitionBuilder: (child, animation) => FadeTransition(
-          opacity: animation,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.015),
-              end: Offset.zero,
-            ).animate(animation),
-            child: child,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: WallpaperBackdrop(
+              scrim: _index == 0 ? 0.40 : 0.52,
+              blur: _index == 0 ? 0 : 8,
+            ),
           ),
-        ),
-        child: KeyedSubtree(
-          key: ValueKey(_index),
-          child: screens[_index],
-        ),
+          AnimatedSwitcher(
+            duration: WayMotion.medium,
+            switchInCurve: WayMotion.emphasized,
+            switchOutCurve: WayMotion.emphasizedIn,
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.015),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
+            ),
+            child: KeyedSubtree(
+              key: ValueKey(_index),
+              child: screens[_index],
+            ),
+          ),
+        ],
       ),
-      bottomNavigationBar: ExpressiveNavBar(
+      bottomNavigationBar: FloatingNavBar(
         currentIndex: _index,
         onTap: (i) => setState(() => _index = i),
-        destinations: [
-          ExpressiveNavDestination(
+        tabs: [
+          FloatingNavTab(
             icon: Icons.shield_outlined,
             activeIcon: Icons.shield_rounded,
             label: l10n.navHome,
           ),
-          ExpressiveNavDestination(
+          FloatingNavTab(
             icon: Icons.dns_outlined,
             activeIcon: Icons.dns_rounded,
             label: l10n.navServers,
           ),
-          ExpressiveNavDestination(
+          FloatingNavTab(
             icon: Icons.terminal_outlined,
             activeIcon: Icons.terminal_rounded,
             label: l10n.navLogs,
-          ),
-          ExpressiveNavDestination(
-            icon: Icons.settings_outlined,
-            activeIcon: Icons.settings_rounded,
-            label: l10n.navSettings,
           ),
         ],
       ),

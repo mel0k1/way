@@ -1,16 +1,91 @@
 import 'package:flutter/material.dart';
 
+/// Accent presets, Chumpy-style: every preset is a hue seed for the stock
+/// Material 3 tonal palettes. `adaptive` follows the OS (dynamic_color),
+/// `mono` desaturates everything.
+abstract final class WayAccents {
+  static const presets = <String, double>{
+    'green': 145,
+    'sky': 211,
+    'blue': 217,
+    'indigo': 248,
+    'violet': 285,
+    'red': 4,
+    'orange': 30,
+    'yellow': 52,
+  };
+
+  static const order = [
+    'adaptive',
+    'green',
+    'sky',
+    'blue',
+    'indigo',
+    'violet',
+    'red',
+    'orange',
+    'yellow',
+    'mono',
+  ];
+
+  static Color swatch(String id) {
+    final hue = presets[id] ?? 145;
+    return HSLColor.fromAHSL(1, hue, 0.62, 0.52).toColor();
+  }
+
+  static Color _seedFor(String accent, Brightness brightness) {
+    if (accent == 'mono') {
+      return brightness == Brightness.light
+          ? const Color(0xFF5B5B5B)
+          : const Color(0xFFC4C4C4);
+    }
+    final hue = presets[accent] ?? presets['green']!;
+    return brightness == Brightness.light
+        ? HSLColor.fromAHSL(1, hue, 0.62, 0.45).toColor()
+        : HSLColor.fromAHSL(1, hue, 0.55, 0.72).toColor();
+  }
+
+  static ColorScheme schemeFor(
+    String accent,
+    Brightness brightness, [
+    ColorScheme? dynamicScheme,
+  ]) {
+    if (dynamicScheme != null && accent == 'adaptive') return dynamicScheme;
+    return ColorScheme.fromSeed(
+      seedColor: _seedFor(accent, brightness),
+      brightness: brightness,
+    );
+  }
+
+  static ColorScheme amolized(ColorScheme scheme) {
+    const black = Color(0xFF000000);
+    const lift = Color(0xFF0C0C0D);
+    const lift2 = Color(0xFF141416);
+    return scheme.copyWith(
+      surface: black,
+      surfaceDim: black,
+      surfaceContainerLowest: black,
+      surfaceContainerLow: lift,
+      surfaceContainer: lift,
+      surfaceContainerHigh: lift2,
+      surfaceContainerHighest: lift2,
+      onSurface: scheme.onSurface,
+    );
+  }
+}
+
 class WayTheme {
   WayTheme._();
 
-  static const _seedLight = Color(0xFF2E7D53);
-  static const _seedDark = Color(0xFF9BDDB4);
+  static ThemeData light([ColorScheme? scheme]) =>
+      _build(scheme ?? WayAccents.schemeFor('green', Brightness.light));
 
-  static ThemeData light([ColorScheme? dynamicScheme]) =>
-      _build(dynamicScheme ?? ColorScheme.fromSeed(seedColor: _seedLight));
+  static ThemeData dark([ColorScheme? scheme, bool amoled = false]) => _build(
+      _applyAmoled(
+          scheme ?? WayAccents.schemeFor('green', Brightness.dark), amoled));
 
-  static ThemeData dark([ColorScheme? dynamicScheme]) => _build(
-      dynamicScheme ?? ColorScheme.fromSeed(seedColor: _seedDark, brightness: Brightness.dark));
+  static ColorScheme _applyAmoled(ColorScheme scheme, bool amoled) =>
+      amoled ? WayAccents.amolized(scheme) : scheme;
 
   static ThemeData _build(ColorScheme scheme) {
     final base = ThemeData(

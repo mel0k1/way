@@ -1,173 +1,76 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
-import 'package:flutter/physics.dart';
 
 import '../motion.dart';
 
-class ExpressiveNavDestination {
+class FloatingNavTab {
   final IconData icon;
   final IconData activeIcon;
   final String label;
 
-  const ExpressiveNavDestination({
+  const FloatingNavTab({
     required this.icon,
     required this.activeIcon,
     required this.label,
   });
 }
 
-class ExpressiveNavBar extends StatefulWidget {
+class FloatingNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
-  final List<ExpressiveNavDestination> destinations;
+  final List<FloatingNavTab> tabs;
 
-  const ExpressiveNavBar({
+  const FloatingNavBar({
     super.key,
     required this.currentIndex,
     required this.onTap,
-    required this.destinations,
+    required this.tabs,
   });
 
-  @override
-  State<ExpressiveNavBar> createState() => _ExpressiveNavBarState();
-}
-
-class _ExpressiveNavBarState extends State<ExpressiveNavBar>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _mover =
-      AnimationController.unbounded(vsync: this);
-
-  static final SpringDescription _spring = WayMotion.springDesc;
-
-  double _lastWidth = 0;
-  bool _snapped = false;
-
-  double get _pillSize => 68.0;
-
-  double _targetX(double width, int index) =>
-      width / widget.destinations.length * (index + 0.5);
-
-  void _snapTo(double width) {
-    _mover.value = _targetX(width, widget.currentIndex);
-    _lastWidth = width;
-    _snapped = true;
-  }
-
-  @override
-  void didUpdateWidget(ExpressiveNavBar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.currentIndex != widget.currentIndex && _snapped) {
-      final target = _targetX(_lastWidth, widget.currentIndex);
-      _mover.animateWith(SpringSimulation(
-        _spring,
-        _mover.value,
-        target,
-        _mover.velocity,
-      ));
-    }
-  }
-
-  @override
-  void dispose() {
-    _mover.dispose();
-    super.dispose();
-  }
+  static const _barHeight = 64.0;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final dark = scheme.brightness == Brightness.dark;
+    final settingsIndex = tabs.length;
+    final settingsSelected = currentIndex == settingsIndex;
 
     return SafeArea(
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
         child: SizedBox(
-          height: 74,
+          height: _barHeight,
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 560),
-              child: Container(
-                height: 74,
-                decoration: BoxDecoration(
-                  color: scheme.surfaceContainer.withValues(
-                    alpha: dark ? 0.96 : 0.98,
-                  ),
-                  borderRadius: BorderRadius.circular(37),
-                  border: Border.all(
-                    color: scheme.outlineVariant.withValues(alpha: 0.45),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: scheme.shadow.withValues(
-                        alpha: dark ? 0.36 : 0.12,
-                      ),
-                      blurRadius: 22,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final w = constraints.maxWidth;
-                    if (!_snapped || w != _lastWidth) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted) setState(() => _snapTo(w));
-                      });
-                    }
-                    return Stack(
-                      alignment: Alignment.centerLeft,
-                      children: [
-                        if (_snapped)
-                          AnimatedBuilder(
-                            animation: _mover,
-                            builder: (context, _) {
-                              final x = _mover.value.clamp(0.0, w);
-                              final v = _mover.velocity.abs();
-                              final stretch = (1.0 + v / 3200)
-                                  .clamp(1.0, 1.22);
-                              final half = _pillSize * stretch / 2;
-                              return Positioned(
-                                left: (x - half).clamp(
-                                  5.0,
-                                  math.max(5.0, w - half * 2 - 5),
-                                ),
-                                top: (74 - 46) / 2,
-                                child: Transform.scale(
-                                  scaleX: stretch,
-                                  scaleY: 2.0 - stretch,
-                                  child: Container(
-                                    width: _pillSize,
-                                    height: 46,
-                                    decoration: BoxDecoration(
-                                      color: scheme.primaryContainer,
-                                      borderRadius:
-                                          BorderRadius.circular(23),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        Row(
-                          children: [
-                            for (var i = 0;
-                                i < widget.destinations.length;
-                                i++)
-                              Expanded(
-                                child: _NavDestination(
-                                  destination: widget.destinations[i],
-                                  selected: i == widget.currentIndex,
-                                  onTap: () => widget.onTap(i),
-                                ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _Pill(
+                      child: Row(
+                        children: [
+                          for (var i = 0; i < tabs.length; i++)
+                            Expanded(
+                              child: _PillItem(
+                                tab: tabs[i],
+                                selected: i == currentIndex,
+                                onTap: () => onTap(i),
                               ),
-                          ],
-                        ),
-                      ],
-                    );
-                  },
-                ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  _CircleButton(
+                    selected: settingsSelected,
+                    icon: settingsSelected
+                        ? Icons.settings_rounded
+                        : Icons.settings_outlined,
+                    onTap: () => onTap(settingsIndex),
+                  ),
+                ],
               ),
             ),
           ),
@@ -177,13 +80,43 @@ class _ExpressiveNavBarState extends State<ExpressiveNavBar>
   }
 }
 
-class _NavDestination extends StatelessWidget {
-  final ExpressiveNavDestination destination;
+class _Pill extends StatelessWidget {
+  final Widget child;
+
+  const _Pill({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final dark = scheme.brightness == Brightness.dark;
+    return Container(
+      height: 64,
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainer.withValues(alpha: dark ? 0.96 : 0.98),
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.45),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: scheme.shadow.withValues(alpha: dark ? 0.36 : 0.12),
+            blurRadius: 22,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class _PillItem extends StatelessWidget {
+  final FloatingNavTab tab;
   final bool selected;
   final VoidCallback onTap;
 
-  const _NavDestination({
-    required this.destination,
+  const _PillItem({
+    required this.tab,
     required this.selected,
     required this.onTap,
   });
@@ -191,56 +124,126 @@ class _NavDestination extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final scheme_ = Theme.of(context).textTheme;
+    final showLabels = MediaQuery.widthOf(context) >= 420;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(23),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          TweenAnimationBuilder<double>(
-            key: ValueKey(selected),
-            tween: Tween(begin: selected ? 0.78 : 1.0, end: 1.0),
-            duration: const Duration(milliseconds: 480),
-            curve: Curves.easeOutBack,
-            builder: (context, t, child) =>
-                Transform.scale(scale: t, child: child),
-            child: SizedBox(
-              width: 44,
-              height: 30,
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 220),
-                switchInCurve: Curves.easeOut,
-                switchOutCurve: Curves.easeIn,
-                transitionBuilder: (child, anim) => FadeTransition(
-                  opacity: anim,
-                  child: ScaleTransition(
-                    scale: Tween(begin: 0.7, end: 1.0).animate(anim),
-                    child: child,
-                  ),
-                ),
-                child: Icon(
-                  selected ? destination.activeIcon : destination.icon,
-                  key: ValueKey(selected),
-                  size: 25,
-                  color: selected
-                      ? scheme.onPrimaryContainer
-                      : scheme.onSurfaceVariant,
+      customBorder: const StadiumBorder(),
+      child: AnimatedContainer(
+        duration: WayMotion.medium,
+        curve: WayMotion.emphasized,
+        margin: const EdgeInsets.all(8),
+        padding: EdgeInsets.symmetric(
+          horizontal: selected && showLabels ? 12 : 0,
+        ),
+        decoration: BoxDecoration(
+          color: selected ? scheme.secondaryContainer : Colors.transparent,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedSwitcher(
+              duration: WayMotion.fast,
+              switchInCurve: WayMotion.springy,
+              switchOutCurve: WayMotion.emphasizedIn,
+              transitionBuilder: (child, anim) => FadeTransition(
+                opacity: anim,
+                child: ScaleTransition(
+                  scale: Tween(begin: 0.7, end: 1.0).animate(anim),
+                  child: child,
                 ),
               ),
+              child: Icon(
+                selected ? tab.activeIcon : tab.icon,
+                key: ValueKey(selected),
+                size: 24,
+                color: selected
+                    ? scheme.onSecondaryContainer
+                    : scheme.onSurfaceVariant,
+              ),
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            destination.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: scheme_.labelSmall?.copyWith(
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
+            AnimatedSize(
+              duration: WayMotion.medium,
+              curve: WayMotion.emphasized,
+              alignment: Alignment.centerLeft,
+              child: selected && showLabels
+                  ? Padding(
+                      padding: const EdgeInsets.only(left: 7),
+                      child: Text(
+                        tab.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelLarge
+                            ?.copyWith(color: scheme.onSecondaryContainer),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CircleButton extends StatelessWidget {
+  final bool selected;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _CircleButton({
+    required this.selected,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final dark = scheme.brightness == Brightness.dark;
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(selected),
+      tween: Tween(begin: selected ? 0.82 : 1.0, end: 1.0),
+      duration: const Duration(milliseconds: 480),
+      curve: Curves.easeOutBack,
+      builder: (context, t, child) =>
+          Transform.scale(scale: t, child: child),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: AnimatedContainer(
+          duration: WayMotion.medium,
+          curve: Curves.easeOutCubic,
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: selected
+                ? scheme.secondaryContainer
+                : scheme.surfaceContainer.withValues(
+                    alpha: dark ? 0.96 : 0.98,
+                  ),
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: 0.45),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: scheme.shadow.withValues(alpha: dark ? 0.36 : 0.12),
+                blurRadius: 22,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
-        ],
+          child: Icon(
+            icon,
+            size: 24,
+            color: selected
+                ? scheme.onSecondaryContainer
+                : scheme.onSurfaceVariant,
+          ),
+        ),
       ),
     );
   }

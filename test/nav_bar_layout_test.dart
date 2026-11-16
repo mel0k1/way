@@ -2,21 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:way/ui/widgets/nav_bar.dart';
 
-const _destinations = [
-  ExpressiveNavDestination(
+const _tabs = [
+  FloatingNavTab(
       icon: Icons.shield_outlined,
       activeIcon: Icons.shield_rounded,
       label: 'Главная'),
-  ExpressiveNavDestination(
+  FloatingNavTab(
       icon: Icons.dns_outlined, activeIcon: Icons.dns_rounded, label: 'Серверы'),
-  ExpressiveNavDestination(
+  FloatingNavTab(
       icon: Icons.terminal_outlined,
       activeIcon: Icons.terminal_rounded,
       label: 'Логи'),
-  ExpressiveNavDestination(
-      icon: Icons.settings_outlined,
-      activeIcon: Icons.settings_rounded,
-      label: 'Настройки'),
 ];
 
 void main() {
@@ -29,10 +25,10 @@ void main() {
         body: const Center(
           child: Text('BODY MARKER', key: Key('body-marker')),
         ),
-        bottomNavigationBar: ExpressiveNavBar(
+        bottomNavigationBar: FloatingNavBar(
           currentIndex: 0,
           onTap: (_) {},
-          destinations: _destinations,
+          tabs: _tabs,
         ),
       ),
     ));
@@ -43,9 +39,9 @@ void main() {
     final view = tester.view;
     final windowH = view.physicalSize.height / view.devicePixelRatio;
 
-    final barRect = tester.getRect(find.byType(ExpressiveNavBar));
-    expect(barRect.height, closeTo(74 + 12 + 4, 0.5),
-        reason: 'bar total height should be 74 content + 16 padding, '
+    final barRect = tester.getRect(find.byType(FloatingNavBar));
+    expect(barRect.height, closeTo(64 + 12 + 4, 0.5),
+        reason: 'bar total height should be 64 content + 16 padding, '
             'got ${barRect.height}');
 
     final bodyRect = tester.getRect(find.byKey(const Key('body-marker')));
@@ -70,10 +66,10 @@ void main() {
                 child: Text('BODY MARKER', key: Key('body-marker'))),
             SizedBox(
               height: 400,
-              child: ExpressiveNavBar(
+              child: FloatingNavBar(
                 currentIndex: 0,
                 onTap: (_) {},
-                destinations: _destinations,
+                tabs: _tabs,
               ),
             ),
           ],
@@ -84,7 +80,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.pumpAndSettle();
 
-    final barRect = tester.getRect(find.byType(ExpressiveNavBar));
+    final barRect = tester.getRect(find.byType(FloatingNavBar));
     expect(barRect.height, closeTo(400, 0.5),
         reason: 'host gave 400dp — the bar must fill exactly what the host '
             'bounded, never more');
@@ -93,7 +89,7 @@ void main() {
     expect(bodyRect.height, greaterThan(0));
   });
 
-  testWidgets('spring indicator lands on the selected destination',
+  testWidgets('tapping tabs and the settings circle switches destinations',
       (tester) async {
     int selected = 0;
     late StateSetter setState;
@@ -103,10 +99,10 @@ void main() {
         return MaterialApp(
           theme: ThemeData.dark(useMaterial3: true),
           home: Scaffold(
-            bottomNavigationBar: ExpressiveNavBar(
+            bottomNavigationBar: FloatingNavBar(
               currentIndex: selected,
               onTap: (i) => setState(() => selected = i),
-              destinations: _destinations,
+              tabs: _tabs,
             ),
           ),
         );
@@ -116,14 +112,20 @@ void main() {
     await tester.pumpAndSettle();
     await tester.pumpAndSettle();
 
-    final barRectBefore = tester.getRect(find.byType(ExpressiveNavBar));
-    await tester.tap(find.text('Настройки'));
+    final barRectBefore = tester.getRect(find.byType(FloatingNavBar));
+    await tester.tap(find.text('Логи'));
     await tester.pump(const Duration(milliseconds: 120));
     await tester.pumpAndSettle();
     await tester.pumpAndSettle();
+    expect(selected, 2);
 
-    final barRectAfter = tester.getRect(find.byType(ExpressiveNavBar));
-    expect(barRectAfter.height, closeTo(barRectBefore.height, 0.5));
+    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.pump(const Duration(milliseconds: 120));
+    await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
     expect(selected, 3);
+
+    final barRectAfter = tester.getRect(find.byType(FloatingNavBar));
+    expect(barRectAfter.height, closeTo(barRectBefore.height, 0.5));
   });
 }

@@ -68,8 +68,14 @@ class AppState extends ChangeNotifier {
   String engine = 'singbox';
   bool preferTun = true;
   String themeMode = 'system';
-  bool dynamicColors = true;
+  String accent = 'green';
+  String wallpaperPath = '';
+  DateTime? connectedSince;
   String localeCode = '';
+
+  Duration get uptime => connectedSince == null
+      ? Duration.zero
+      : DateTime.now().difference(connectedSince!);
   bool autoUpdate = true;
   int autoUpdateMin = 60;
   String dnsHost = '1.1.1.1';
@@ -275,7 +281,9 @@ class AppState extends ChangeNotifier {
         engine = s['engine'] as String? ?? engine;
         preferTun = s['tun'] as bool? ?? preferTun;
         themeMode = s['theme'] as String? ?? themeMode;
-        dynamicColors = s['dyn'] as bool? ?? dynamicColors;
+        final dyn = s['dyn'] as bool?;
+        accent = s['accent'] as String? ?? (dyn == true ? 'adaptive' : accent);
+        wallpaperPath = s['wallpaper'] as String? ?? wallpaperPath;
         localeCode = s['locale'] as String? ?? localeCode;
         autoUpdate = s['autoupdate'] as bool? ?? autoUpdate;
         autoUpdateMin = (s['updatemin'] as num?)?.toInt() ?? autoUpdateMin;
@@ -429,7 +437,8 @@ class AppState extends ChangeNotifier {
           'engine': engine,
           'tun': preferTun,
           'theme': themeMode,
-          'dyn': dynamicColors,
+          'accent': accent,
+          'wallpaper': wallpaperPath,
           'locale': localeCode,
           'autoupdate': autoUpdate,
           'updatemin': autoUpdateMin,
@@ -500,6 +509,13 @@ class AppState extends ChangeNotifier {
     final observed = VpnStatus(phase: phase, error: s.error);
     if (observed.phase != vpn.phase ||
         (observed.error != null && observed.error != vpn.error)) {
+      if (observed.phase == VpnPhase.connected &&
+          vpn.phase != VpnPhase.connected) {
+        connectedSince = DateTime.now();
+      }
+      if (observed.phase == VpnPhase.stopped) {
+        connectedSince = null;
+      }
       if (vpn.phase == VpnPhase.connecting &&
           observed.phase == VpnPhase.connected) {
         log('connected');
@@ -1280,8 +1296,25 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setDynamicColors(bool value) {
-    dynamicColors = value;
+  void setAccent(String value) {
+    accent = value;
+    _persist();
+    notifyListeners();
+  }
+
+  Future<void> setWallpaperFrom(String sourcePath) async {
+    try {
+      final docs = await getApplicationSupportDirectory();
+      final target = File('${docs.path}/wallpaper.img');
+      await File(sourcePath).copy(target.path);
+      wallpaperPath = target.path;
+      _persist();
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  void clearWallpaper() {
+    wallpaperPath = '';
     _persist();
     notifyListeners();
   }
@@ -1466,7 +1499,8 @@ class AppState extends ChangeNotifier {
         'engine': engine,
         'tun': preferTun,
         'theme': themeMode,
-        'dyn': dynamicColors,
+        'accent': accent,
+        'wallpaper': wallpaperPath,
         'locale': localeCode,
         'autoupdate': autoUpdate,
         'updatemin': autoUpdateMin,
@@ -1522,7 +1556,8 @@ class AppState extends ChangeNotifier {
       engine = settings['engine'] as String? ?? engine;
       preferTun = settings['tun'] as bool? ?? preferTun;
       themeMode = settings['theme'] as String? ?? themeMode;
-      dynamicColors = settings['dyn'] as bool? ?? dynamicColors;
+      accent = settings['accent'] as String? ?? accent;
+      wallpaperPath = settings['wallpaper'] as String? ?? wallpaperPath;
       localeCode = settings['locale'] as String? ?? localeCode;
       autoUpdate = settings['autoupdate'] as bool? ?? autoUpdate;
       autoUpdateMin = (settings['updatemin'] as num?)?.toInt() ?? autoUpdateMin;
