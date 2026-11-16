@@ -11,6 +11,7 @@ import '../../l10n.dart';
 import '../../state/app_state.dart';
 import 'package:provider/provider.dart';
 import '../theme.dart';
+import '../widgets/phone_import_sheet.dart';
 import '../widgets/update_dialog.dart';
 import 'connections_screen.dart';
 import 'route_rules_screen.dart';
@@ -1343,6 +1344,11 @@ class _WallpaperRow extends StatelessWidget {
                 onPressed: state.clearWallpaper,
               ),
             ],
+            IconButton.filledTonal(
+              tooltip: l10n.phoneWallpaper,
+              icon: const Icon(Icons.smartphone_rounded, size: 20),
+              onPressed: () => showPhoneImport(context, wallpaper: true),
+            ),
             IconButton.filledTonal(
               tooltip: l10n.wallpaperPick,
               icon: const Icon(Icons.photo_library_outlined, size: 20),

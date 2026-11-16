@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import '../core/font_registry.dart';
 import '../core/happ_spoof.dart';
 import '../core/phone_import.dart';
+import '../core/traffic_history.dart';
 import '../core/wallpaper_palette.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
@@ -126,6 +127,10 @@ class AppState extends ChangeNotifier {
   String happUserId = '';
   String happHwid = '';
   String? lastFontError;
+  final TrafficHistory traffic = TrafficHistory();
+  List<DayTraffic> trafficWeek = const [];
+  int _lastTrafficUp = 0;
+  int _lastTrafficDown = 0;
   PhoneImportServer? phoneServer;
   PhoneImportState phoneImportState =
       const PhoneImportState(PhoneImportPhase.idle);
@@ -376,6 +381,7 @@ class AppState extends ChangeNotifier {
       } catch (_) {}
     }
     onboardingDone = prefs.getBool('way.intro_done') ?? false;
+    unawaited(_loadTrafficWeek());
     if (wallpaperPath.isNotEmpty && wallpaperSeeds.isEmpty) {
       unawaited(refreshWallpaperPalette());
     }
@@ -606,6 +612,9 @@ class AppState extends ChangeNotifier {
         statsPoller.reset();
         connIp = null;
         connCountry = null;
+        _lastTrafficUp = 0;
+        _lastTrafficDown = 0;
+        unawaited(_flushTraffic());
       }
       vpn = observed;
       notifyListeners();
@@ -686,6 +695,27 @@ class AppState extends ChangeNotifier {
   Future<void> _statsTick() async {
     if (vpn.phase != VpnPhase.connected) return;
     stats = await statsPoller.fetch();
+    // Daily history: the session counters reset on every reconnect, so a
+    // backwards jump counts as a fresh session from zero.
+    final up = stats.totalUp >= _lastTrafficUp
+        ? stats.totalUp - _lastTrafficUp
+        : stats.totalUp;
+    final down = stats.totalDown >= _lastTrafficDown
+        ? stats.totalDown - _lastTrafficDown
+        : stats.totalDown;
+    _lastTrafficUp = stats.totalUp;
+    _lastTrafficDown = stats.totalDown;
+    if (up > 0 || down > 0) {
+      final week = await traffic.add(up, down);
+      if (week != null) trafficWeek = week;
+    }
+    notifyListeners();
+  }
+
+  Future<void> _flushTraffic() async {
+    try {
+      trafficWeek = await traffic.flush();
+    } catch (_) {}
     notifyListeners();
   }
 
@@ -1203,6 +1233,11 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _loadTrafficWeek() async {
+    trafficWeek = await traffic.readWeek();
+    notifyListeners();
+  }
+
   Future<void> _loadFonts() async {
     final onDisk = await FontRegistry.imported();
     if (onDisk.isNotEmpty) {
@@ -1216,9 +1251,9 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> startPhoneImport() async {
+  Future<void> startPhoneImport({bool wallpaper = false}) async {
     await stopPhoneImport();
-    final server = PhoneImportServer();
+    final server = PhoneImportServer(wallpaper: wallpaper);
     server.state.addListener(() {
       final s = server.state.value;
       phoneImportState = s;
@@ -1227,6 +1262,10 @@ class AppState extends ChangeNotifier {
         addFromLink(s.payload!);
         lastImportCount = profiles.length - before;
         lastImportWasSub = false;
+      }
+      if (s.phase == PhoneImportPhase.received &&
+          s.wallpaperPath != null) {
+        unawaited(_applyPhoneWallpaper(s.wallpaperPath!));
       }
       notifyListeners();
     });
@@ -1238,6 +1277,14 @@ class AppState extends ChangeNotifier {
       phoneImportState = const PhoneImportState(PhoneImportPhase.failed);
     }
     notifyListeners();
+  }
+
+  Future<void> _applyPhoneWallpaper(String tempPath) async {
+    try {
+      await setWallpaperFrom(tempPath);
+      final tempDir = Directory(File(tempPath).parent.path);
+      if (await tempDir.exists()) await tempDir.delete(recursive: true);
+    } catch (_) {}
   }
 
   Future<void> stopPhoneImport() async {
@@ -1977,6 +2024,7 @@ class AppState extends ChangeNotifier {
     _statsTimer?.cancel();
     _reconnectTimer?.cancel();
     _clipboardTimer?.cancel();
+    unawaited(_flushTraffic());
     unawaited(localApiServer.stop());
     statsPoller.dispose();
     super.dispose();

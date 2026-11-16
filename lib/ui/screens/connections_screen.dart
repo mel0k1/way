@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/connections.dart';
+import '../../core/traffic_history.dart';
 import '../../core/vpn_bridge.dart';
 import '../../l10n.dart';
 import '../../state/app_state.dart';
@@ -136,6 +138,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
                 connected: connected,
               ),
             ),
+            const _WeekTrafficCard(),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               child: TextField(
@@ -195,6 +198,185 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The week's daily totals, Chumpy-style: stacked bars (upload on top,
+/// download below), one column per day, the weekday letter underneath.
+class _WeekTrafficCard extends StatelessWidget {
+  const _WeekTrafficCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = L10nScope.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final state = context.watch<AppState>();
+    final week = state.trafficWeek;
+    final todayEpoch = TrafficHistory.dayEpoch(DateTime.now());
+    final days = List.generate(7, (i) {
+      final epoch = todayEpoch - (6 - i);
+      for (final bucket in week) {
+        if (bucket.epochDay == epoch) return bucket;
+      }
+      return DayTraffic(epoch, 0, 0);
+    });
+    final total = week.fold<int>(0, (n, d) => n + d.rx + d.tx);
+    final maxTotal =
+        days.fold<int>(0, (n, d) => math.max(n, d.rx + d.tx)).coerceAtLeast(1);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Card.filled(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.bar_chart_rounded,
+                      size: 18, color: scheme.primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    l10n.weekTraffic,
+                    style: Theme.of(context)
+                        .textTheme
+                        .labelLarge
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const Spacer(),
+                  if (total > 0)
+                    Text(
+                      l10n.weekTotalLabel(formatBytes(total)),
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelMedium
+                          ?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              if (total == 0)
+                SizedBox(
+                  height: 110,
+                  child: Center(
+                    child: Text(
+                      l10n.statsNoData,
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                  ),
+                )
+              else
+                SizedBox(
+                  height: 128,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var i = 0; i < days.length; i++)
+                        Expanded(
+                          child: _DayColumn(
+                            day: days[i],
+                            maxTotal: maxTotal,
+                            label: l10n.weekdays[
+                                DateTime.now().subtract(
+                              Duration(days: 6 - i),
+                            ).weekday -
+                                1],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DayColumn extends StatelessWidget {
+  final DayTraffic day;
+  final int maxTotal;
+  final String label;
+
+  const _DayColumn({
+    required this.day,
+    required this.maxTotal,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    const gap = 2.0;
+    return Column(
+      children: [
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final h = constraints.maxHeight;
+              final usable = h - (day.tx > 0 && day.rx > 0 ? gap : 0.0);
+              var txH = day.tx / maxTotal * h;
+              var rxH = day.rx / maxTotal * h;
+              final stack = txH + rxH;
+              if (stack > usable && stack > 0) {
+                txH *= usable / stack;
+                rxH *= usable / stack;
+              }
+              final radius = Radius.circular(4);
+              return Center(
+                child: FractionallySizedBox(
+                  widthFactor: 0.58,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (day.tx > 0)
+                        Container(
+                          height: txH,
+                          decoration: BoxDecoration(
+                            color: scheme.tertiary,
+                            borderRadius: BorderRadius.vertical(
+                              top: radius,
+                              bottom: day.rx > 0 ? Radius.zero : radius,
+                            ),
+                          ),
+                        ),
+                      if (day.tx > 0 && day.rx > 0)
+                        SizedBox(height: gap),
+                      if (day.rx > 0)
+                        Container(
+                          height: rxH,
+                          decoration: BoxDecoration(
+                            color: scheme.primary,
+                            borderRadius: BorderRadius.vertical(
+                              top: day.tx > 0 ? Radius.zero : radius,
+                              bottom: radius,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: Theme.of(context)
+              .textTheme
+              .labelSmall
+              ?.copyWith(color: scheme.onSurfaceVariant),
+          maxLines: 1,
+          overflow: TextOverflow.clip,
+        ),
+      ],
     );
   }
 }

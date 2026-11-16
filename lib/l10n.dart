@@ -131,6 +131,19 @@ class L10n {
       ? 'Не удалось запустить приём — нет локальной сети?'
       : 'Could not start the receiver — no local network?';
   String get phoneClose => ru ? 'Закрыть приём' : 'Close receiver';
+  String get phoneWallpaper => ru ? 'Обои с телефона' : 'Wallpaper from phone';
+  String get phoneWallpaperHint => ru
+      ? 'Отсканируй QR камерой телефона, выбери изображение до 40 МБ и отправь. Работает по общей Wi-Fi/локальной сети.'
+      : 'Scan the QR with your phone, pick an image up to 40 MB and send. Works over a shared Wi-Fi/LAN.';
+  String get phoneWallpaperSent =>
+      ru ? 'Обои получены и установлены' : 'Wallpaper received and set';
+  String get weekTraffic => ru ? 'Неделя' : 'Week';
+  String weekTotalLabel(String total) =>
+      ru ? 'Всего: $total' : 'Total: $total';
+  String get statsNoData => ru ? 'Пока нет данных' : 'No data yet';
+  List<String> get weekdays => ru
+      ? ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс']
+      : ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
   String get customColorTitle => ru ? 'Свой цвет' : 'Custom color';
   String get customColorHint => ru
       ? 'Крути оттенок и точку по квадрату'

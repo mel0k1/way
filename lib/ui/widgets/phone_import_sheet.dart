@@ -9,18 +9,20 @@ import '../../state/app_state.dart';
 /// LAN import from a phone, Chumpy-style: a QR with the receiver URL, a
 /// 6-digit PIN and a self-contained page on the phone side. The sheet
 /// watches the server's state notifier and closes itself once the config
-/// lands in the profile list.
-Future<void> showPhoneImport(BuildContext context) {
+/// lands in the profile list — or the wallpaper is applied.
+Future<void> showPhoneImport(BuildContext context, {bool wallpaper = false}) {
   return showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
-    builder: (context) => const _PhoneImportSheet(),
+    builder: (context) => _PhoneImportSheet(wallpaper: wallpaper),
   );
 }
 
 class _PhoneImportSheet extends StatefulWidget {
-  const _PhoneImportSheet();
+  final bool wallpaper;
+
+  const _PhoneImportSheet({this.wallpaper = false});
 
   @override
   State<_PhoneImportSheet> createState() => _PhoneImportSheetState();
@@ -35,7 +37,7 @@ class _PhoneImportSheetState extends State<_PhoneImportSheet> {
     super.initState();
     Future.microtask(() {
       if (!mounted) return;
-      _appState.startPhoneImport();
+      _appState.startPhoneImport(wallpaper: widget.wallpaper);
     });
   }
 
@@ -53,13 +55,17 @@ class _PhoneImportSheetState extends State<_PhoneImportSheet> {
     final scheme = Theme.of(context).colorScheme;
     final state = context.watch<AppState>();
     final s = state.phoneImportState;
+    final title = widget.wallpaper ? l10n.phoneWallpaper : l10n.phoneImport;
+    final hint =
+        widget.wallpaper ? l10n.phoneWallpaperHint : l10n.phoneImportHint;
+    final sent = widget.wallpaper ? l10n.phoneWallpaperSent : l10n.phoneSent;
 
     if (s.phase == PhoneImportPhase.received && !_celebrated) {
       _celebrated = true;
       Future.microtask(() {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(l10n.phoneSent),
+          content: Text(sent),
           behavior: SnackBarBehavior.floating,
           width: 320,
         ));
@@ -75,7 +81,7 @@ class _PhoneImportSheetState extends State<_PhoneImportSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              l10n.phoneImport,
+              title,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleLarge,
             ),
@@ -83,7 +89,7 @@ class _PhoneImportSheetState extends State<_PhoneImportSheet> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Text(
-                l10n.phoneImportHint,
+                hint,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: scheme.onSurfaceVariant,
@@ -175,7 +181,7 @@ class _PhoneImportSheetState extends State<_PhoneImportSheet> {
             ] else if (s.phase == PhoneImportPhase.received) ...[
               const Center(child: Icon(Icons.check_circle_rounded, size: 44)),
               const SizedBox(height: 12),
-              Text(l10n.phoneSent, textAlign: TextAlign.center),
+              Text(sent, textAlign: TextAlign.center),
             ] else if (s.phase == PhoneImportPhase.expired ||
                 s.phase == PhoneImportPhase.locked) ...[
               Center(
@@ -187,9 +193,9 @@ class _PhoneImportSheetState extends State<_PhoneImportSheet> {
               const SizedBox(height: 12),
               FilledButton.icon(
                 icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: Text(l10n.phoneImport),
-                onPressed: () =>
-                    context.read<AppState>().startPhoneImport(),
+                label: Text(title),
+                onPressed: () => _appState
+                    .startPhoneImport(wallpaper: widget.wallpaper),
               ),
             ] else if (s.phase == PhoneImportPhase.failed) ...[
               Center(
