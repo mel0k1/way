@@ -5,6 +5,7 @@ import 'dart:math';
 import 'dart:ui' show Color;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart' show PaintingBinding;
 import 'package:flutter/services.dart';
 
 import '../core/font_registry.dart';
@@ -12,6 +13,8 @@ import '../core/happ_spoof.dart';
 import '../core/phone_import.dart';
 import '../core/traffic_history.dart';
 import '../core/wallpaper_palette.dart';
+import '../ui/widgets/wallpaper_backdrop.dart'
+    show invalidateWallpaperCheck;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -177,6 +180,11 @@ class AppState extends ChangeNotifier {
   Timer? _statsTimer;
   Timer? _clipboardTimer;
   bool _ipFetching = false;
+  // While the app is in the background the UI doesn't need per-second
+  // stats: throttle the poller (and drop clipboard sniffing) to save
+  // battery without losing the traffic history.
+  bool _backgrounded = false;
+  DateTime _lastBackgroundTick = DateTime.now();
   final Set<String> _updatingSubs = {};
   final Set<String> _dismissedClipboard = {};
   late final LocalApiServer localApiServer = LocalApiServer(
@@ -692,8 +700,25 @@ class AppState extends ChangeNotifier {
     });
   }
 
+  /// True when the window is hidden or the activity paused: the tunnel
+  /// keeps running, but per-second UI polling is throttled.
+  void setBackgrounded(bool value) {
+    if (_backgrounded == value) return;
+    _backgrounded = value;
+    if (!value) {
+      _lastBackgroundTick = DateTime.now();
+      unawaited(_statsTick());
+    }
+    notifyListeners();
+  }
+
   Future<void> _statsTick() async {
     if (vpn.phase != VpnPhase.connected) return;
+    if (_backgrounded) {
+      final now = DateTime.now();
+      if (now.difference(_lastBackgroundTick).inSeconds < 30) return;
+      _lastBackgroundTick = now;
+    }
     try {
       stats = await statsPoller.fetch();
       // Daily history: the session counters reset on every reconnect, so a
@@ -1416,6 +1441,7 @@ class AppState extends ChangeNotifier {
   ];
 
   Future<void> sniffClipboard() async {
+    if (_backgrounded) return;
     try {
       final data = await Clipboard.getData('text/plain');
       final text = data?.text?.trim() ?? '';
@@ -1564,11 +1590,13 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setAccentCustom(String hex) {
+  void setAccentCustom(String hex, {bool persist = true}) {
     final clean = hex.replaceAll('#', '').toUpperCase();
     if (clean.length != 6 || int.tryParse(clean, radix: 16) == null) return;
     accentCustom = clean;
-    _persist();
+    // The custom-color dialog streams live updates while the dot is being
+    // dragged: persist only when asked, not on every frame.
+    if (persist) _persist();
     notifyListeners();
   }
 
@@ -1592,6 +1620,11 @@ class AppState extends ChangeNotifier {
       final docs = await getApplicationSupportDirectory();
       final target = File('${docs.path}/wallpaper.img');
       await File(sourcePath).copy(target.path);
+      // The path never changes between picks, so every Image.file keyed on
+      // it holds the previous picture until evicted. Wipe the decode cache:
+      // a wallpaper swap happens once, and the next frame re-decodes.
+      invalidateWallpaperCheck(target.path);
+      PaintingBinding.instance.imageCache.clear();
       wallpaperPath = target.path;
       _persist();
       notifyListeners();
@@ -1639,6 +1672,7 @@ class AppState extends ChangeNotifier {
   }
 
   void clearWallpaper() {
+    invalidateWallpaperCheck(wallpaperPath);
     wallpaperPath = '';
     _persist();
     notifyListeners();

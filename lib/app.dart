@@ -110,8 +110,12 @@ class _WayShellState extends State<WayShell>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    final app = context.read<AppState>();
+    // Hidden/paused: throttle per-second polling until we're back.
+    app.setBackgrounded(state != AppLifecycleState.resumed &&
+        state != AppLifecycleState.inactive);
     if (state == AppLifecycleState.resumed) {
-      context.read<AppState>().sniffClipboard();
+      app.sniffClipboard();
     }
   }
 

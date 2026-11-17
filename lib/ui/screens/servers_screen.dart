@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -20,6 +22,25 @@ class ServersScreen extends StatefulWidget {
 
 class _ServersScreenState extends State<ServersScreen> {
   final Set<String> _collapsed = {};
+  // Entrance animations replay whenever a tile is scrolled back into the
+  // viewport (its state is recreated). Play them once per screen entry and
+  // hand out plain children afterwards.
+  bool _entranceDone = false;
+  Timer? _entranceTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _entranceTimer = Timer(const Duration(milliseconds: 1700), () {
+      if (mounted) setState(() => _entranceDone = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _entranceTimer?.cancel();
+    super.dispose();
+  }
 
   String _key(ServerGroup g) {
     if (g.favorite) return 'fav';
@@ -303,9 +324,9 @@ class _ServersScreenState extends State<ServersScreen> {
                         final slot = slots[i];
                         switch (slot.kind) {
                           case 0:
-                            return _Entrance(
-                              index: 0,
-                              child: _AutoTile(
+                            return _entrance(
+                              0,
+                              _AutoTile(
                                 enabled: state.engineProfiles.length > 1,
                               ),
                             );
@@ -334,6 +355,9 @@ class _ServersScreenState extends State<ServersScreen> {
     return SafeArea(child: body);
   }
 
+  Widget _entrance(int index, Widget child) =>
+      _entranceDone ? child : _Entrance(index: index, child: child);
+
   Widget _buildGroupHeader(
     BuildContext context,
     AppState state,
@@ -360,6 +384,10 @@ class _ServersScreenState extends State<ServersScreen> {
         final key = _key(group);
         if (!_collapsed.remove(key)) _collapsed.add(key);
       }),
+      autoActive: autoActive,
+      onAuto: canAuto
+          ? () => state.setGroupAuto(group.subId, !autoActive)
+          : null,
       onDelete: group.favorite
           ? null
           : () => _confirmDeleteGroup(context, state, group, title),
@@ -382,9 +410,9 @@ class _ServersScreenState extends State<ServersScreen> {
           : Column(
               children: [
                 for (var j = 0; j < group.profiles.length; j++)
-                  _Entrance(
-                    index: j,
-                    child: ProfileTile(
+                  _entrance(
+                    j,
+                    ProfileTile(
                       profile: group.profiles[j],
                       selected: group.profiles[j].id == state.selected?.id &&
                           !state.autoSelect,

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
@@ -13,6 +14,7 @@ import 'package:provider/provider.dart';
 import '../theme.dart';
 import '../widgets/phone_import_sheet.dart';
 import '../widgets/update_dialog.dart';
+import '../widgets/wallpaper_backdrop.dart' show wallpaperFileExists;
 import 'connections_screen.dart';
 import 'route_rules_screen.dart';
 import 'rule_detect_screen.dart';
@@ -38,6 +40,8 @@ class _SplitProcessesField extends StatefulWidget {
 
 class _SplitProcessesFieldState extends State<_SplitProcessesField> {
   late final TextEditingController _controller;
+  Timer? _debounce;
+  bool _dirty = false;
 
   @override
   void initState() {
@@ -47,16 +51,39 @@ class _SplitProcessesFieldState extends State<_SplitProcessesField> {
 
   @override
   void dispose() {
+    // Typed but not yet flushed: commit now — setSplitApps is cheap and
+    // the value must not die with the field.
+    _debounce?.cancel();
+    if (_dirty) {
+      _dirty = false;
+      widget.state.setSplitApps(_parse(_controller.text));
+    }
     _controller.dispose();
     super.dispose();
   }
 
+  List<String> _parse(String value) => value
+      .split(',')
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toList();
+
   void _commit(String value) {
-    widget.state.setSplitApps(value
-        .split(',')
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList());
+    widget.state.setSplitApps(_parse(value));
+  }
+
+  /// Typing used to hit SharedPreferences (a commit + fsync) on every
+  /// keystroke; now the keystrokes only touch memory and the flush is
+  /// debounced.
+  void _onChanged(String value) {
+    _dirty = true;
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 700), () {
+      _debounce = null;
+      if (!_dirty) return;
+      _commit(value);
+      _dirty = false;
+    });
   }
 
   @override
@@ -69,8 +96,12 @@ class _SplitProcessesFieldState extends State<_SplitProcessesField> {
         labelText: l10n.splitProcesses,
         hintText: 'chrome.exe, firefox.exe',
       ),
-      onSubmitted: _commit,
-      onChanged: _commit,
+      onSubmitted: (value) {
+        _debounce?.cancel();
+        _dirty = false;
+        _commit(value);
+      },
+      onChanged: _onChanged,
     );
   }
 }
@@ -1015,10 +1046,14 @@ class _CustomColorDialog extends StatefulWidget {
 
 class _CustomColorDialogState extends State<_CustomColorDialog> {
   late HSVColor _hsv = HSVColor.fromColor(widget.state.accentCustomColor);
+  late final String _initial = widget.state.accentCustom;
 
+  /// Live preview while dragging — in memory only; the write lands when
+  /// the dialog is saved (or is reverted on cancel).
   void _apply() {
     widget.state.setAccentCustom(
       _hsv.toColor().toARGB32().toRadixString(16).substring(2),
+      persist: false,
     );
   }
 
@@ -1180,12 +1215,16 @@ class _CustomColorDialogState extends State<_CustomColorDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            widget.state.setAccentCustom(_initial, persist: false);
+            Navigator.pop(context);
+          },
           child: Text(l10n.cancel),
         ),
         FilledButton(
           onPressed: () {
             _apply();
+            // setAccent persists the whole config, including the new hex.
             widget.state.setAccent('custom');
             Navigator.pop(context);
           },
@@ -1321,7 +1360,7 @@ class _WallpaperRow extends StatelessWidget {
     final l10n = L10nScope.of(context);
     final scheme = Theme.of(context).colorScheme;
     final hasWallpaper =
-        state.wallpaperPath.isNotEmpty && File(state.wallpaperPath).existsSync();
+        state.wallpaperPath.isNotEmpty && wallpaperFileExists(state.wallpaperPath);
     return Column(
       children: [
         Row(
