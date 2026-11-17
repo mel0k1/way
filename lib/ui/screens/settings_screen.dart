@@ -51,8 +51,7 @@ class _SplitProcessesFieldState extends State<_SplitProcessesField> {
 
   @override
   void dispose() {
-    // Typed but not yet flushed: commit now — setSplitApps is cheap and
-    // the value must not die with the field.
+    // Flush uncommitted text before the field dies.
     _debounce?.cancel();
     if (_dirty) {
       _dirty = false;
@@ -72,9 +71,7 @@ class _SplitProcessesFieldState extends State<_SplitProcessesField> {
     widget.state.setSplitApps(_parse(value));
   }
 
-  /// Typing used to hit SharedPreferences (a commit + fsync) on every
-  /// keystroke; now the keystrokes only touch memory and the flush is
-  /// debounced.
+  /// Debounce: keystrokes hit memory, the disk write lands 700ms later.
   void _onChanged(String value) {
     _dirty = true;
     _debounce?.cancel();
@@ -999,7 +996,7 @@ class _AccentPicker extends StatelessWidget {
                             _showCustomColorPicker(context, state);
                           } else if (id.startsWith('wall') &&
                               state.seedColorFor(id) == null) {
-                            // No wallpaper behind the palette chips — say
+                            // No wallpaper behind the palette chips: say
                             // so instead of silently becoming green.
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -1048,7 +1045,7 @@ class _CustomColorDialogState extends State<_CustomColorDialog> {
   late HSVColor _hsv = HSVColor.fromColor(widget.state.accentCustomColor);
   late final String _initial = widget.state.accentCustom;
 
-  /// Live preview while dragging — in memory only; the write lands when
+  /// Live preview while dragging: in memory only; the write lands when
   /// the dialog is saved (or is reverted on cancel).
   void _apply() {
     widget.state.setAccentCustom(

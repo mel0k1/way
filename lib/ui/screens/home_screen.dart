@@ -401,7 +401,7 @@ class _ModeChip extends StatelessWidget {
   }
 }
 
-/// Press feedback with a slight squish — an expressive touch for tappable
+/// Press feedback with a slight squish: an expressive touch for tappable
 /// cards on the home screen.
 class _Squish extends StatefulWidget {
   final Widget child;

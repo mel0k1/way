@@ -3,7 +3,7 @@ import 'dart:math';
 /// The Happ panel's client fingerprint, ported from Chumpy's HappSpoof
 /// (itself from BetterExclave): some panels serve only the official Happ
 /// app, which identifies itself with the "Happ" user agent and a set of
-/// x- headers — device model, OS, and the two identifiers the panel binds
+/// x- headers: device model, OS, and the two identifiers the panel binds
 /// the account to, the user id and the HWID. Both are random: nothing about
 /// the real device leaks into them, and they are generated once and kept,
 /// so the panel keeps seeing the same "device" across fetches and restarts.

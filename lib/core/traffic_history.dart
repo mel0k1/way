@@ -14,8 +14,8 @@ class DayTraffic {
 }
 
 /// The week's daily traffic totals, kept across runs so the weekly chart
-/// survives restarts and disconnected days — Chumpy's DailyTrafficStore
-/// ported. Only aggregate byte counts live here — no addresses, no keys,
+/// survives restarts and disconnected days: Chumpy's DailyTrafficStore
+/// ported. Only aggregate byte counts live here: no addresses, no keys,
 /// nothing the panel ever said. Deltas are accumulated in memory and
 /// flushed to today's bucket about once a minute: a write a minute at most.
 class TrafficHistory {

@@ -22,9 +22,7 @@ class ServersScreen extends StatefulWidget {
 
 class _ServersScreenState extends State<ServersScreen> {
   final Set<String> _collapsed = {};
-  // Entrance animations replay whenever a tile is scrolled back into the
-  // viewport (its state is recreated). Play them once per screen entry and
-  // hand out plain children afterwards.
+  // Entrance plays once per screen entry, not on every scroll re-entry.
   bool _entranceDone = false;
   Timer? _entranceTimer;
 

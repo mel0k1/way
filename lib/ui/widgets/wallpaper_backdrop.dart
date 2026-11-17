@@ -7,10 +7,8 @@ import 'package:provider/provider.dart';
 import '../../core/vpn_bridge.dart';
 import '../../state/app_state.dart';
 
-/// Existence of the wallpaper file, memoized per path: the backdrop and
-/// the settings row rebuild once a second while connected, and a
-/// synchronous `existsSync()` on every rebuild is disk I/O on the UI
-/// thread for no reason.
+/// Memoized per path: the backdrop rebuilds every second while connected,
+/// and existsSync() on the UI thread is pointless disk I/O.
 final Map<String, bool> _wallpaperExists = {};
 
 bool wallpaperFileExists(String path) {
@@ -18,8 +16,7 @@ bool wallpaperFileExists(String path) {
   return _wallpaperExists[path] ??= File(path).existsSync();
 }
 
-/// Called when the wallpaper is set or cleared so a re-picked image
-/// (possibly written to the same path) is re-checked.
+/// Re-check the file when the wallpaper is set or cleared.
 void invalidateWallpaperCheck([String? path]) {
   if (path == null) {
     _wallpaperExists.clear();

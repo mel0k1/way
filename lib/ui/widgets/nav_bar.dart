@@ -41,9 +41,8 @@ class FloatingNavBar extends StatelessWidget {
       activeIcon: Icons.settings_rounded,
       label: L10nScope.of(context).navSettings,
     );
-    // The settings entry lives in exactly one place: inside the pill on
-    // wide screens, as the round button beside it on narrow ones — never
-    // in both at once.
+    // One settings entry: inside the pill on wide screens, the round
+    // button beside it on narrow ones.
     final allTabs = wide ? [...tabs, settingsTab] : tabs;
 
     return SafeArea(

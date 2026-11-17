@@ -7,15 +7,9 @@ import 'package:provider/provider.dart';
 import '../../state/app_state.dart';
 import 'wallpaper_backdrop.dart' show wallpaperFileExists;
 
-/// The ambient gradient wash behind everything. Four radial gradients used
-/// to repaint at vsync (~60 fps) around the clock, which is the single
-/// biggest idle GPU cost in the app. Now:
-///  * when a wallpaper is set, the wash is fully covered — it is not built
-///    at all and its timer does not run;
-///  * otherwise the drift advances on a ~9 fps timer instead of every
-///    frame: imperceptible for a 28-second sine, a 6-7x cheaper repaint;
-///  * the timer pauses when the app is hidden/paused and honors
-///    "remove animations".
+/// Ambient gradient wash: four radial gradients drifting at ~9 fps on a
+/// timer, hidden entirely behind a wallpaper, paused while the app is
+/// hidden, honoring the system "remove animations" setting.
 class AppBackground extends StatefulWidget {
   const AppBackground({super.key});
 
@@ -81,9 +75,8 @@ class _AppBackgroundState extends State<AppBackground>
 
   @override
   Widget build(BuildContext context) {
-    // Same existence check as WallpaperBackdrop uses: the wash must hide
-    // exactly when the wallpaper is really drawn, otherwise a stale path
-    // would leave a black screen behind.
+    // Same existence check as WallpaperBackdrop: the wash must hide exactly
+    // when the wallpaper is really drawn, else a stale path leaves black.
     _hiddenByWallpaper =
         wallpaperFileExists(context.watch<AppState>().wallpaperPath);
     _syncTimer();

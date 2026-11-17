@@ -293,8 +293,7 @@ class _WaveLineState extends State<_WaveLine>
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    // RepaintBoundary: the 60 fps wave repaints only its own 8dp line
-    // instead of invalidating the whole stats card every frame.
+    // Keep the 60 fps wave from repainting the whole card.
     return AnimatedBuilder(
       animation: _c,
       builder: (context, _) => RepaintBoundary(

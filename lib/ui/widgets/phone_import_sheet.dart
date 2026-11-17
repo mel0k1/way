@@ -9,7 +9,7 @@ import '../../state/app_state.dart';
 /// LAN import from a phone, Chumpy-style: a QR with the receiver URL, a
 /// 6-digit PIN and a self-contained page on the phone side. The sheet
 /// watches the server's state notifier and closes itself once the config
-/// lands in the profile list — or the wallpaper is applied.
+/// lands in the profile list: or the wallpaper is applied.
 Future<void> showPhoneImport(BuildContext context, {bool wallpaper = false}) {
   return showModalBottomSheet<void>(
     context: context,

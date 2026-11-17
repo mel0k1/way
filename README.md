@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="https://github.com/mel0k1/way/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/mel0k1/way/build.yml?branch=main&label=CI&logo=github" alt="CI" /></a>
-  <img src="https://img.shields.io/badge/platform-Android%20%7C%20Windows-brightgreen?logo=android&logoColor=white" alt="platform" />
+  <img src="https://img.shields.io/badge/platform-Android%20%7C%20Windows%20%7C%20Linux-brightgreen?logo=android&logoColor=white" alt="platform" />
   <img src="https://img.shields.io/badge/Flutter-3.47-02569B?logo=flutter&logoColor=white" alt="Flutter" />
   <img src="https://img.shields.io/badge/Go-1.27-00ADD8?logo=go&logoColor=white" alt="Go" />
   <img src="https://img.shields.io/badge/MD3-Material%20You-6750A4?logo=materialdesign&logoColor=white" alt="MD3" />
@@ -19,40 +19,24 @@
 
 ---
 
-**Way** is a cross-platform VPN client built with **Flutter** (Material Design 3) and **Go**, powered by two engines: [sing-box](https://github.com/SagerNet/sing-box) and [Xray-core](https://github.com/XTLS/Xray-core). You can switch between cores at any moment without re-importing your servers.
+**Way** is a cross-platform VPN client built with **Flutter** (Material Design 3) and **Go**, powered by two engines: [sing-box](https://github.com/SagerNet/sing-box) and [Xray-core](https://github.com/XTLS/Xray-core). Switch cores any time without re-importing your servers.
 
 ## Features
 
-- **Two cores, one app** — sing-box and xray-core live side by side; the active engine is a single tap in Settings
-- **Material Design 3** — Material You dynamic colors on Android 12+, tonal surfaces, expressive shapes & motion, pulse connect button, soft mesh background, dark & light themes
-- **TUN mode** — full-device tunneling via Android VpnService and system TUN on Windows
-- **Kill switch** — WFP firewall on Windows, Always-on VPN + lockdown on Android
-- **Split tunneling** — per-app (Android) and per-process (Windows) tunneling rules
-- **Routing presets** — “All via VPN”, “RU direct” (geosite/geoip rule-sets) and ad blocking (category-ads-all)
-- **Routing rules editor** — custom domain/IP/port rules with per-rule action (via VPN, direct, block)
-- **Proxy chaining** — route any server through another server (sing-box `dialer_proxy`)
-- **Windows tray** — tray icon with quick connect/disconnect, close-to-tray and state-colored icon
-- **Android quick settings tile** — connect/disconnect from the notification shade, restores the last used server
-- **Backup & restore** — export profiles, subscriptions and settings to a JSON file (SAF on Android, save dialog on Windows)
-- **Fastest server** — urltest group in sing-box and real through-proxy latency testing (a temporary core instance per server, TCP fallback) with auto-select
-- **Subscriptions** — import by URL or QR code, clipboard paste, auto-refresh on a configurable interval (honoring `profile-update-interval`), panel-compatible User-Agent and quota display
-- **Subscription formats** — v2ray link lists (plain/base64), sing-box JSON, Clash / Clash Meta YAML, plus wrapper links from other clients (`clash://install-config?url=…`, `sing-box://import-remote-profile?url=…`, `v2rayng://install-sub?url=…`, `sn://`, `hiddify://`)
-- **Cloudflare WARP** — one-tap free WireGuard tunnel, registered right in the app (sing-box)
-- **DNS settings** — custom remote DoH server and address strategy (prefer IPv4/IPv6, IPv4-only, IPv6-only)
-- **TLS fragmentation & mux** — ClientHello fragmentation to bypass DPI filtering and h2mux/smux/yamux multiplexing (sing-box)
-- **Manual & JSON import** — build a profile from plain fields or paste a raw sing-box outbound JSON; export any profile back as a QR code or shareable link
-- **Proxy mode on Android** — run a local socks/http proxy on 127.0.0.1:2080 without the VPN permission
-- **Connection info** — external IP and country (with flag) of the active server, fetched through the tunnel
-- **Battery optimization** — one-tap exemption on Android so the background VPN is not killed
-- **Deep links** — tap a `vless://`/`vmess://`/`trojan://`/`ss://`/`hysteria2://`/`tuic://`/`anytls://` link or `way://import/<url>` to import profiles and subscriptions instantly (Android and Windows)
-- **Encrypted storage** — profiles and subscription keys live in flutter_secure_storage (Keystore / DPAPI)
-- **Autostart** — launch on boot (Android) or user sign-in (Windows Run key), optional auto-connect on launch
-- **Watchdog & auto-reconnect** — the core probes the tunnel every few seconds and silently rebuilds the session after a drop, network switch or system sleep; the app re-establishes failed connects with exponential backoff
-- **Custom notifications** — branded Android foreground notification with a disconnect button and session timer, Windows toasts
-- **Update check** — checks GitHub Releases on startup and offers to download the new build
-- **RU + EN interface** — follows the system language, switchable in settings
-- **Realtime stats** — live up/down speed, session traffic totals and connection counter via the clash API
-- **NSIS installer** — a proper Windows setup with uninstaller, shortcuts and per-user system proxy
+- **Two cores in one app**: sing-box and Xray-core, one tap in Settings to switch
+- **Tunneling**: full-device TUN (Android VpnService, Windows TUN), kill switch (WFP firewall on Windows, Always-on VPN + lockdown on Android), split tunneling per app or per process
+- **Routing**: presets (all via VPN, RU direct via geosite/geoip, ad blocking), custom domain/IP/port rules with per-rule action (VPN, direct, block)
+- **Protocols**: VLESS (+ Reality, Vision, uTLS), VMess, Trojan, Shadowsocks incl. 2022, Hysteria2, TUIC, AnyTLS; WS/gRPC/HTTP transports; TLS ClientHello fragmentation and h2mux/smux/yamux muxing (sing-box)
+- **Proxy chaining**: route any server through another (sing-box `dialer_proxy`)
+- **Subscriptions**: import by URL, QR or clipboard; auto-refresh on a configurable interval (honors `profile-update-interval`); v2ray link lists (plain/base64), sing-box JSON, Clash/Meta YAML and wrapper links of other clients (`clash://`, `sing-box://`, `v2rayng://`, `sn://`, `hiddify://`)
+- **Deep links**: tap `vless://` / `vmess://` / `trojan://` / `ss://` / `hysteria2://` / `tuic://` / `anytls://` or `way://import/<url>` to import instantly (Android and Windows)
+- **Profiles**: manual entry or raw sing-box outbound JSON, QR/link export, JSON backup and restore
+- **Fastest server**: urltest group in sing-box plus real latency probing through the proxy (temporary core instance per server), auto-select
+- **Cloudflare WARP**: free WireGuard tunnel registered right in the app
+- **Networking extras**: custom DoH server with IPv4/IPv6 strategy, local socks/http proxy on Android (127.0.0.1:2080, no VPN permission), external IP and country of the active server, live speed and traffic stats via the clash API
+- **Desktop**: Windows tray with quick connect and close-to-tray, state-colored tray icon, toasts, NSIS installer; Android quick settings tile and foreground notification with a disconnect button and session timer
+- **Reliability**: watchdog rebuilds the tunnel after drops, network switches and system sleep; app-side reconnect with exponential backoff; autostart on boot or sign-in; profiles and subscription keys in encrypted storage (Keystore / DPAPI); update check against GitHub Releases
+- **Battery**: one-tap exemption from Android battery optimization so the background VPN survives
 
 ## Supported protocols
 
@@ -67,7 +51,7 @@
 | AnyTLS | ✔ | — |
 | WS / gRPC / HTTP transports | ✔ | ✔ |
 
-Links `vless://`, `vmess://`, `trojan://`, `ss://`, `hysteria2://`, `tuic://`, `anytls://` are parsed automatically, both one by one and as a whole base64 subscription. Sing-box JSON and Clash YAML subscription bodies work the same way.
+Links are parsed automatically, one by one or as a whole base64 subscription; sing-box JSON and Clash YAML bodies work the same way.
 
 ## Architecture
 
@@ -86,16 +70,16 @@ Links `vless://`, `vmess://`, `trojan://`, `ss://`, `hysteria2://`, `tuic://`, `
                            └──────────────────────────────┘
 ```
 
-- **`core/`** — Go module `waycore`: engine manager, xray controller, HTTP control API, Windows system proxy
-- **`lib/`** — Flutter app: link parser, config builder for both cores, subscriptions, MD3 UI
-- **`android/`, `windows/`** — Flutter platform projects with the VpnService integration
-- **`installer/`** — NSIS script for the Windows installer
+- `core/`: Go module with the engine manager, xray controller, HTTP control API and Windows system proxy
+- `lib/`: Flutter app (link parser, config builder for both cores, subscriptions, MD3 UI)
+- `android/`, `windows/`: platform projects with the VpnService integration
+- `installer/`: NSIS script for the Windows installer
 
 ## Download
 
 Grab the latest APK and `WaySetup.exe` from [Releases](https://github.com/mel0k1/way/releases) or from the CI artifacts of every commit.
 
-> **Windows TUN mode** requires administrator rights — run Way as administrator, otherwise use the proxy mode (system proxy is configured automatically).
+> Windows TUN mode requires administrator rights. Without them, use the proxy mode (system proxy is configured automatically).
 
 ## Build from source
 
@@ -119,15 +103,12 @@ go build -tags "with_gvisor,with_quic,with_utls,with_clash_api" -o waycore.exe .
 
 ## Linux (Arch / EndeavourOS)
 
-Linux build ships the same Flutter app on GTK3 with a libayatana-appindicator tray:
+The same Flutter app on GTK3 with a libayatana-appindicator tray:
 
-- `core/sysproxy_linux.go` — system proxy via `gsettings` (GNOME) or `kwriteconfig` (KDE Plasma); on other desktops Way still serves a local mixed proxy on `127.0.0.1:2080`
-- `linux/` — Flutter GTK runner with close-to-tray support and the `way/window` channel (hide/show/quit)
-- Tray menu (open/connect/disconnect/quit) works on GNOME and KDE Plasma via appindicator
-- `packaging/linux/PKGBUILD` + `way.desktop` — Arch package (installs to `/opt/way`, launcher in `/usr/bin`, `cap_net_admin` granted to the core for TUN)
-- CI produces `Way-<tag>-linux-x86_64.tar.gz` and `Way-<tag>-linux-x86_64.AppImage` on every release
-- Backup import/export, `xdg-open` links and in-app update checks (AppImage asset) work on Linux
-- The bundled `waycore` binary contains both sing-box and xray — no separate core installation needed
+- System proxy via `gsettings` (GNOME) or `kwriteconfig` (KDE Plasma); other desktops still get a local mixed proxy on 127.0.0.1:2080
+- Arch package (`packaging/linux/PKGBUILD` + `way.desktop`): installs to `/opt/way`, launcher in `/usr/bin`, `cap_net_admin` granted to the core for TUN; CI publishes a `tar.gz` and an AppImage per release
+- Tray menu (open/connect/disconnect/quit), backup import/export, `xdg-open` links and in-app update checks (AppImage asset) work on Linux
+- The bundled `waycore` binary contains both engines, no separate core installation needed. Kill Switch is Windows-only
 
 Build locally on Arch:
 
@@ -149,15 +130,13 @@ For TUN mode without root, grant the core the network capability:
 sudo setcap cap_net_admin,cap_net_bind_service+ep waycore
 ```
 
-Known limit: Kill Switch is Windows-only.
-
 ## Disclaimer
 
 This project is a client shell around open-source cores. It ships no servers, no keys and no default configurations. Use it in accordance with the laws of your jurisdiction.
 
 ## License
 
-[GPL-3.0](LICENSE) — Way depends on sing-box (GPLv3) and Xray-core.
+[GPL-3.0](LICENSE). Way depends on sing-box (GPLv3) and Xray-core.
 
 ---
 
@@ -167,40 +146,24 @@ This project is a client shell around open-source cores. It ships no servers, no
 
 ## Way на русском
 
-**Way** — кроссплатформенный VPN-клиент на **Flutter** (Material Design 3) и **Go** с двумя ядрами: [sing-box](https://github.com/SagerNet/sing-box) и [Xray-core](https://github.com/XTLS/Xray-core). Переключение между ядрами — в один тап, без реимпорта серверов.
+Кроссплатформенный VPN-клиент **Way** на **Flutter** (Material Design 3) и **Go** с двумя движками: [sing-box](https://github.com/SagerNet/sing-box) и [Xray-core](https://github.com/XTLS/Xray-core). Переключение между ядрами в один тап, без реимпорта серверов.
 
 ### Возможности
 
-- **Два ядра в одном приложении** — sing-box и xray-core, выбор движка в настройках
-- **Material Design 3** — динамические цвета Material You на Android 12+, тональные поверхности, выразительные формы и анимации, пульсирующая кнопка подключения, мягкий градиентный фон, тёмная и светлая темы
-- **Режим TUN** — туннелирование всего трафика через VpnService на Android и системный TUN на Windows
-- **Kill switch** — WFP-фаервол на Windows, Always-on VPN + блокировка без VPN на Android
-- **Раздельное туннелирование** — по приложениям (Android) и по процессам (Windows)
-- **Пресеты маршрутизации** — «Всё через VPN», «RU напрямую» (rule-set geosite/geoip) и блокировка рекламы (category-ads-all)
-- **Редактор правил маршрутизации** — свои правила для доменов, IP и портов с действием на каждое (через VPN, напрямую, блокировать)
-- **Цепочки прокси** — маршрут через выбранный сервер поверх текущего (sing-box `dialer_proxy`)
-- **Трей Windows** — иконка в трее с быстрым подключением, скрытием окна в трей и иконкой-статусом
-- **Плитка Android** — подключение/отключение из шторки быстрых настроек, восстановление последнего сервера
-- **Watchdog и автопереподключение** — ядро пробивает туннель каждые несколько секунд и молча пересобирает сессию после обрыва, смены сети или сна системы; приложение повторяет неудачные подключения с экспоненциальной задержкой
-- **Бэкап и восстановление** — экспорт профилей, подписок и настроек в JSON (SAF на Android, диалог сохранения на Windows)
-- **Быстрейший сервер** — urltest-группа в sing-box и реальный замер задержки через прокси (временный инстанс ядра на сервер, TCP-фолбэк) с автовыбором
-- **Подписки** — импорт по ссылке или QR-коду, вставка из буфера, автообновление с настраиваемым интервалом (с учётом `profile-update-interval`), совместимый с панелями User-Agent и показ квоты
-- **Форматы подписок** — списки v2ray-ссылок (plain/base64), sing-box JSON, Clash / Clash Meta YAML, а также обёртки других клиентов (`clash://install-config?url=…`, `sing-box://import-remote-profile?url=…`, `v2rayng://install-sub?url=…`, `sn://`, `hiddify://`)
-- **Cloudflare WARP** — бесплатный WireGuard-туннель в один тап, регистрируется прямо в приложении (sing-box)
-- **Настройки DNS** — свой удалённый DoH-сервер и стратегия адресов (приоритет IPv4/IPv6, только IPv4, только IPv6)
-- **TLS-фрагментация и mux** — нарезка ClientHello для обхода DPI и мультиплексирование h2mux/smux/yamux (sing-box)
-- **Ручной ввод и JSON** — профиль из простых полей или вставка сырого sing-box outbound JSON; экспорт любого профиля обратно в QR-код или ссылку
-- **Прокси-режим на Android** — локальный socks/http на 127.0.0.1:2080 без разрешения VPN
-- **Информация о соединении** — внешний IP и страна (с флагом) активного сервера, проверяются через туннель
-- **Оптимизация батареи** — исключение Way из оптимизации в один тап, чтобы Android не убивал фоновый VPN
-- **Диплинки** — клик по ссылке `vless://`/`vmess://`/`trojan://`/`ss://`/`hysteria2://`/`tuic://`/`anytls://` или `way://import/<url>` мгновенно импортирует профили и подписки (Android и Windows)
-- **Шифрованное хранилище** — профили и ключи подписок в flutter_secure_storage (Keystore / DPAPI)
-- **Автозапуск** — старт после загрузки (Android) или входа в систему (ключ Run Windows), опциональное авто-подключение при запуске
-- **Кастомные уведомления** — брендированная нотификация Android с кнопкой отключения и таймером сессии, тосты Windows
-- **Проверка обновлений** — сверка с GitHub Releases при старте и предложение скачать сборку
-- **Интерфейс RU + EN** — следует языку системы, переключается в настройках
-- **Статистика в реальном времени** — живая скорость приёма/отдачи, итоги трафика сессии и число соединений через clash API
-- **NSIS-установщик** — полноценная установка на Windows с деинсталлятором и ярлыками
+- **Два ядра в одном приложении**: sing-box и Xray-core, выбор движка в настройках
+- **Туннелирование**: полный TUN (VpnService на Android, системный TUN на Windows), kill switch (WFP-фаервол на Windows, Always-on VPN + блокировка на Android), раздельное туннелирование по приложениям или процессам
+- **Маршрутизация**: пресеты (всё через VPN, RU напрямую через geosite/geoip, блокировка рекламы), свои правила для доменов, IP и портов с действием на каждое (через VPN, напрямую, блокировать)
+- **Протоколы**: VLESS (+ Reality, Vision, uTLS), VMess, Trojan, Shadowsocks вкл. 2022, Hysteria2, TUIC, AnyTLS; транспорты WS/gRPC/HTTP; фрагментация ClientHello и mux h2mux/smux/yamux (sing-box)
+- **Цепочки прокси**: маршрут через выбранный сервер поверх текущего (sing-box `dialer_proxy`)
+- **Подписки**: импорт по ссылке, QR или из буфера; автообновление с настраиваемым интервалом (с учётом `profile-update-interval`); списки v2ray-ссылок (plain/base64), sing-box JSON, Clash/Meta YAML и обёртки других клиентов (`clash://`, `sing-box://`, `v2rayng://`, `sn://`, `hiddify://`)
+- **Диплинки**: клик по `vless://` / `vmess://` / `trojan://` / `ss://` / `hysteria2://` / `tuic://` / `anytls://` или `way://import/<url>` мгновенно импортирует профиль (Android и Windows)
+- **Профили**: ручной ввод или сырой sing-box outbound JSON, экспорт в QR/ссылку, бэкап и восстановление в JSON
+- **Быстрейший сервер**: urltest-группа в sing-box плюс реальный замер задержки через прокси (временный инстанс ядра на сервер), автовыбор
+- **Cloudflare WARP**: бесплатный WireGuard-туннель, регистрируется прямо в приложении
+- **Сеть**: свой DoH-сервер со стратегией IPv4/IPv6, локальный socks/http-прокси на Android (127.0.0.1:2080, без разрешения VPN), внешний IP и страна активного сервера, живая скорость и трафик через clash API
+- **Десктоп**: трей Windows с быстрым подключением и скрытием окна, иконка-статус, тосты, NSIS-установщик; плитка быстрых настроек и нотификация Android с кнопкой отключения и таймером сессии
+- **Надёжность**: watchdog пересобирает туннель после обрыва, смены сети и сна системы; переподключение с экспоненциальной задержкой; автозапуск после загрузки или входа в систему; профили и ключи подписок в шифрованном хранилище (Keystore / DPAPI); проверка обновлений с GitHub Releases
+- **Батарея**: исключение из оптимизации в один тап, чтобы фоновый VPN не убивался
 
 ### Поддерживаемые протоколы
 
@@ -215,13 +178,13 @@ This project is a client shell around open-source cores. It ships no servers, no
 | AnyTLS | ✔ | — |
 | Транспорты WS / gRPC / HTTP | ✔ | ✔ |
 
-Ссылки `vless://`, `vmess://`, `trojan://`, `ss://`, `hysteria2://`, `tuic://`, `anytls://` парсятся автоматически — по одной или целой base64-подпиской.
+Ссылки парсятся автоматически, по одной или целой base64-подпиской; sing-box JSON и Clash YAML работают так же.
 
 ### Скачивание
 
-Свежие APK и `WaySetup.exe` — в разделе [Releases](https://github.com/mel0k1/way/releases) или в артефактах CI каждого коммита.
+Свежие APK и `WaySetup.exe` в разделе [Releases](https://github.com/mel0k1/way/releases) или в артефактах CI каждого коммита.
 
-> **Режим TUN на Windows** требует прав администратора — запускайте Way от администратора, иначе используйте режим прокси (системный прокси настраивается автоматически).
+> Режим TUN на Windows требует прав администратора. Без них используйте режим прокси (системный прокси настраивается автоматически).
 
 ### Сборка из исходников
 
@@ -245,15 +208,12 @@ go build -tags "with_gvisor,with_quic,with_utls,with_clash_api" -o waycore.exe .
 
 ### Linux (Arch / EndeavourOS)
 
-Linux-сборка — то же приложение на GTK3 с треем через libayatana-appindicator:
+То же приложение на GTK3 с треем через libayatana-appindicator:
 
-- `core/sysproxy_linux.go` — системный прокси через `gsettings` (GNOME) или `kwriteconfig` (KDE Plasma); на остальных окружениях Way всё равно держит локальный mixed-прокси на `127.0.0.1:2080`
-- `linux/` — Flutter GTK-раннер со сворачиванием в трей и каналом `way/window` (hide/show/quit)
-- Меню трея (открыть/подключить/отключить/выйти) работает в GNOME и KDE Plasma через appindicator
-- `packaging/linux/PKGBUILD` + `way.desktop` — Arch-пакет (установка в `/opt/way`, запуск из `/usr/bin`, ядро получает `cap_net_admin` для TUN)
-- CI на каждый релиз собирает `Way-<tag>-linux-x86_64.tar.gz` и `Way-<tag>-linux-x86_64.AppImage`
-- Импорт/экспорт бэкапов, открытие ссылок через `xdg-open` и проверка обновлений (AppImage-ассет) работают
-- В комплектном бинарнике `waycore` уже линкованы sing-box и xray — ставить ядра отдельно не нужно
+- Системный прокси через `gsettings` (GNOME) или `kwriteconfig` (KDE Plasma); на остальных окружениях остаётся локальный mixed-прокси на 127.0.0.1:2080
+- Arch-пакет (`packaging/linux/PKGBUILD` + `way.desktop`): установка в `/opt/way`, запуск из `/usr/bin`, ядро получает `cap_net_admin` для TUN; CI на каждый релиз публикует `tar.gz` и AppImage
+- Меню трея (открыть/подключить/отключить/выйти), импорт/экспорт бэкапов, открытие ссылок через `xdg-open` и проверка обновлений (AppImage-ассет) работают
+- Комплектный бинарник `waycore` уже содержит оба движка, ставить ядра отдельно не нужно. Kill Switch только на Windows
 
 Сборка на Arch:
 
@@ -275,8 +235,6 @@ flutter build linux --release
 sudo setcap cap_net_admin,cap_net_bind_service+ep waycore
 ```
 
-Ограничение: Kill Switch — только Windows.
-
 ### Лицензия
 
-[GPL-3.0](LICENSE) — Way использует sing-box (GPLv3) и Xray-core.
+[GPL-3.0](LICENSE). Way использует sing-box (GPLv3) и Xray-core.

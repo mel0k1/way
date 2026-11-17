@@ -59,7 +59,7 @@ abstract final class FontRegistry {
     return family;
   }
 
-  /// Registers every saved font at startup; failures are silent — the app
+  /// Registers every saved font at startup; failures are silent: the app
   /// just falls back to Inter for that family until a clean re-import.
   static Future<void> loadAll(List<String> families) async {
     final dir = await _dir();

@@ -180,9 +180,8 @@ class AppState extends ChangeNotifier {
   Timer? _statsTimer;
   Timer? _clipboardTimer;
   bool _ipFetching = false;
-  // While the app is in the background the UI doesn't need per-second
-  // stats: throttle the poller (and drop clipboard sniffing) to save
-  // battery without losing the traffic history.
+  // Background: the tunnel keeps running but per-second UI polling is
+  // throttled to save battery (and clipboard sniffing stops).
   bool _backgrounded = false;
   DateTime _lastBackgroundTick = DateTime.now();
   final Set<String> _updatingSubs = {};
@@ -1594,8 +1593,7 @@ class AppState extends ChangeNotifier {
     final clean = hex.replaceAll('#', '').toUpperCase();
     if (clean.length != 6 || int.tryParse(clean, radix: 16) == null) return;
     accentCustom = clean;
-    // The custom-color dialog streams live updates while the dot is being
-    // dragged: persist only when asked, not on every frame.
+    // Live drag streams updates; persist once when asked.
     if (persist) _persist();
     notifyListeners();
   }
@@ -1620,9 +1618,8 @@ class AppState extends ChangeNotifier {
       final docs = await getApplicationSupportDirectory();
       final target = File('${docs.path}/wallpaper.img');
       await File(sourcePath).copy(target.path);
-      // The path never changes between picks, so every Image.file keyed on
-      // it holds the previous picture until evicted. Wipe the decode cache:
-      // a wallpaper swap happens once, and the next frame re-decodes.
+      // The path never changes between picks, so evict the cached decode:
+      // otherwise the next pick shows the old picture until restart.
       invalidateWallpaperCheck(target.path);
       PaintingBinding.instance.imageCache.clear();
       wallpaperPath = target.path;

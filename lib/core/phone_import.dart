@@ -25,7 +25,7 @@ class PhoneImportState {
   });
 }
 
-/// Receives a config — or, in wallpaper mode, an image — from a phone over
+/// Receives a config: or, in wallpaper mode, an image: from a phone over
 /// the local network, Chumpy-style: a QR with the LAN URL, a 6-digit PIN
 /// as the proof, a self-contained HTML page on the phone side and a single
 /// POST with the payload (text/plain for configs, application/octet-stream
@@ -124,7 +124,7 @@ class PhoneImportServer {
         unawaited(_handle(request));
       }
     } catch (_) {
-      // listener torn down — the state notifier already said why
+      // listener torn down: the state notifier already said why
     }
   }
 
