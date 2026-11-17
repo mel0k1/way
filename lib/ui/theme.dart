@@ -6,8 +6,8 @@ import 'package:flutter/material.dart';
 abstract final class WayAccents {
   static const presets = <String, double>{
     'green': 145,
-    'sky': 211,
-    'blue': 217,
+    'sky': 197,
+    'blue': 224,
     'indigo': 248,
     'violet': 285,
     'red': 4,

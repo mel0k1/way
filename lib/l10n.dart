@@ -158,6 +158,8 @@ class L10n {
   String get wallpaperHint => ru ? 'Фон главного экрана' : 'Home screen backdrop';
   String get wallpaperPick => ru ? 'Выбрать' : 'Choose';
   String get wallpaperReset => ru ? 'Сбросить' : 'Reset';
+  String get wallpaperFirst =>
+      ru ? 'Сначала выбери обои' : 'Choose a wallpaper first';
   String get language => ru ? 'Язык' : 'Language';
   String get langSystem => ru ? 'Системный' : 'System';
   String get updates => ru ? 'Подписки' : 'Subscriptions';

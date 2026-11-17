@@ -948,7 +948,7 @@ class _AccentPicker extends StatelessWidget {
           Expanded(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              clipBehavior: Clip.none,
+              padding: const EdgeInsets.symmetric(horizontal: 2),
               child: Row(
                 children: [
                   for (final id in WayAccents.order)
@@ -961,9 +961,23 @@ class _AccentPicker extends StatelessWidget {
                             id == 'custom' || id.startsWith('wall')
                                 ? state.seedColorFor(id)
                                 : null,
+                        wallMissing: id.startsWith('wall') &&
+                            state.seedColorFor(id) == null,
                         onTap: () {
                           if (id == 'custom') {
                             _showCustomColorPicker(context, state);
+                          } else if (id.startsWith('wall') &&
+                              state.seedColorFor(id) == null) {
+                            // No wallpaper behind the palette chips — say
+                            // so instead of silently becoming green.
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(L10nScope.of(context)
+                                    .wallpaperFirst),
+                                behavior: SnackBarBehavior.floating,
+                                width: 320,
+                              ),
+                            );
                           } else {
                             state.setAccent(id);
                           }
@@ -1210,6 +1224,7 @@ class _AccentDot extends StatelessWidget {
   final String id;
   final bool selected;
   final Color? colorOverride;
+  final bool wallMissing;
   final VoidCallback onTap;
 
   const _AccentDot({
@@ -1217,6 +1232,7 @@ class _AccentDot extends StatelessWidget {
     required this.selected,
     required this.onTap,
     this.colorOverride,
+    this.wallMissing = false,
   });
 
   @override
@@ -1267,7 +1283,10 @@ class _AccentDot extends StatelessWidget {
                 : isMono
                     ? Icon(Icons.contrast_rounded,
                         size: 20, color: scheme.onSurfaceVariant)
-                    : null,
+                    : wallMissing
+                        ? Icon(Icons.wallpaper_rounded,
+                            size: 20, color: scheme.onSurfaceVariant)
+                        : null,
           ),
         ),
       ),

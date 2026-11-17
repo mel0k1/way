@@ -36,15 +36,15 @@ class FloatingNavBar extends StatelessWidget {
     final settingsIndex = tabs.length;
     final settingsSelected = currentIndex == settingsIndex;
     final wide = MediaQuery.widthOf(context) >= 640;
-
-    final allTabs = [
-      ...tabs,
-      FloatingNavTab(
-        icon: Icons.settings_outlined,
-        activeIcon: Icons.settings_rounded,
-        label: L10nScope.of(context).navSettings,
-      ),
-    ];
+    final settingsTab = FloatingNavTab(
+      icon: Icons.settings_outlined,
+      activeIcon: Icons.settings_rounded,
+      label: L10nScope.of(context).navSettings,
+    );
+    // The settings entry lives in exactly one place: inside the pill on
+    // wide screens, as the round button beside it on narrow ones — never
+    // in both at once.
+    final allTabs = wide ? [...tabs, settingsTab] : tabs;
 
     return SafeArea(
       top: false,
