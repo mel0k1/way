@@ -25,7 +25,7 @@ class AppBackground extends StatefulWidget {
 
 class _AppBackgroundState extends State<AppBackground>
     with WidgetsBindingObserver {
-  static const _periodMs = 110.0;
+  static const int _periodMs = 110;
   static const _loop = Duration(seconds: 28);
 
   Timer? _drift;
@@ -65,7 +65,7 @@ class _AppBackgroundState extends State<AppBackground>
     final need = !_appPaused && !_animationsOff && !_hiddenByWallpaper;
     if (need && _drift == null) {
       _drift = Timer.periodic(
-        const Duration(milliseconds: _periodMs.round()),
+        const Duration(milliseconds: _periodMs),
         (_) {
           if (!mounted) return;
           setState(() => _t = (_t + _periodMs / _loop.inMilliseconds) % 1.0);
