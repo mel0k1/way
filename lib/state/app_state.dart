@@ -694,20 +694,24 @@ class AppState extends ChangeNotifier {
 
   Future<void> _statsTick() async {
     if (vpn.phase != VpnPhase.connected) return;
-    stats = await statsPoller.fetch();
-    // Daily history: the session counters reset on every reconnect, so a
-    // backwards jump counts as a fresh session from zero.
-    final up = stats.totalUp >= _lastTrafficUp
-        ? stats.totalUp - _lastTrafficUp
-        : stats.totalUp;
-    final down = stats.totalDown >= _lastTrafficDown
-        ? stats.totalDown - _lastTrafficDown
-        : stats.totalDown;
-    _lastTrafficUp = stats.totalUp;
-    _lastTrafficDown = stats.totalDown;
-    if (up > 0 || down > 0) {
-      final week = await traffic.add(up, down);
-      if (week != null) trafficWeek = week;
+    try {
+      stats = await statsPoller.fetch();
+      // Daily history: the session counters reset on every reconnect, so a
+      // backwards jump counts as a fresh session from zero.
+      final up = stats.totalUp >= _lastTrafficUp
+          ? stats.totalUp - _lastTrafficUp
+          : stats.totalUp;
+      final down = stats.totalDown >= _lastTrafficDown
+          ? stats.totalDown - _lastTrafficDown
+          : stats.totalDown;
+      _lastTrafficUp = stats.totalUp;
+      _lastTrafficDown = stats.totalDown;
+      if (up > 0 || down > 0) {
+        final week = await traffic.add(up, down);
+        if (week != null) trafficWeek = week;
+      }
+    } catch (_) {
+      return; // history flush IO errors must not become zone exceptions
     }
     notifyListeners();
   }
@@ -1004,6 +1008,9 @@ class AppState extends ChangeNotifier {
       url: url,
     );
     subs.add(sub);
+    // Persist now: if the first fetch fails, updateSubscription never gets
+    // to _persist() and the sub would vanish on restart.
+    _persist();
     updateSubscription(sub);
   }
 

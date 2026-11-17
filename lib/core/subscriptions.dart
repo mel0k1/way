@@ -84,7 +84,7 @@ class SubscriptionService {
     await for (final chunk in res.stream) {
       bytes.addAll(chunk);
     }
-    final text = utf8.decode(bytes);
+    final text = utf8.decode(bytes, allowMalformed: true);
     var profiles = LinkParser.parseMany(text);
     if (profiles.isEmpty) {
       profiles = SubFormats.parseAny(text);

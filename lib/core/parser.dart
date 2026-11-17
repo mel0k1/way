@@ -7,10 +7,10 @@ class LinkParser {
   static Profile? parse(String raw) {
     final line = raw.trim();
     if (line.isEmpty) return null;
-    if (line.startsWith('vmess://')) return _parseVmess(line);
-    if (line.startsWith('ss://')) return _parseSs(line);
-    final scheme = line.split('://').first.toLowerCase();
-    try {
+    if (line.startsWith('vmess://')) return _guard(() => _parseVmess(line));
+    if (line.startsWith('ss://')) return _guard(() => _parseSs(line));
+    return _guard(() {
+      final scheme = line.split('://').first.toLowerCase();
       final uri = Uri.parse(line);
       switch (scheme) {
         case 'vless':
@@ -27,9 +27,22 @@ class LinkParser {
         default:
           return null;
       }
+    });
+  }
+
+  /// A single malformed link must never break a bulk import: guard the
+  /// per-line parse and reject profiles without a usable host/port.
+  static Profile? _guard(Profile? Function() fn) {
+    Profile? p;
+    try {
+      p = fn();
     } catch (_) {
       return null;
     }
+    if (p == null || p.server.isEmpty || p.port <= 0 || p.port > 65535) {
+      return null;
+    }
+    return p;
   }
 
   static List<Profile> parseMany(String text) {
@@ -60,6 +73,15 @@ class LinkParser {
       } catch (_) {
         return null;
       }
+    }
+  }
+
+  /// Percent-decoding that tolerates stray '%' characters.
+  static String? _decodeOrNull(String s) {
+    try {
+      return Uri.decodeComponent(s);
+    } catch (_) {
+      return null;
     }
   }
 
@@ -137,16 +159,24 @@ class LinkParser {
   }
 
   static Profile _parseTuic(Uri uri) {
-    final userInfo = Uri.decodeComponent(uri.userInfo);
-    final parts = userInfo.split(':');
+    // Split on the FIRST colon of the raw user-info, then decode each side:
+    // decoding first would turn %3A into a colon and shift the uuid split.
+    final raw = uri.userInfo;
+    final colon = raw.indexOf(':');
+    final uuid = colon < 0
+        ? Uri.decodeComponent(raw)
+        : Uri.decodeComponent(raw.substring(0, colon));
+    final password = colon < 0
+        ? ''
+        : Uri.decodeComponent(raw.substring(colon + 1));
     return Profile(
       id: _genId(),
       name: Uri.decodeComponent(uri.fragment.isNotEmpty ? uri.fragment : 'TUIC'),
       protocol: 'tuic',
       server: uri.host,
       port: uri.port,
-      uuid: parts.isNotEmpty ? parts[0] : '',
-      password: parts.length > 1 ? parts.sublist(1).join(':') : '',
+      uuid: uuid,
+      password: password,
       congestion: _q(uri, 'congestion_control', 'bbr'),
       sni: _q(uri, 'sni').isEmpty ? uri.host : _q(uri, 'sni'),
       insecure: _q(uri, 'allow_insecure') == '1',
@@ -221,7 +251,7 @@ class LinkParser {
       userInfo = main.substring(0, at);
       hostPart = main.substring(at + 1);
       final decodedUser = _tryDecodeBase64(userInfo);
-      userInfo = decodedUser ?? userInfo;
+      userInfo = decodedUser ?? _decodeOrNull(userInfo) ?? userInfo;
     } else {
       final decoded = _tryDecodeBase64(main);
       if (decoded == null) return null;

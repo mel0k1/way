@@ -100,7 +100,14 @@ class MainActivity : FlutterActivity() {
                             } catch (_: Throwable) {
                                 -1
                             }
-                            runOnUiThread { result.success(mapOf("ms" to ms)) }
+                            runOnUiThread {
+                                // The engine may be detached by now — replying
+                                // would otherwise crash on the UI thread.
+                                try {
+                                    result.success(mapOf("ms" to ms))
+                                } catch (_: Throwable) {
+                                }
+                            }
                         }.start()
                     }
                     "ip_info" -> {
@@ -113,7 +120,12 @@ class MainActivity : FlutterActivity() {
                             } catch (_: Throwable) {
                                 "{}"
                             }
-                            runOnUiThread { result.success(json) }
+                            runOnUiThread {
+                                try {
+                                    result.success(json)
+                                } catch (_: Throwable) {
+                                }
+                            }
                         }.start()
                     }
                     "battery" -> {

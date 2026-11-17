@@ -35,7 +35,12 @@ class SubFormats {
       final result = <Profile>[];
       for (final item in items) {
         if (item is Map) {
-          final p = singboxOutboundToProfile(Map<String, dynamic>.from(item));
+          Profile? p;
+          try {
+            p = singboxOutboundToProfile(Map<String, dynamic>.from(item));
+          } catch (_) {
+            continue; // one malformed outbound must not kill the import
+          }
           if (p != null) result.add(p);
         }
       }
@@ -54,7 +59,12 @@ class SubFormats {
       final result = <Profile>[];
       for (final item in proxies) {
         if (item is YamlMap) {
-          final p = clashProxyToProfile(_plainMap(item));
+          Profile? p;
+          try {
+            p = clashProxyToProfile(_plainMap(item));
+          } catch (_) {
+            continue; // one malformed proxy must not kill the import
+          }
           if (p != null) result.add(p);
         }
       }
@@ -87,13 +97,13 @@ class SubFormats {
   static int _intOf(dynamic v) {
     if (v == null) return 0;
     final m = RegExp(r'-?\d+').firstMatch('$v');
-    return m == null ? 0 : int.parse(m.group(0)!);
+    return m == null ? 0 : (int.tryParse(m.group(0)!) ?? 0);
   }
 
   static int? _intOrNull(dynamic v) {
     if (v == null) return null;
     final m = RegExp(r'-?\d+').firstMatch('$v');
-    return m == null ? null : int.parse(m.group(0)!);
+    return m == null ? null : int.tryParse(m.group(0)!);
   }
 
   static bool _b(dynamic v) => v == true || '$v' == 'true' || '$v' == '1';
